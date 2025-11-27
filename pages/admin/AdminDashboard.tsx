@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Competition } from '../../types';
 import { getDb } from '../../services/storageService';
+import { Competition } from '../../types';
 import { CompetitionsTab } from './tabs/CompetitionsTab';
 import { AthleticsTab } from './tabs/AthleticsTab';
 import { ModalitiesTab } from './tabs/ModalitiesTab';
@@ -9,93 +9,64 @@ import { ResultsTab } from './tabs/ResultsTab';
 import { PenaltiesTab } from './tabs/PenaltiesTab';
 import { SettingsTab } from './tabs/SettingsTab';
 
-const TABS = [
-  { id: 'results', label: 'Resultados', icon: '🏆' },
-  { id: 'penalties', label: 'Penalidades', icon: '⚖️' },
-  { id: 'modalities', label: 'Modalidades', icon: '📋' },
-  { id: 'athletics', label: 'Atléticas', icon: '🛡️' },
-  { id: 'competitions', label: 'Competições', icon: '📅' },
-  { id: 'settings', label: 'Configurações', icon: '⚙️' },
-];
-
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('results');
-  const [activeCompetition, setActiveCompetition] = useState<Competition | null>(null);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [activeTab, setActiveTab] = useState('competitions');
+  const [activeComp, setActiveComp] = useState<Competition | null>(null);
 
   useEffect(() => {
-    const isAuth = localStorage.getItem('lobo_auth');
-    if (!isAuth) navigate('/login');
-    loadActiveComp();
-  }, [refreshTrigger]);
+    if (!localStorage.getItem('lobo_auth')) navigate('/login');
+    refresh();
+  }, []);
 
-  const loadActiveComp = () => {
+  const refresh = () => {
     const db = getDb();
     const active = db.competitions.find(c => c.isActive);
-    setActiveCompetition(active || null);
+    setActiveComp(active || null);
   };
 
-  const forceRefresh = () => setRefreshTrigger(prev => prev + 1);
-
-  const renderContent = () => {
-    if (!activeCompetition && activeTab !== 'competitions' && activeTab !== 'athletics' && activeTab !== 'settings') {
-      return (
-        <div className="text-center py-12 bg-white rounded-lg border border-red-200">
-          <p className="text-red-600 font-medium">Você precisa selecionar ou criar uma Competição Ativa primeiro.</p>
-          <button onClick={() => setActiveTab('competitions')} className="mt-4 text-lobo-primary underline">Ir para Competições</button>
-        </div>
-      );
-    }
-
-    switch (activeTab) {
-      case 'competitions': return <CompetitionsTab onUpdate={forceRefresh} />;
-      case 'athletics': return <AthleticsTab />;
-      case 'modalities': return <ModalitiesTab competition={activeCompetition!} />;
-      case 'results': return <ResultsTab competition={activeCompetition!} />;
-      case 'penalties': return <PenaltiesTab competition={activeCompetition!} />;
-      case 'settings': return <SettingsTab onUpdate={forceRefresh} />;
-      default: return null;
-    }
-  };
+  const tabs = [
+    { id: 'competitions', label: 'Competições' },
+    { id: 'athletics', label: 'Atléticas' },
+    { id: 'modalities', label: 'Modalidades' },
+    { id: 'results', label: 'Resultados' },
+    { id: 'penalties', label: 'Penalidades' },
+    { id: 'settings', label: 'Config' }
+  ];
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-        <div>
-           <h1 className="text-2xl font-bold text-gray-800">Painel Administrativo</h1>
-           {activeCompetition && (
-             <span className="inline-block mt-1 px-3 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded-full">
-               Editando: {activeCompetition.name} ({activeCompetition.year})
-             </span>
-           )}
-        </div>
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Painel Admin</h1>
+        {activeComp && <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-bold">Editando: {activeComp.name}</span>}
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200 overflow-x-auto">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`
-                whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center
-                ${activeTab === tab.id
-                  ? 'border-lobo-primary text-lobo-primary'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
-              `}
-            >
-              <span className="mr-2">{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
-        </nav>
+      <div className="flex space-x-2 overflow-x-auto pb-2">
+        {tabs.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap ${activeTab === t.id ? 'bg-lobo-primary text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}
+          >
+            {t.label}
+          </button>
+        ))}
       </div>
 
-      {/* Content */}
-      <div className="min-h-[400px]">
-        {renderContent()}
+      <div className="bg-white p-6 rounded-lg shadow min-h-[400px]">
+        {activeTab === 'competitions' && <CompetitionsTab onUpdate={refresh} />}
+        {activeTab === 'athletics' && <AthleticsTab />}
+        {activeTab === 'settings' && <SettingsTab />}
+        
+        {(!activeComp && ['modalities', 'results', 'penalties'].includes(activeTab)) ? (
+          <div className="text-center py-10 text-red-500">Selecione ou crie uma competição ativa primeiro.</div>
+        ) : (
+          <>
+            {activeTab === 'modalities' && <ModalitiesTab comp={activeComp!} />}
+            {activeTab === 'results' && <ResultsTab comp={activeComp!} />}
+            {activeTab === 'penalties' && <PenaltiesTab comp={activeComp!} />}
+          </>
+        )}
       </div>
     </div>
   );

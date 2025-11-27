@@ -3,40 +3,33 @@ import {
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry 
 } from '../types';
 import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DB_KEY, APP_CONFIG_KEY, FIREBASE_CONFIG } from '../constants';
+// @ts-ignore
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set } from 'firebase/database';
 
-// --- FIREBASE INITIALIZATION ---
+// Firebase Init
 let dbRef: any = null;
 let isFirebaseInitialized = false;
 
 try {
-  // Check if config is filled (simple check on apiKey)
-  if (FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== "COLE_SUA_API_KEY_AQUI") {
+  if (FIREBASE_CONFIG.apiKey) {
     const app = initializeApp(FIREBASE_CONFIG);
     const database = getDatabase(app);
     dbRef = ref(database, 'lobo_data');
     isFirebaseInitialized = true;
     
-    // SETUP LISTENER: When cloud data changes, update local storage and refresh UI
     onValue(dbRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        // Save cloud data to local storage to keep them in sync
         localStorage.setItem(DB_KEY, JSON.stringify(data));
-        // Trigger UI update
         window.dispatchEvent(new Event('storage'));
-        console.log('☁️ Dados sincronizados da nuvem!');
       }
     });
-  } else {
-    console.warn("Firebase não configurado corretamente em constants.ts. Usando apenas modo Offline.");
   }
 } catch (e) {
-  console.error("Erro ao conectar no Firebase:", e);
+  console.error("Firebase Error:", e);
 }
 
-// --- TYPES ---
 interface DatabaseSchema {
   competitions: Competition[];
   athletics: Athletic[];
@@ -55,29 +48,35 @@ const initialDb: DatabaseSchema = {
   scoreRules: {},
 };
 
-const uuid = () => Math.random().toString(36).substring(2, 9);
-
-// --- CORE STORAGE ---
-
 export const getDb = (): DatabaseSchema => {
   const stored = localStorage.getItem(DB_KEY);
-  return stored ? JSON.parse(stored) : initialDb;
+  if (!stored) return initialDb;
+  try {
+    const parsed = JSON.parse(stored);
+    // Ensure all arrays exist
+    return {
+      competitions: parsed.competitions || [],
+      athletics: parsed.athletics || [],
+      modalities: parsed.modalities || [],
+      results: parsed.results || [],
+      penalties: parsed.penalties || [],
+      scoreRules: parsed.scoreRules || {}
+    };
+  } catch {
+    return initialDb;
+  }
 };
 
 export const saveDb = (db: DatabaseSchema) => {
   try {
-    // 1. Save Local (Instant)
     localStorage.setItem(DB_KEY, JSON.stringify(db));
-    
-    // 2. Save Cloud (Async)
     if (isFirebaseInitialized && dbRef) {
-      set(dbRef, db).catch(err => console.error("Erro ao salvar na nuvem:", err));
+      set(dbRef, db).catch(console.error);
     }
   } catch (e: any) {
     if (e.name === 'QuotaExceededError') {
-      alert('LIMITE DE ARMAZENAMENTO LOCA ATINGIDO! Remova imagens antigas.');
+      alert('Limite de armazenamento local atingido!');
     }
-    throw e;
   }
 };
 
@@ -96,14 +95,12 @@ export const saveConfig = (config: AppConfig) => {
 
 export const isOnline = () => isFirebaseInitialized;
 
-// --- BUSINESS LOGIC ---
-
 export const createCompetition = (name: string, year: number) => {
   const db = getDb();
   db.competitions.forEach(c => c.isActive = false);
 
   const newComp: Competition = {
-    id: uuid(),
+    id: Math.random().toString(36).substring(2, 9),
     name,
     year,
     isActive: true,
@@ -114,7 +111,7 @@ export const createCompetition = (name: string, year: number) => {
 
   INITIAL_SEED_MODALITIES.forEach(seed => {
     db.modalities.push({
-      id: uuid(),
+      id: Math.random().toString(36).substring(2, 9),
       competitionId: newComp.id,
       name: seed.name,
       gender: seed.gender,
@@ -143,11 +140,8 @@ export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] 
   });
 
   const compResults = db.results.filter(r => r.competitionId === competitionId);
-
   compResults.forEach(result => {
-    const modalityId = result.modalityId;
-    const rule = db.scoreRules[modalityId] || DEFAULT_SCORE_RULE;
-    
+    const rule = DEFAULT_SCORE_RULE;
     Object.entries(result.ranking).forEach(([rankStr, athleticId]) => {
       const rank = parseInt(rankStr, 10);
       if (athleticsMap[athleticId]) {
@@ -166,59 +160,36 @@ export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] 
     }
   });
 
-  const leaderboard = Object.values(athleticsMap).sort((a, b) => {
-    if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
-    return a.penalties - b.penalties;
-  });
-
-  return leaderboard.map((entry, index) => ({ ...entry, position: index + 1 }));
+  return Object.values(athleticsMap)
+    .sort((a, b) => b.totalPoints - a.totalPoints || a.penalties - b.penalties)
+    .map((entry, index) => ({ ...entry, position: index + 1 }));
 };
 
 export const handleImageUpload = async (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const MAX_WIDTH = 400; 
-    const MAX_HEIGHT = 400;
-    const QUALITY = 0.7;
-
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    
-    reader.onload = (event) => {
+    reader.onload = (e) => {
       const img = new Image();
-      img.src = event.target?.result as string;
-
+      img.src = e.target?.result as string;
       img.onload = () => {
         const canvas = document.createElement('canvas');
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-            reject(new Error('Canvas context failure'));
-            return;
-        }
+        const MAX = 400;
+        let w = img.width;
+        let h = img.height;
         
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
-        resolve(dataUrl);
+        if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } }
+        else { if (h > MAX) { w *= MAX / h; h = MAX; } }
+        
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.7));
+        } else reject(new Error('Canvas error'));
       };
-      img.onerror = (err) => reject(err);
     };
-    reader.onerror = (error) => reject(error);
+    reader.onerror = reject;
   });
 };

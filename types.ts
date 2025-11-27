@@ -2,7 +2,7 @@ export interface Competition {
   id: string;
   name: string;
   year: number;
-  isActive: boolean; // Defines which competition is currently being managed in Admin
+  isActive: boolean;
   createdAt: number;
 }
 
@@ -20,19 +20,12 @@ export interface Modality {
   status: 'pending' | 'finished';
 }
 
-export interface ScoreRule {
-  // Array of points for 1st, 2nd, 3rd... 8th place
-  points: number[]; 
-}
-
-// By default: [12, 9, 7, 5, 4, 3, 2, 1]
 export const DEFAULT_SCORE_RULE: number[] = [12, 9, 7, 5, 4, 3, 2, 1];
 
 export interface Result {
   id: string;
   modalityId: string;
   competitionId: string;
-  // Map of Rank (1-8) to Athletic ID
   ranking: { [rank: number]: string };
 }
 

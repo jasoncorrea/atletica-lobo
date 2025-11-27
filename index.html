@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Atlética Lobo - Central de Jogos</title>
-    <!-- Tailwind CSS (Mantido pois funciona bem via CDN) -->
+    <!-- Tailwind CSS via CDN para estilização rápida -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -12,8 +12,8 @@
           extend: {
             colors: {
               lobo: {
-                primary: '#e38702',   // Laranja
-                secondary: '#5a0509', // Vinho/Bordô
+                primary: '#e38702',
+                secondary: '#5a0509',
                 light: '#fdf6ec',
               }
             }
@@ -21,7 +21,6 @@
         }
       }
     </script>
-    <!-- IMPORTMAP REMOVIDO: Isso corrige a tela branca -->
   <script type="importmap">
 {
   "imports": {
@@ -38,12 +37,12 @@
 </head>
   <body class="bg-gray-50 text-gray-900 font-sans">
     <div id="root">
-      <div style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;">
-        <div style="font-weight:bold;color:#e38702;font-size:1.5rem;margin-bottom:1rem;">Carregando App Lobo...</div>
-        <div style="font-size:0.8rem;color:#666;">Se esta tela persistir, recarregue a página.</div>
+      <!-- Feedback visual enquanto o React carrega -->
+      <div style="height: 100vh; display: flex; justify-content: center; align-items: center; flex-direction: column;">
+        <h1 style="color: #e38702; font-size: 24px; font-weight: bold; font-family: sans-serif;">Carregando Sistema Lobo...</h1>
+        <p style="color: #666; font-family: sans-serif;">V3.0 Reset</p>
       </div>
     </div>
-    <!-- Ponto de entrada simples e direto para o Vite -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
