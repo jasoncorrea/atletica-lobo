@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Atlética Lobo - Central de Jogos</title>
+    <!-- Tailwind CSS (Mantido pois funciona bem via CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -20,11 +21,6 @@
         }
       }
     </script>
-    <!-- 
-      ATENÇÃO: ImportMap removido intencionalmente.
-      O projeto agora usa Vite + package.json para gerenciar dependências.
-      Não adicione script type="importmap" novamente.
-    -->
   <script type="importmap">
 {
   "imports": {
@@ -40,12 +36,8 @@
 </script>
 </head>
   <body class="bg-gray-50 text-gray-900 font-sans">
-    <div id="root">
-       <!-- Feedback visual atualizado para garantir que o Git detecte a mudança -->
-       <div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; color:#e38702; font-weight:bold; font-size: 1.2rem;">
-         Carregando Sistema Lobo (Vite v3.5)...
-       </div>
-    </div>
-    <script type="module" src="./index.tsx"></script>
+    <div id="root"></div>
+    <!-- Ponto de entrada simples e direto para o Vite -->
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>
