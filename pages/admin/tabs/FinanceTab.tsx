@@ -20,6 +20,9 @@ export const FinanceTab: React.FC = () => {
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState('');
 
+  // State para Filtro de Extrato
+  const [filterCategory, setFilterCategory] = useState('');
+
   const load = () => {
     const db = getDb();
     setCategories(db.financeCategories);
@@ -157,6 +160,12 @@ export const FinanceTab: React.FC = () => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
+  // Filtra transações para o extrato
+  const filteredTransactions = transactions.filter(t => {
+    if (!filterCategory) return true;
+    return t.categoryId === filterCategory;
+  });
+
   return (
     <div>
       <div className="flex gap-2 mb-6 border-b pb-4">
@@ -214,7 +223,20 @@ export const FinanceTab: React.FC = () => {
           </form>
 
           <div className="md:col-span-2">
-            <h3 className="font-bold text-lg mb-4 text-gray-800">Extrato Recente</h3>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg text-gray-800">Extrato Recente</h3>
+              <select 
+                className="border p-2 rounded text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-300"
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+              >
+                <option value="">Todas as Categorias</option>
+                {categories.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+            
             <div className="bg-white rounded shadow-sm border overflow-hidden">
               <table className="w-full text-sm text-left">
                 <thead className="bg-gray-100 text-gray-600">
@@ -227,7 +249,7 @@ export const FinanceTab: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {transactions.map(t => (
+                  {filteredTransactions.map(t => (
                     <tr key={t.id} className="hover:bg-gray-50">
                       <td className="p-3 text-gray-500">{new Date(t.date).toLocaleDateString()}</td>
                       <td className="p-3">
@@ -245,7 +267,7 @@ export const FinanceTab: React.FC = () => {
                       </td>
                     </tr>
                   ))}
-                  {transactions.length === 0 && (
+                  {filteredTransactions.length === 0 && (
                     <tr><td colSpan={5} className="p-8 text-center text-gray-400">Nenhum lançamento encontrado.</td></tr>
                   )}
                 </tbody>
