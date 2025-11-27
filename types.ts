@@ -89,4 +89,5 @@ export interface Product {
   priceMember: number;     // Preço Sócio
   priceNonMember: number;  // Preço Não Sócio
   costPrice?: number;      // Preço de Custo (Opcional)
+  size?: string;           // Tamanho (PP, P, M, etc.)
 }

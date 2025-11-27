@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { getDb, saveDb, handleImageUpload } from '../../../services/storageService';
 import { Product } from '../../../types';
 
+const SIZES = ['Único', 'PP', 'P', 'M', 'G', 'GG', 'XG', 'XXG'];
+
 export const InventoryTab: React.FC = () => {
   const [subTab, setSubTab] = useState<'list' | 'add'>('list');
   const [products, setProducts] = useState<Product[]>([]);
@@ -10,6 +12,7 @@ export const InventoryTab: React.FC = () => {
   // Form States
   const [editingId, setEditingId] = useState<string | null>(null);
   const [name, setName] = useState('');
+  const [size, setSize] = useState('Único'); // Default
   const [qty, setQty] = useState('');
   const [priceMember, setPriceMember] = useState('');
   const [priceNonMember, setPriceNonMember] = useState('');
@@ -25,6 +28,7 @@ export const InventoryTab: React.FC = () => {
   const resetForm = () => {
     setEditingId(null);
     setName('');
+    setSize('Único');
     setQty('');
     setPriceMember('');
     setPriceNonMember('');
@@ -34,6 +38,7 @@ export const InventoryTab: React.FC = () => {
   const handleEdit = (p: Product) => {
     setEditingId(p.id);
     setName(p.name);
+    setSize(p.size || 'Único');
     setQty(p.quantity.toString());
     setPriceMember(p.priceMember.toString());
     setPriceNonMember(p.priceNonMember.toString());
@@ -61,6 +66,7 @@ export const InventoryTab: React.FC = () => {
     const newProduct: Product = {
       id: editingId || Math.random().toString(36).substr(2, 9),
       name,
+      size,
       quantity: parseInt(qty),
       priceMember: parseFloat(priceMember.replace(',', '.')),
       priceNonMember: parseFloat(priceNonMember.replace(',', '.')),
@@ -134,7 +140,16 @@ export const InventoryTab: React.FC = () => {
                       <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-400">📷</div>
                     )}
                   </td>
-                  <td className="p-3 font-bold text-gray-800">{p.name}</td>
+                  <td className="p-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-gray-800">{p.name}</span>
+                      {p.size && p.size !== 'Único' && (
+                        <span className="text-[10px] font-bold bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded border border-gray-300">
+                          {p.size}
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="p-3 text-center">
                     <span className={`px-2 py-1 rounded font-bold ${p.quantity < 5 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-700'}`}>
                       {p.quantity}
@@ -162,9 +177,21 @@ export const InventoryTab: React.FC = () => {
           
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Nome do Produto</label>
-                <input className="w-full p-2 border rounded bg-white text-gray-900" value={name} onChange={e => setName(e.target.value)} required placeholder="Ex: Caneca 500ml" />
+              <div className="flex gap-4">
+                <div className="flex-grow">
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Nome do Produto</label>
+                  <input className="w-full p-2 border rounded bg-white text-gray-900" value={name} onChange={e => setName(e.target.value)} required placeholder="Ex: Moletom Lobo" />
+                </div>
+                <div className="w-24">
+                  <label className="block text-xs font-bold text-gray-500 mb-1">Tamanho</label>
+                  <select 
+                    className="w-full p-2 border rounded bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-lobo-primary"
+                    value={size}
+                    onChange={e => setSize(e.target.value)}
+                  >
+                    {SIZES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
               </div>
               
               <div>
