@@ -2,16 +2,48 @@ import {
   Competition, Athletic, Modality, Result, Penalty, 
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry 
 } from '../types';
-import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DB_KEY, APP_CONFIG_KEY } from '../constants';
+import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DB_KEY, APP_CONFIG_KEY, FIREBASE_CONFIG } from '../constants';
+import { initializeApp } from 'firebase/app';
+import { getDatabase, ref, onValue, set } from 'firebase/database';
 
-// Simulated Database Schema
+// --- FIREBASE INITIALIZATION ---
+let dbRef: any = null;
+let isFirebaseInitialized = false;
+
+try {
+  // Check if config is filled (simple check on apiKey)
+  if (FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.apiKey !== "COLE_SUA_API_KEY_AQUI") {
+    const app = initializeApp(FIREBASE_CONFIG);
+    const database = getDatabase(app);
+    dbRef = ref(database, 'lobo_data');
+    isFirebaseInitialized = true;
+    
+    // SETUP LISTENER: When cloud data changes, update local storage and refresh UI
+    onValue(dbRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        // Save cloud data to local storage to keep them in sync
+        localStorage.setItem(DB_KEY, JSON.stringify(data));
+        // Trigger UI update
+        window.dispatchEvent(new Event('storage'));
+        console.log('☁️ Dados sincronizados da nuvem!');
+      }
+    });
+  } else {
+    console.warn("Firebase não configurado corretamente em constants.ts. Usando apenas modo Offline.");
+  }
+} catch (e) {
+  console.error("Erro ao conectar no Firebase:", e);
+}
+
+// --- TYPES ---
 interface DatabaseSchema {
   competitions: Competition[];
   athletics: Athletic[];
   modalities: Modality[];
   results: Result[];
   penalties: Penalty[];
-  scoreRules: { [modalityId: string]: number[] }; // Custom rules per modality
+  scoreRules: { [modalityId: string]: number[] };
 }
 
 const initialDb: DatabaseSchema = {
@@ -23,10 +55,9 @@ const initialDb: DatabaseSchema = {
   scoreRules: {},
 };
 
-// Helper to generate IDs
 const uuid = () => Math.random().toString(36).substring(2, 9);
 
-// --- Core Storage Methods ---
+// --- CORE STORAGE ---
 
 export const getDb = (): DatabaseSchema => {
   const stored = localStorage.getItem(DB_KEY);
@@ -35,12 +66,18 @@ export const getDb = (): DatabaseSchema => {
 
 export const saveDb = (db: DatabaseSchema) => {
   try {
+    // 1. Save Local (Instant)
     localStorage.setItem(DB_KEY, JSON.stringify(db));
-  } catch (e: any) {
-    if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-      alert('LIMITE DE ARMAZENAMENTO ATINGIDO!\n\nO navegador não permite salvar mais dados. Tente remover imagens antigas ou competições passadas.');
-      throw e;
+    
+    // 2. Save Cloud (Async)
+    if (isFirebaseInitialized && dbRef) {
+      set(dbRef, db).catch(err => console.error("Erro ao salvar na nuvem:", err));
     }
+  } catch (e: any) {
+    if (e.name === 'QuotaExceededError') {
+      alert('LIMITE DE ARMAZENAMENTO LOCA ATINGIDO! Remova imagens antigas.');
+    }
+    throw e;
   }
 };
 
@@ -54,19 +91,15 @@ export const getConfig = (): AppConfig => {
 };
 
 export const saveConfig = (config: AppConfig) => {
-  try {
-    localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(config));
-  } catch (e: any) {
-     alert('Erro ao salvar configuração: Limite de armazenamento atingido.');
-  }
+  localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(config));
 };
 
-// --- Business Logic / "Backend" Controllers ---
+export const isOnline = () => isFirebaseInitialized;
+
+// --- BUSINESS LOGIC ---
 
 export const createCompetition = (name: string, year: number) => {
   const db = getDb();
-  
-  // Set all others to inactive
   db.competitions.forEach(c => c.isActive = false);
 
   const newComp: Competition = {
@@ -79,7 +112,6 @@ export const createCompetition = (name: string, year: number) => {
 
   db.competitions.push(newComp);
 
-  // R4 (v2): Auto-Seed Modalities using the explicit list
   INITIAL_SEED_MODALITIES.forEach(seed => {
     db.modalities.push({
       id: uuid(),
@@ -98,7 +130,6 @@ export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] 
   const db = getDb();
   const athleticsMap: Record<string, LeaderboardEntry> = {};
 
-  // Initialize map
   db.athletics.forEach(a => {
     athleticsMap[a.id] = {
       athleticId: a.id,
@@ -111,16 +142,12 @@ export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] 
     };
   });
 
-  // Calculate Points from Results
-  const compModalities = db.modalities.filter(m => m.competitionId === competitionId);
   const compResults = db.results.filter(r => r.competitionId === competitionId);
 
   compResults.forEach(result => {
     const modalityId = result.modalityId;
-    // Get rule for this modality or default
     const rule = db.scoreRules[modalityId] || DEFAULT_SCORE_RULE;
     
-    // Position 1 is index 0 in rule array
     Object.entries(result.ranking).forEach(([rankStr, athleticId]) => {
       const rank = parseInt(rankStr, 10);
       if (athleticsMap[athleticId]) {
@@ -131,7 +158,6 @@ export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] 
     });
   });
 
-  // Subtract Penalties
   const compPenalties = db.penalties.filter(p => p.competitionId === competitionId);
   compPenalties.forEach(p => {
     if (athleticsMap[p.athleticId]) {
@@ -140,25 +166,19 @@ export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] 
     }
   });
 
-  // Convert to array and sort
   const leaderboard = Object.values(athleticsMap).sort((a, b) => {
     if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
-    // Tie-breaker: least penalties
     return a.penalties - b.penalties;
   });
 
-  // Assign positions
   return leaderboard.map((entry, index) => ({ ...entry, position: index + 1 }));
 };
 
-/**
- * Redimensiona e comprime imagem para evitar estouro de LocalStorage
- */
 export const handleImageUpload = async (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const MAX_WIDTH = 400; // Max dimension sufficient for logos
+    const MAX_WIDTH = 400; 
     const MAX_HEIGHT = 400;
-    const QUALITY = 0.7;   // JPEG compression quality
+    const QUALITY = 0.7;
 
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -172,7 +192,6 @@ export const handleImageUpload = async (file: File): Promise<string> => {
         let width = img.width;
         let height = img.height;
 
-        // Calculate new dimensions
         if (width > height) {
           if (width > MAX_WIDTH) {
             height *= MAX_WIDTH / width;
@@ -194,17 +213,12 @@ export const handleImageUpload = async (file: File): Promise<string> => {
             return;
         }
         
-        // Draw resized image
         ctx.drawImage(img, 0, 0, width, height);
-
-        // Export as compressed JPEG
         const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
         resolve(dataUrl);
       };
-
       img.onerror = (err) => reject(err);
     };
-    
     reader.onerror = (error) => reject(error);
   });
 };

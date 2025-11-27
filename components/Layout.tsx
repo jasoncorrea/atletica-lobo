@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getConfig, getDb } from '../services/storageService';
+import { getConfig, getDb, isOnline } from '../services/storageService';
 import { Competition } from '../types';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState(getConfig());
   const [competitions, setCompetitions] = useState<Competition[]>([]);
+  const [cloudActive, setCloudActive] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -13,11 +14,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
     // Refresh basic data on mount
     setConfig(getConfig());
     setCompetitions(getDb().competitions);
+    setCloudActive(isOnline());
     
     // Listen for custom event 'dbUpdated' to refresh components if needed
     const handleUpdate = () => {
       setConfig(getConfig());
       setCompetitions(getDb().competitions);
+      setCloudActive(isOnline());
     };
     window.addEventListener('storage', handleUpdate); 
     
@@ -89,7 +92,20 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       {/* Footer */}
       <footer className="bg-gray-900 text-gray-500 py-8 text-center text-sm border-t border-gray-800">
         <p className="mb-2">© {new Date().getFullYear()} Atlética Lobo. O maior do sul.</p>
-        <p className="text-xs opacity-50">Desenvolvido para gestão esportiva de alto nível.</p>
+        <div className="flex justify-center items-center space-x-2 text-xs opacity-50">
+           <p>Desenvolvido para gestão esportiva de alto nível.</p>
+           {cloudActive ? (
+             <span className="flex items-center text-green-500" title="Sincronização em Nuvem Ativa">
+               <span className="w-2 h-2 rounded-full bg-green-500 mr-1 animate-pulse"></span>
+               Cloud On
+             </span>
+           ) : (
+             <span className="flex items-center text-gray-600" title="Modo Local">
+               <span className="w-2 h-2 rounded-full bg-gray-600 mr-1"></span>
+               Local
+             </span>
+           )}
+        </div>
       </footer>
     </div>
   );
