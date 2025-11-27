@@ -1,3 +1,4 @@
+
 export interface Competition {
   id: string;
   name: string;
@@ -54,7 +55,7 @@ export interface AppConfig {
   logoUrl: string | null;
 }
 
-// --- NOVOS TIPOS FINANCEIROS E RBAC ---
+// --- TIPOS FINANCEIROS E RBAC ---
 
 export type Role = 'DIRETORIA' | 'SUPER_ADMIN';
 
@@ -76,4 +77,16 @@ export interface Transaction {
   categoryId: string; // ID da categoria
   account: PaymentAccount;
   createdAt: number;
+}
+
+// --- NOVO TIPO: ESTOQUE (PRODUTOS) ---
+
+export interface Product {
+  id: string;
+  name: string;
+  imageUrl: string | null;
+  quantity: number;
+  priceMember: number;     // Preço Sócio
+  priceNonMember: number;  // Preço Não Sócio
+  costPrice?: number;      // Preço de Custo (Opcional)
 }

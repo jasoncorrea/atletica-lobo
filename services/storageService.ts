@@ -1,7 +1,8 @@
+
 import { 
   Competition, Athletic, Modality, Result, Penalty, 
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry,
-  Transaction, FinanceCategory 
+  Transaction, FinanceCategory, Product 
 } from '../types';
 import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES, DB_KEY, APP_CONFIG_KEY, FIREBASE_CONFIG } from '../constants';
 // @ts-ignore
@@ -54,9 +55,10 @@ interface DatabaseSchema {
   results: Result[];
   penalties: Penalty[];
   scoreRules: { [modalityId: string]: number[] };
-  // Novos campos financeiros
   transactions: Transaction[];
   financeCategories: FinanceCategory[];
+  // Nova tabela de produtos
+  products: Product[];
 }
 
 const initialDb: DatabaseSchema = {
@@ -67,7 +69,8 @@ const initialDb: DatabaseSchema = {
   penalties: [],
   scoreRules: {},
   transactions: [],
-  financeCategories: []
+  financeCategories: [],
+  products: []
 };
 
 export const getDb = (): DatabaseSchema => {
@@ -85,7 +88,8 @@ export const getDb = (): DatabaseSchema => {
         penalties: parsed.penalties || [],
         scoreRules: parsed.scoreRules || {},
         transactions: parsed.transactions || [],
-        financeCategories: parsed.financeCategories || []
+        financeCategories: parsed.financeCategories || [],
+        products: parsed.products || []
       };
     } catch {
       db = initialDb;
@@ -99,9 +103,6 @@ export const getDb = (): DatabaseSchema => {
       name,
       isDefault: true
     }));
-    // Salva localmente (e no Firebase se conectado) para persistir o seed
-    // Não chamamos saveDb aqui para evitar loops infinitos se algo der errado, 
-    // mas o próximo saveDb persistirá isso.
   }
 
   return db;

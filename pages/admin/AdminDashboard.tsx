@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDb } from '../../services/storageService';
@@ -9,6 +10,7 @@ import { ResultsTab } from './tabs/ResultsTab';
 import { PenaltiesTab } from './tabs/PenaltiesTab';
 import { SettingsTab } from './tabs/SettingsTab';
 import { FinanceTab } from './tabs/FinanceTab';
+import { InventoryTab } from './tabs/InventoryTab';
 
 export const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -42,9 +44,10 @@ export const AdminDashboard: React.FC = () => {
     { id: 'settings', label: 'Config' }
   ];
 
-  // Adiciona aba Financeiro apenas para Super Admin
+  // Adiciona abas para Super Admin
   if (role === 'SUPER_ADMIN') {
     tabs.push({ id: 'finance', label: 'Financeiro 💰' });
+    tabs.push({ id: 'inventory', label: 'Estoque 📦' });
   }
 
   return (
@@ -74,6 +77,7 @@ export const AdminDashboard: React.FC = () => {
         {activeTab === 'athletics' && <AthleticsTab />}
         {activeTab === 'settings' && <SettingsTab />}
         {activeTab === 'finance' && role === 'SUPER_ADMIN' && <FinanceTab />}
+        {activeTab === 'inventory' && role === 'SUPER_ADMIN' && <InventoryTab />}
         
         {(!activeComp && ['modalities', 'results', 'penalties'].includes(activeTab)) ? (
           <div className="text-center py-10 text-red-500 bg-red-50 rounded border border-red-100">
