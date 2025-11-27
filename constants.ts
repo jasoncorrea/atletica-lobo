@@ -45,5 +45,17 @@ export const INITIAL_ATHLETICS = [
   { id: 'aguia-id', name: 'Atlética Águia', logoUrl: null },
 ];
 
+export const DEFAULT_FINANCE_CATEGORIES = [
+  "JOIA PG",
+  "EP 2K26",
+  "MARKETING",
+  "EVENTO",
+  "ESPORTES",
+  "SECRETARIA",
+  "PRODUTO",
+  "GERAL",
+  "CERVEJADA"
+];
+
 export const APP_CONFIG_KEY = 'lobo_app_config';
 export const DB_KEY = 'lobo_db_v1';

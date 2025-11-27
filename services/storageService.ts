@@ -1,8 +1,9 @@
 import { 
   Competition, Athletic, Modality, Result, Penalty, 
-  DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry 
+  DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry,
+  Transaction, FinanceCategory 
 } from '../types';
-import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DB_KEY, APP_CONFIG_KEY, FIREBASE_CONFIG } from '../constants';
+import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES, DB_KEY, APP_CONFIG_KEY, FIREBASE_CONFIG } from '../constants';
 // @ts-ignore
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue, set } from 'firebase/database';
@@ -53,6 +54,9 @@ interface DatabaseSchema {
   results: Result[];
   penalties: Penalty[];
   scoreRules: { [modalityId: string]: number[] };
+  // Novos campos financeiros
+  transactions: Transaction[];
+  financeCategories: FinanceCategory[];
 }
 
 const initialDb: DatabaseSchema = {
@@ -62,24 +66,45 @@ const initialDb: DatabaseSchema = {
   results: [],
   penalties: [],
   scoreRules: {},
+  transactions: [],
+  financeCategories: []
 };
 
 export const getDb = (): DatabaseSchema => {
   const stored = localStorage.getItem(DB_KEY);
-  if (!stored) return initialDb;
-  try {
-    const parsed = JSON.parse(stored);
-    return {
-      competitions: parsed.competitions || [],
-      athletics: parsed.athletics || [],
-      modalities: parsed.modalities || [],
-      results: parsed.results || [],
-      penalties: parsed.penalties || [],
-      scoreRules: parsed.scoreRules || {}
-    };
-  } catch {
-    return initialDb;
+  let db: DatabaseSchema = initialDb;
+  
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      db = {
+        competitions: parsed.competitions || [],
+        athletics: parsed.athletics || [],
+        modalities: parsed.modalities || [],
+        results: parsed.results || [],
+        penalties: parsed.penalties || [],
+        scoreRules: parsed.scoreRules || {},
+        transactions: parsed.transactions || [],
+        financeCategories: parsed.financeCategories || []
+      };
+    } catch {
+      db = initialDb;
+    }
   }
+
+  // Auto-Seed de Categorias Financeiras se estiver vazio
+  if (db.financeCategories.length === 0) {
+    db.financeCategories = DEFAULT_FINANCE_CATEGORIES.map(name => ({
+      id: Math.random().toString(36).substr(2, 9),
+      name,
+      isDefault: true
+    }));
+    // Salva localmente (e no Firebase se conectado) para persistir o seed
+    // Não chamamos saveDb aqui para evitar loops infinitos se algo der errado, 
+    // mas o próximo saveDb persistirá isso.
+  }
+
+  return db;
 };
 
 export const saveDb = (db: DatabaseSchema) => {
@@ -104,7 +129,6 @@ export const getConfig = (): AppConfig => {
   };
 };
 
-// CORREÇÃO: Agora salva no Firebase também
 export const saveConfig = (config: AppConfig) => {
   try {
     localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(config));
@@ -209,7 +233,6 @@ export const handleImageUpload = async (file: File): Promise<string> => {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, w, h);
-          // Compressão JPEG 0.7 para economizar espaço no Firebase
           resolve(canvas.toDataURL('image/jpeg', 0.7));
         } else reject(new Error('Canvas error'));
       };

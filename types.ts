@@ -53,3 +53,27 @@ export interface AppConfig {
   secondaryColor: string;
   logoUrl: string | null;
 }
+
+// --- NOVOS TIPOS FINANCEIROS E RBAC ---
+
+export type Role = 'DIRETORIA' | 'SUPER_ADMIN';
+
+export type TransactionType = 'income' | 'expense';
+export type PaymentAccount = 'Mercado Pago' | 'PagBank';
+
+export interface FinanceCategory {
+  id: string;
+  name: string;
+  isDefault: boolean;
+}
+
+export interface Transaction {
+  id: string;
+  type: TransactionType;
+  amount: number;
+  date: number; // timestamp
+  description: string;
+  categoryId: string; // ID da categoria
+  account: PaymentAccount;
+  createdAt: number;
+}
