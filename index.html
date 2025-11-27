@@ -21,6 +21,7 @@
         }
       }
     </script>
+    <!-- IMPORTMAP REMOVIDO: Isso corrige a tela branca -->
   <script type="importmap">
 {
   "imports": {
@@ -36,7 +37,12 @@
 </script>
 </head>
   <body class="bg-gray-50 text-gray-900 font-sans">
-    <div id="root"></div>
+    <div id="root">
+      <div style="display:flex;justify-content:center;align-items:center;height:100vh;flex-direction:column;">
+        <div style="font-weight:bold;color:#e38702;font-size:1.5rem;margin-bottom:1rem;">Carregando App Lobo...</div>
+        <div style="font-size:0.8rem;color:#666;">Se esta tela persistir, recarregue a página.</div>
+      </div>
+    </div>
     <!-- Ponto de entrada simples e direto para o Vite -->
     <script type="module" src="/index.tsx"></script>
   </body>
