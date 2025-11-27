@@ -9,19 +9,35 @@ import { getDatabase, ref, onValue, set } from 'firebase/database';
 
 // Firebase Init
 let dbRef: any = null;
+let configRef: any = null; // Referência para configurações
 let isFirebaseInitialized = false;
+let database: any = null;
 
 try {
   if (FIREBASE_CONFIG.apiKey) {
     const app = initializeApp(FIREBASE_CONFIG);
-    const database = getDatabase(app);
+    database = getDatabase(app);
+    
+    // Referências do Banco
     dbRef = ref(database, 'lobo_data');
+    configRef = ref(database, 'lobo_config');
+    
     isFirebaseInitialized = true;
     
+    // 1. Sincroniza Banco de Dados Principal
     onValue(dbRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         localStorage.setItem(DB_KEY, JSON.stringify(data));
+        window.dispatchEvent(new Event('storage'));
+      }
+    });
+
+    // 2. Sincroniza Configurações (Logo/Cores)
+    onValue(configRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(data));
         window.dispatchEvent(new Event('storage'));
       }
     });
@@ -53,7 +69,6 @@ export const getDb = (): DatabaseSchema => {
   if (!stored) return initialDb;
   try {
     const parsed = JSON.parse(stored);
-    // Ensure all arrays exist
     return {
       competitions: parsed.competitions || [],
       athletics: parsed.athletics || [],
@@ -89,8 +104,16 @@ export const getConfig = (): AppConfig => {
   };
 };
 
+// CORREÇÃO: Agora salva no Firebase também
 export const saveConfig = (config: AppConfig) => {
-  localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(config));
+  try {
+    localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(config));
+    if (isFirebaseInitialized && configRef) {
+      set(configRef, config).catch(console.error);
+    }
+  } catch (e) {
+    console.error("Erro ao salvar config", e);
+  }
 };
 
 export const isOnline = () => isFirebaseInitialized;
@@ -186,6 +209,7 @@ export const handleImageUpload = async (file: File): Promise<string> => {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(img, 0, 0, w, h);
+          // Compressão JPEG 0.7 para economizar espaço no Firebase
           resolve(canvas.toDataURL('image/jpeg', 0.7));
         } else reject(new Error('Canvas error'));
       };
