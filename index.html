@@ -20,7 +20,11 @@
         }
       }
     </script>
-    <!-- Configuração Vite Limpa (Sem ImportMap) -->
+    <!-- 
+      ATENÇÃO: ImportMap removido intencionalmente.
+      O projeto agora usa Vite + package.json para gerenciar dependências.
+      Não adicione script type="importmap" novamente.
+    -->
   <script type="importmap">
 {
   "imports": {
@@ -37,9 +41,9 @@
 </head>
   <body class="bg-gray-50 text-gray-900 font-sans">
     <div id="root">
-       <!-- Feedback visual inicial para garantir diff no Git -->
-       <div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; color:#666;">
-         Carregando Sistema Lobo...
+       <!-- Feedback visual atualizado para garantir que o Git detecte a mudança -->
+       <div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; color:#e38702; font-weight:bold; font-size: 1.2rem;">
+         Carregando Sistema Lobo (Vite v3.5)...
        </div>
     </div>
     <script type="module" src="./index.tsx"></script>
