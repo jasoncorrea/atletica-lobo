@@ -27,7 +27,7 @@ export const SettingsTab: React.FC<Props> = ({ onUpdate }) => {
         const base64 = await handleImageUpload(e.target.files[0]);
         setConfig({ ...config, logoUrl: base64 });
       } catch (err) {
-        alert('Erro ao processar imagem');
+        alert('Erro ao processar imagem. O arquivo pode ser muito grande ou o armazenamento está cheio.');
       }
     }
   };
@@ -43,6 +43,7 @@ export const SettingsTab: React.FC<Props> = ({ onUpdate }) => {
               {config.logoUrl && <img src={config.logoUrl} className="h-16 w-16 object-contain border p-1" />}
               <input type="file" accept="image/*" onChange={handleLogoUpload} className="text-sm" />
            </div>
+           <p className="text-xs text-gray-400 mt-2">Otimizada automaticamente (Max 400px).</p>
         </div>
 
         <div className="grid grid-cols-2 gap-4">

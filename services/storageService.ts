@@ -34,7 +34,14 @@ export const getDb = (): DatabaseSchema => {
 };
 
 export const saveDb = (db: DatabaseSchema) => {
-  localStorage.setItem(DB_KEY, JSON.stringify(db));
+  try {
+    localStorage.setItem(DB_KEY, JSON.stringify(db));
+  } catch (e: any) {
+    if (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      alert('LIMITE DE ARMAZENAMENTO ATINGIDO!\n\nO navegador não permite salvar mais dados. Tente remover imagens antigas ou competições passadas.');
+      throw e;
+    }
+  }
 };
 
 export const getConfig = (): AppConfig => {
@@ -47,7 +54,11 @@ export const getConfig = (): AppConfig => {
 };
 
 export const saveConfig = (config: AppConfig) => {
-  localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(config));
+  try {
+    localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(config));
+  } catch (e: any) {
+     alert('Erro ao salvar configuração: Limite de armazenamento atingido.');
+  }
 };
 
 // --- Business Logic / "Backend" Controllers ---
@@ -140,11 +151,60 @@ export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] 
   return leaderboard.map((entry, index) => ({ ...entry, position: index + 1 }));
 };
 
+/**
+ * Redimensiona e comprime imagem para evitar estouro de LocalStorage
+ */
 export const handleImageUpload = async (file: File): Promise<string> => {
   return new Promise((resolve, reject) => {
+    const MAX_WIDTH = 400; // Max dimension sufficient for logos
+    const MAX_HEIGHT = 400;
+    const QUALITY = 0.7;   // JPEG compression quality
+
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = error => reject(error);
+    
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target?.result as string;
+
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Calculate new dimensions
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+            reject(new Error('Canvas context failure'));
+            return;
+        }
+        
+        // Draw resized image
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Export as compressed JPEG
+        const dataUrl = canvas.toDataURL('image/jpeg', QUALITY);
+        resolve(dataUrl);
+      };
+
+      img.onerror = (err) => reject(err);
+    };
+    
+    reader.onerror = (error) => reject(error);
   });
 };

@@ -32,28 +32,33 @@ export const AthleticsTab: React.FC = () => {
       try {
         logoUrl = await handleImageUpload(logoFile);
       } catch (err) {
-        alert('Erro no upload da imagem');
+        alert('Erro ao processar imagem. Tente uma imagem menor ou verifique se o armazenamento está cheio.');
         return;
       }
     }
 
-    if (editingId) {
-      const idx = db.athletics.findIndex(a => a.id === editingId);
-      if (idx !== -1) {
-        db.athletics[idx] = { ...db.athletics[idx], name, logoUrl: logoUrl || db.athletics[idx].logoUrl };
+    try {
+      if (editingId) {
+        const idx = db.athletics.findIndex(a => a.id === editingId);
+        if (idx !== -1) {
+          db.athletics[idx] = { ...db.athletics[idx], name, logoUrl: logoUrl || db.athletics[idx].logoUrl };
+        }
+      } else {
+        db.athletics.push({
+          id: Math.random().toString(36).substring(2, 9),
+          name,
+          logoUrl: logoUrl || null
+        });
       }
-    } else {
-      db.athletics.push({
-        id: Math.random().toString(36).substring(2, 9),
-        name,
-        logoUrl: logoUrl || null
-      });
-    }
 
-    saveDb(db);
-    window.dispatchEvent(new Event('storage')); // Sync global
-    resetForm();
-    load();
+      saveDb(db);
+      window.dispatchEvent(new Event('storage')); // Sync global
+      resetForm();
+      load();
+    } catch (error) {
+      // Error handled in saveDb with alert
+      console.error("Failed to save athletic", error);
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -113,6 +118,9 @@ export const AthleticsTab: React.FC = () => {
                 className="text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-lobo-primary hover:file:bg-orange-100"
               />
             </div>
+            <p className="text-xs text-gray-400 mt-2">
+              A imagem será redimensionada e otimizada automaticamente para economizar espaço.
+            </p>
           </div>
           <div className="flex space-x-2">
             <button type="submit" className="flex-1 bg-lobo-primary text-white py-2 rounded-md hover:bg-orange-600 transition-colors">
