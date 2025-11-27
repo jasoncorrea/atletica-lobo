@@ -46,7 +46,7 @@ export const PublicDashboard: React.FC = () => {
           <select 
             value={selectedCompId}
             onChange={(e) => setSelectedCompId(e.target.value)}
-            className="form-select block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-lobo-primary focus:border-lobo-primary sm:text-sm rounded-md border"
+            className="form-select block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-lobo-primary focus:border-lobo-primary sm:text-sm rounded-md border bg-white text-gray-900"
           >
             {competitions.map(c => (
               <option key={c.id} value={c.id}>{c.name} ({c.year})</option>
