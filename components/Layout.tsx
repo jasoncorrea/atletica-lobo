@@ -1,11 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getConfig, getDb, isOnline } from '../services/storageService';
-import { Competition } from '../types';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState(getConfig());
-  const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [cloudActive, setCloudActive] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -13,13 +11,11 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
   useEffect(() => {
     // Refresh basic data on mount
     setConfig(getConfig());
-    setCompetitions(getDb().competitions);
     setCloudActive(isOnline());
     
     // Listen for custom event 'dbUpdated' to refresh components if needed
     const handleUpdate = () => {
       setConfig(getConfig());
-      setCompetitions(getDb().competitions);
       setCloudActive(isOnline());
     };
     window.addEventListener('storage', handleUpdate); 

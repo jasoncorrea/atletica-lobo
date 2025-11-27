@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getDb, saveDb } from '../../../services/storageService';
-import { Competition, Modality, Athletic, Result, DEFAULT_SCORE_RULE } from '../../../types';
+import { Competition, Modality, Athletic, Result } from '../../../types';
 
 interface Props {
   competition: Competition;
