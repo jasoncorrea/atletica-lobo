@@ -20,6 +20,7 @@
         }
       }
     </script>
+    <!-- Configuração Vite Limpa (Sem ImportMap) -->
   <script type="importmap">
 {
   "imports": {
@@ -35,7 +36,12 @@
 </script>
 </head>
   <body class="bg-gray-50 text-gray-900 font-sans">
-    <div id="root"></div>
+    <div id="root">
+       <!-- Feedback visual inicial para garantir diff no Git -->
+       <div style="display:flex; justify-content:center; align-items:center; height:100vh; font-family:sans-serif; color:#666;">
+         Carregando Sistema Lobo...
+       </div>
+    </div>
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
