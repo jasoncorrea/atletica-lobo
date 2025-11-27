@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getConfig, getDb, isOnline } from '../services/storageService';
+import { getConfig, isOnline } from '../services/storageService';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState(getConfig());
