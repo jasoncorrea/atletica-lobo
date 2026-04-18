@@ -2,15 +2,23 @@ import React, { useEffect, useState } from 'react';
 import { getDb, calculateLeaderboard } from '../services/storageService';
 import { Competition, LeaderboardEntry, BirthdayMember } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Medal, AlertCircle, ChevronDown, Award, Cake, Calendar, Star, Users } from 'lucide-react';
+import { Trophy, Medal, AlertCircle, ChevronDown, Award, Cake, Calendar, Star, Users, Share2, CheckCircle2, Circle } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { getAuth } from 'firebase/auth';
+import { ShareMember, SharePost, ShareRecord } from '../types';
+import { saveDb } from '../services/storageService';
 
 export const PublicDashboard: React.FC = () => {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [selectedCompId, setSelectedCompId] = useState<string>('');
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [birthdays, setBirthdays] = useState<BirthdayMember[]>([]);
-  const [activeTab, setActiveTab] = useState<'leaderboard' | 'birthdays'>('leaderboard');
+  const [shareMembers, setShareMembers] = useState<ShareMember[]>([]);
+  const [sharePosts, setSharePosts] = useState<SharePost[]>([]);
+  const [shareRecords, setShareRecords] = useState<ShareRecord[]>([]);
+  const [activeTab, setActiveTab] = useState<'leaderboard' | 'birthdays' | 'marketing'>('leaderboard');
+  const auth = getAuth();
+  const isAdmin = !!auth.currentUser;
 
   useEffect(() => {
     const load = () => {
@@ -18,6 +26,9 @@ export const PublicDashboard: React.FC = () => {
       const comps = db.competitions.sort((a, b) => b.createdAt - a.createdAt);
       setCompetitions(comps);
       setBirthdays(db.birthdays || []);
+      setShareMembers(db.shareMembers || []);
+      setSharePosts(db.sharePosts || []);
+      setShareRecords(db.shareRecords || []);
       
       if (comps.length > 0 && !selectedCompId) {
         const active = comps.find(c => c.isActive) || comps[0];
@@ -28,6 +39,22 @@ export const PublicDashboard: React.FC = () => {
     window.addEventListener('storage', load);
     return () => window.removeEventListener('storage', load);
   }, [selectedCompId]);
+
+  const toggleShare = async (memberId: string, postId: string) => {
+    if (!isAdmin) return;
+    
+    const db = getDb();
+    const recordId = `${memberId}_${postId}`;
+    const existingIdx = db.shareRecords.findIndex(r => r.id === recordId);
+    
+    if (existingIdx > -1) {
+      db.shareRecords = db.shareRecords.filter(r => r.id !== recordId);
+    } else {
+      db.shareRecords = [...db.shareRecords, { id: recordId, memberId, postId, shared: true }];
+    }
+    
+    await saveDb(db);
+  };
 
   useEffect(() => {
     if (selectedCompId) {
@@ -120,6 +147,19 @@ export const PublicDashboard: React.FC = () => {
           )}
           <Cake className="w-4 h-4 relative z-10" />
           <span className="relative z-10">Aniversariantes</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('marketing')}
+          className={cn(
+            "relative px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all",
+            activeTab === 'marketing' ? "text-white" : "text-zinc-400 hover:text-zinc-600"
+          )}
+        >
+          {activeTab === 'marketing' && (
+            <motion.div layoutId="tab-bg" className="absolute inset-0 bg-zinc-900 rounded-xl shadow-lg" />
+          )}
+          <Share2 className="w-4 h-4 relative z-10" />
+          <span className="relative z-10">Marketing</span>
         </button>
       </nav>
 
@@ -220,7 +260,7 @@ export const PublicDashboard: React.FC = () => {
                 </table>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'birthdays' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {sortedBirthdays.map((m, idx) => {
                 const today = isBirthdaySoon(m.birthDate);
@@ -270,6 +310,84 @@ export const PublicDashboard: React.FC = () => {
                 <div className="col-span-full py-20 bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center text-zinc-400">
                   <Calendar className="w-12 h-12 mb-4 opacity-10" />
                   <p className="text-sm font-bold uppercase tracking-widest">Nenhum aniversariante registrado.</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="bg-white rounded-[2rem] shadow-xl shadow-zinc-200/50 border border-zinc-100 overflow-hidden p-6 md:p-8">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                <div>
+                  <h3 className="text-2xl font-black text-zinc-900 tracking-tight">Checklist de Engajamento</h3>
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Controle de compartilhamento nas redes sociais</p>
+                </div>
+                {!isAdmin && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-zinc-50 border border-zinc-100 rounded-xl">
+                    <AlertCircle className="w-3.5 h-3.5 text-zinc-400" />
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest leading-none">Apenas administradores podem marcar</span>
+                  </div>
+                )}
+              </div>
+
+              {shareMembers.length > 0 && sharePosts.length > 0 ? (
+                <div className="overflow-x-auto custom-scrollbar">
+                  <table className="min-w-full">
+                    <thead>
+                      <tr>
+                        <th className="px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-zinc-400 border-b border-zinc-50">Membro</th>
+                        {sharePosts.map(post => (
+                          <th key={post.id} className="px-6 py-4 text-center text-[10px] font-black uppercase tracking-widest text-zinc-400 border-b border-zinc-50 min-w-[140px]">
+                            <div className="flex flex-col items-center gap-1">
+                              <span>{post.title}</span>
+                              {post.link && (
+                                <a href={post.link} target="_blank" rel="noreferrer" className="text-[8px] text-lobo-primary hover:underline">Link</a>
+                              )}
+                            </div>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-50">
+                      {shareMembers.map((member, mIdx) => (
+                        <motion.tr 
+                          key={member.id}
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: mIdx * 0.05 }}
+                        >
+                          <td className="px-6 py-5 whitespace-nowrap">
+                            <span className="text-sm font-black text-zinc-800 tracking-tight">{member.name}</span>
+                          </td>
+                          {sharePosts.map(post => {
+                            const recordId = `${member.id}_${post.id}`;
+                            const isShared = shareRecords.some(r => r.id === recordId);
+                            
+                            return (
+                              <td key={post.id} className="px-6 py-5 text-center">
+                                <button
+                                  disabled={!isAdmin}
+                                  onClick={() => toggleShare(member.id, post.id)}
+                                  className={cn(
+                                    "p-3 rounded-2xl transition-all active:scale-95",
+                                    !isAdmin ? "cursor-default opacity-40" : "hover:bg-zinc-50",
+                                    isShared ? "text-green-500 bg-green-50" : "text-zinc-200"
+                                  )}
+                                >
+                                  {isShared ? <CheckCircle2 className="w-6 h-6" /> : <Circle className="w-6 h-6 border-zinc-200" />}
+                                </button>
+                              </td>
+                            );
+                          })}
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="py-20 text-center flex flex-col items-center">
+                  <Share2 className="w-12 h-12 text-zinc-100 mb-4" />
+                  <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest">
+                    Aguardando configuração de membros e posts no painel administrativo.
+                  </p>
                 </div>
               )}
             </div>

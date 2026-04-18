@@ -98,3 +98,22 @@ export interface BirthdayMember {
   role: string;
   birthDate: string; // ISO format YYYY-MM-DD
 }
+
+export interface ShareMember {
+  id: string;
+  name: string;
+}
+
+export interface SharePost {
+  id: string;
+  title: string;
+  link?: string;
+  date: number;
+}
+
+export interface ShareRecord {
+  id: string; // memberId_postId
+  memberId: string;
+  postId: string;
+  shared: boolean;
+}

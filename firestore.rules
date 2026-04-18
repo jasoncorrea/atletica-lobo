@@ -62,6 +62,21 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
+    match /shareMembers/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /sharePosts/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /shareRecords/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
     // Finance and Inventory - more restricted
     match /transactions/{id} {
       allow read: if isSignedIn();

@@ -2,7 +2,8 @@
 import { 
   Competition, Athletic, Modality, Result, Penalty, 
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry,
-  Transaction, FinanceCategory, Product, BirthdayMember 
+  Transaction, FinanceCategory, Product, BirthdayMember,
+  ShareMember, SharePost, ShareRecord
 } from '../types';
 import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES, DB_KEY, APP_CONFIG_KEY } from '../constants';
 import { initializeApp } from 'firebase/app';
@@ -82,6 +83,9 @@ interface DatabaseSchema {
   financeCategories: FinanceCategory[];
   products: Product[];
   birthdays: BirthdayMember[];
+  shareMembers: ShareMember[];
+  sharePosts: SharePost[];
+  shareRecords: ShareRecord[];
 }
 
 const initialDb: DatabaseSchema = {
@@ -94,7 +98,10 @@ const initialDb: DatabaseSchema = {
   transactions: [],
   financeCategories: [],
   products: [],
-  birthdays: []
+  birthdays: [],
+  shareMembers: [],
+  sharePosts: [],
+  shareRecords: []
 };
 
 // State management
@@ -108,7 +115,8 @@ let currentConfig: AppConfig = {
 // Syncing Firestore collections to Local State
 const publicCollections = [
   'competitions', 'athletics', 'modalities', 'results', 
-  'penalties', 'products', 'birthdays', 'scoreRules'
+  'penalties', 'products', 'birthdays', 'scoreRules',
+  'shareMembers', 'sharePosts', 'shareRecords'
 ];
 
 const restrictedCollections = [
