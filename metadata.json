@@ -1,5 +1,6 @@
 {
   "name": "Sistema de Gestão Atlética Lobo",
   "description": "Sistema de gestão de jogos universitários com ranking em tempo real, painel administrativo e suporte a multicompetições.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "majorCapabilities": []
 }

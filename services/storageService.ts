@@ -2,7 +2,7 @@
 import { 
   Competition, Athletic, Modality, Result, Penalty, 
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry,
-  Transaction, FinanceCategory, Product 
+  Transaction, FinanceCategory, Product, BirthdayMember 
 } from '../types';
 import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES, DB_KEY, APP_CONFIG_KEY, FIREBASE_CONFIG } from '../constants';
 // @ts-ignore
@@ -59,6 +59,7 @@ interface DatabaseSchema {
   financeCategories: FinanceCategory[];
   // Nova tabela de produtos
   products: Product[];
+  birthdays: BirthdayMember[];
 }
 
 const initialDb: DatabaseSchema = {
@@ -70,7 +71,8 @@ const initialDb: DatabaseSchema = {
   scoreRules: {},
   transactions: [],
   financeCategories: [],
-  products: []
+  products: [],
+  birthdays: []
 };
 
 export const getDb = (): DatabaseSchema => {
@@ -89,7 +91,8 @@ export const getDb = (): DatabaseSchema => {
         scoreRules: parsed.scoreRules || {},
         transactions: parsed.transactions || [],
         financeCategories: parsed.financeCategories || [],
-        products: parsed.products || []
+        products: parsed.products || [],
+        birthdays: parsed.birthdays || []
       };
     } catch {
       db = initialDb;

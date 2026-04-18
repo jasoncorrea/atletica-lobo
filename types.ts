@@ -91,3 +91,10 @@ export interface Product {
   costPrice?: number;      // Preço de Custo (Opcional)
   size?: string;           // Tamanho (PP, P, M, etc.)
 }
+
+export interface BirthdayMember {
+  id: string;
+  name: string;
+  role: string;
+  birthDate: string; // ISO format YYYY-MM-DD
+}
