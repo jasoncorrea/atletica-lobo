@@ -72,7 +72,7 @@ export const BirthdaysTab: React.FC = () => {
           </div>
 
           <header className="flex items-center space-x-3 mb-6 relative z-10">
-            <div className="p-2.5 bg-pink-500 rounded-xl text-white shadow-lg shadow-pink-100">
+            <div className="p-2.5 bg-lobo-primary rounded-xl text-white shadow-lg shadow-lobo-primary/20">
               <UserPlus className="w-5 h-5" />
             </div>
             <div>
@@ -85,11 +85,11 @@ export const BirthdaysTab: React.FC = () => {
             <div>
               <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1.5 ml-1">Nome Completo</label>
               <div className="relative group">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-300 group-focus-within:text-pink-500 transition-colors">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-300 group-focus-within:text-lobo-primary transition-colors">
                   <User className="w-4 h-4" />
                 </div>
                 <input 
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 focus:bg-white outline-none transition-all"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-lobo-primary focus:bg-white outline-none transition-all"
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="Nome do membro"
@@ -101,11 +101,11 @@ export const BirthdaysTab: React.FC = () => {
             <div>
               <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1.5 ml-1">Cargo / Função</label>
               <div className="relative group">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-300 group-focus-within:text-pink-500 transition-colors">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-300 group-focus-within:text-lobo-primary transition-colors">
                   <Briefcase className="w-4 h-4" />
                 </div>
                 <input 
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 focus:bg-white outline-none transition-all"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-lobo-primary focus:bg-white outline-none transition-all"
                   value={role}
                   onChange={e => setRole(e.target.value)}
                   placeholder="Ex: Presidente, Diretor Geral"
@@ -117,12 +117,12 @@ export const BirthdaysTab: React.FC = () => {
             <div>
               <label className="block text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-1.5 ml-1">Data de Nascimento</label>
               <div className="relative group">
-                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-300 group-focus-within:text-pink-500 transition-colors">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-300 group-focus-within:text-lobo-primary transition-colors">
                   <Calendar className="w-4 h-4" />
                 </div>
                 <input 
                   type="date"
-                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-pink-500 focus:bg-white outline-none transition-all"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl pl-10 pr-4 py-3 text-sm font-bold focus:ring-2 focus:ring-lobo-primary focus:bg-white outline-none transition-all"
                   value={date}
                   onChange={e => setDate(e.target.value)}
                   required
@@ -130,7 +130,7 @@ export const BirthdaysTab: React.FC = () => {
               </div>
             </div>
 
-            <button className="w-full bg-pink-500 text-white py-4 rounded-xl font-black text-sm shadow-xl shadow-pink-200 hover:bg-pink-600 transition-all active:scale-95 flex items-center justify-center space-x-2">
+            <button className="w-full bg-lobo-primary text-white py-4 rounded-xl font-black text-sm shadow-xl shadow-lobo-primary/20 hover:bg-lobo-primary/90 transition-all active:scale-95 flex items-center justify-center space-x-2">
               <Sparkles className="w-5 h-5" />
               <span>CADASTRAR MEMBRO</span>
             </button>
@@ -147,9 +147,9 @@ export const BirthdaysTab: React.FC = () => {
           </div>
 
           <div className="relative group w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300 group-focus-within:text-pink-500 transition-colors" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300 group-focus-within:text-lobo-primary transition-colors" />
             <input 
-              className="w-full bg-white border border-zinc-200 rounded-xl pl-9 pr-4 py-2 text-xs font-bold focus:ring-2 focus:ring-pink-500 outline-none transition-all shadow-sm"
+              className="w-full bg-white border border-zinc-200 rounded-xl pl-9 pr-4 py-2 text-xs font-bold focus:ring-2 focus:ring-lobo-primary outline-none transition-all shadow-sm"
               placeholder="Buscar membro ou cargo..."
               value={search}
               onChange={e => setSearch(e.target.value)}
@@ -171,12 +171,12 @@ export const BirthdaysTab: React.FC = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ delay: idx * 0.03 }}
-                  className="group bg-white border border-zinc-100 rounded-2xl p-4 flex items-center justify-between hover:border-pink-200 hover:shadow-lg transition-all duration-300"
+                  className="group bg-white border border-zinc-100 rounded-2xl p-4 flex items-center justify-between hover:border-lobo-primary/30 hover:shadow-lg transition-all duration-300"
                 >
                   <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-xl bg-pink-50 border border-pink-100 flex flex-col items-center justify-center shrink-0">
-                      <span className="text-xs font-black text-pink-600 leading-none">{day}</span>
-                      <span className="text-[8px] font-black text-pink-300 uppercase leading-none mt-0.5">{month.slice(0, 3)}</span>
+                    <div className="w-12 h-12 rounded-xl bg-lobo-primary/5 border border-lobo-primary/10 flex flex-col items-center justify-center shrink-0">
+                      <span className="text-xs font-black text-lobo-primary leading-none">{day}</span>
+                      <span className="text-[8px] font-black text-lobo-primary/40 uppercase leading-none mt-0.5">{month.slice(0, 3)}</span>
                     </div>
                     <div>
                       <h4 className="text-sm font-black text-zinc-900 tracking-tight">{m.name}</h4>
