@@ -242,6 +242,16 @@ export const saveConfig = async (config: AppConfig) => {
 
 export const isOnline = () => true; // Always online with managed Firebase
 
+export const deleteItem = async (collectionName: keyof DatabaseSchema, id: string) => {
+  try {
+    await deleteDoc(doc(db, collectionName as string, id));
+    window.dispatchEvent(new Event('storage'));
+  } catch (err) {
+    handleFirestoreError(err, 'delete', `${collectionName}/${id}`);
+    throw err;
+  }
+};
+
 export const createCompetition = async (name: string, year: number) => {
   const id = Math.random().toString(36).substring(2, 9);
   const newComp: Competition = {

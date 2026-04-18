@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, saveDb } from '../../../services/storageService';
+import { getDb, saveDb, deleteItem } from '../../../services/storageService';
 import { BirthdayMember } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Cake, UserPlus, Trash2, Calendar, User, Briefcase, Search, Sparkles } from 'lucide-react';
@@ -42,13 +42,14 @@ export const BirthdaysTab: React.FC = () => {
     load();
   };
 
-  const removeMember = (id: string) => {
+  const removeMember = async (id: string) => {
     if (!confirm('Remover este membro da lista de aniversariantes?')) return;
-    const db = getDb();
-    db.birthdays = (db.birthdays || []).filter(m => m.id !== id);
-    saveDb(db);
-    window.dispatchEvent(new Event('storage'));
-    load();
+    try {
+      await deleteItem('birthdays', id);
+      load();
+    } catch (err) {
+      alert('Erro ao apagar membro. Tente novamente.');
+    }
   };
 
   const filtered = members.filter(m => 
