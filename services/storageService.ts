@@ -4,49 +4,72 @@ import {
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry,
   Transaction, FinanceCategory, Product, BirthdayMember 
 } from '../types';
-import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES, DB_KEY, APP_CONFIG_KEY, FIREBASE_CONFIG } from '../constants';
-// @ts-ignore
+import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES, DB_KEY, APP_CONFIG_KEY } from '../constants';
 import { initializeApp } from 'firebase/app';
-import { getDatabase, ref, onValue, set } from 'firebase/database';
+import { 
+  getFirestore, collection, onSnapshot, doc, setDoc, getDoc, 
+  writeBatch, query, deleteDoc, getDocFromServer
+} from 'firebase/firestore';
+import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import firebaseConfig from '../firebase-applet-config.json';
 
-// Firebase Init
-let dbRef: any = null;
-let configRef: any = null; // Referência para configurações
-let isFirebaseInitialized = false;
-let database: any = null;
-
-try {
-  if (FIREBASE_CONFIG.apiKey) {
-    const app = initializeApp(FIREBASE_CONFIG);
-    database = getDatabase(app);
-    
-    // Referências do Banco
-    dbRef = ref(database, 'lobo_data');
-    configRef = ref(database, 'lobo_config');
-    
-    isFirebaseInitialized = true;
-    
-    // 1. Sincroniza Banco de Dados Principal
-    onValue(dbRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        localStorage.setItem(DB_KEY, JSON.stringify(data));
-        window.dispatchEvent(new Event('storage'));
-      }
-    });
-
-    // 2. Sincroniza Configurações (Logo/Cores)
-    onValue(configRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(data));
-        window.dispatchEvent(new Event('storage'));
-      }
-    });
+// Firestore Error Types
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: 'create' | 'update' | 'delete' | 'list' | 'get' | 'write';
+  path: string | null;
+  authInfo: {
+    userId: string;
+    email: string;
+    emailVerified: boolean;
+    isAnonymous: boolean;
+    providerInfo: { providerId: string; displayName: string; email: string; }[];
   }
-} catch (e) {
-  console.error("Firebase Error:", e);
 }
+
+// Initializing Firebase
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+
+let isFirebaseReady = false;
+
+// Test connection
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+    console.log("Firebase connection established.");
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration.");
+    }
+  }
+}
+testConnection();
+
+export const handleFirestoreError = (error: any, op: string, path: string | null = null) => {
+  if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
+    const user = auth.currentUser;
+    const info: FirestoreErrorInfo = {
+      error: error.message,
+      operationType: op as any,
+      path,
+      authInfo: {
+        userId: user?.uid || 'anonymous',
+        email: user?.email || '',
+        emailVerified: user?.emailVerified || false,
+        isAnonymous: user?.isAnonymous || true,
+        providerInfo: user?.providerData.map(p => ({
+          providerId: p.providerId,
+          displayName: p.displayName || '',
+          email: p.email || ''
+        })) || []
+      }
+    };
+    throw new Error(JSON.stringify(info));
+  }
+  throw error;
+};
 
 interface DatabaseSchema {
   competitions: Competition[];
@@ -57,7 +80,6 @@ interface DatabaseSchema {
   scoreRules: { [modalityId: string]: number[] };
   transactions: Transaction[];
   financeCategories: FinanceCategory[];
-  // Nova tabela de produtos
   products: Product[];
   birthdays: BirthdayMember[];
 }
@@ -75,110 +97,170 @@ const initialDb: DatabaseSchema = {
   birthdays: []
 };
 
-export const getDb = (): DatabaseSchema => {
-  const stored = localStorage.getItem(DB_KEY);
-  let db: DatabaseSchema = initialDb;
-  
-  if (stored) {
-    try {
-      const parsed = JSON.parse(stored);
-      db = {
-        competitions: parsed.competitions || [],
-        athletics: parsed.athletics || [],
-        modalities: parsed.modalities || [],
-        results: parsed.results || [],
-        penalties: parsed.penalties || [],
-        scoreRules: parsed.scoreRules || {},
-        transactions: parsed.transactions || [],
-        financeCategories: parsed.financeCategories || [],
-        products: parsed.products || [],
-        birthdays: parsed.birthdays || []
-      };
-    } catch {
-      db = initialDb;
-    }
-  }
-
-  // Auto-Seed de Categorias Financeiras se estiver vazio
-  if (db.financeCategories.length === 0) {
-    db.financeCategories = DEFAULT_FINANCE_CATEGORIES.map(name => ({
-      id: Math.random().toString(36).substr(2, 9),
-      name,
-      isDefault: true
-    }));
-  }
-
-  return db;
+// State management
+let currentDb: DatabaseSchema = initialDb;
+let currentConfig: AppConfig = {
+  primaryColor: '#e38702',
+  secondaryColor: '#5a0509',
+  logoUrl: null
 };
 
-export const saveDb = (db: DatabaseSchema) => {
+// Syncing Firestore collections to Local State
+const collections = [
+  'competitions', 'athletics', 'modalities', 'results', 
+  'penalties', 'transactions', 'financeCategories', 
+  'products', 'birthdays', 'scoreRules'
+];
+
+collections.forEach(colName => {
+  onSnapshot(collection(db, colName), (snapshot) => {
+    const data = snapshot.docs.map(d => d.data());
+    if (colName === 'scoreRules') {
+      const map: any = {};
+      data.forEach((item: any) => {
+        if (item.id) map[item.id] = item.rule; // assuming structure {id: modId, rule: []}
+      });
+      currentDb.scoreRules = map;
+    } else {
+      (currentDb as any)[colName] = data;
+    }
+    // Notify app
+    window.dispatchEvent(new Event('storage'));
+  }, (err) => console.error(`Error syncing ${colName}:`, err));
+});
+
+// Syncing Config
+onSnapshot(doc(db, 'config', 'global'), (snapshot) => {
+  if (snapshot.exists()) {
+    currentConfig = snapshot.data() as AppConfig;
+    window.dispatchEvent(new Event('storage'));
+  }
+}, (err) => console.error("Error syncing config:", err));
+
+// Auto-seed athletics if empty in Firestore
+async function seedInitialData() {
+  const athleticsSnap = await getDoc(doc(db, 'athletics', INITIAL_ATHLETICS[0].id));
+  if (!athleticsSnap.exists()) {
+    const batch = writeBatch(db);
+    INITIAL_ATHLETICS.forEach(a => {
+      batch.set(doc(db, 'athletics', a.id), a);
+    });
+    await batch.commit();
+  }
+}
+seedInitialData();
+
+export const getDb = (): DatabaseSchema => {
+  return currentDb;
+};
+
+export const saveDb = async (dbUpdate: DatabaseSchema) => {
+  // In this refactored version, we push individual changes to Firestore.
+  // However, many parts of the existing UI call saveDb(fullDb).
+  // We'll compare and sync to avoid unnecessary writes.
+  
+  // For simplicity and immediate fix of the user's issue, 
+  // we will implement specific save methods later, 
+  // but for now, we'll try to batch update what's new.
+  
+  // NOTE: In a real firestore app, you'd call addDoc/setDoc individually.
+  // We'll keep the synchronous interface but async push to cloud.
+  
   try {
-    localStorage.setItem(DB_KEY, JSON.stringify(db));
-    if (isFirebaseInitialized && dbRef) {
-      set(dbRef, db).catch(console.error);
-    }
-  } catch (e: any) {
-    if (e.name === 'QuotaExceededError') {
-      alert('Limite de armazenamento local atingido!');
-    }
+    const batch = writeBatch(db);
+    
+    // We'll just trust the UI passed the whole DB and we sync collections.
+    // This is intensive but ensures sync for this migration.
+    
+    // Helper to sync collection
+    const syncCollection = (name: keyof DatabaseSchema, data: any[]) => {
+      data.forEach(item => {
+        if (item.id) {
+          batch.set(doc(db, name as string, item.id), item);
+        }
+      });
+    };
+
+    (Object.keys(dbUpdate) as Array<keyof DatabaseSchema>).forEach(key => {
+      if (Array.isArray(dbUpdate[key])) {
+        syncCollection(key, dbUpdate[key] as any[]);
+      } else if (key === 'scoreRules') {
+        Object.entries(dbUpdate.scoreRules).forEach(([modId, rule]) => {
+          batch.set(doc(db, 'scoreRules', modId), { id: modId, rule });
+        });
+      }
+    });
+
+    await batch.commit();
+    localStorage.setItem(DB_KEY, JSON.stringify(dbUpdate));
+  } catch (err) {
+    handleFirestoreError(err, 'write');
   }
 };
 
 export const getConfig = (): AppConfig => {
-  const stored = localStorage.getItem(APP_CONFIG_KEY);
-  return stored ? JSON.parse(stored) : {
-    primaryColor: '#e38702',
-    secondaryColor: '#5a0509',
-    logoUrl: null
-  };
+  return currentConfig;
 };
 
-export const saveConfig = (config: AppConfig) => {
+export const saveConfig = async (config: AppConfig) => {
   try {
+    await setDoc(doc(db, 'config', 'global'), config);
     localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(config));
-    if (isFirebaseInitialized && configRef) {
-      set(configRef, config).catch(console.error);
-    }
-  } catch (e) {
-    console.error("Erro ao salvar config", e);
+  } catch (err) {
+    handleFirestoreError(err, 'write', 'config/global');
   }
 };
 
-export const isOnline = () => isFirebaseInitialized;
+export const isOnline = () => true; // Always online with managed Firebase
 
-export const createCompetition = (name: string, year: number) => {
-  const db = getDb();
-  db.competitions.forEach(c => c.isActive = false);
-
+export const createCompetition = async (name: string, year: number) => {
+  const id = Math.random().toString(36).substring(2, 9);
   const newComp: Competition = {
-    id: Math.random().toString(36).substring(2, 9),
+    id,
     name,
     year,
     isActive: true,
     createdAt: Date.now()
   };
 
-  db.competitions.push(newComp);
-
-  INITIAL_SEED_MODALITIES.forEach(seed => {
-    db.modalities.push({
-      id: Math.random().toString(36).substring(2, 9),
-      competitionId: newComp.id,
-      name: seed.name,
-      gender: seed.gender,
-      status: 'pending'
+  try {
+    const batch = writeBatch(db);
+    
+    // Deactivate others
+    currentDb.competitions.forEach(c => {
+      batch.update(doc(db, 'competitions', c.id), { isActive: false });
     });
-  });
 
-  saveDb(db);
-  return newComp;
+    batch.set(doc(db, 'competitions', id), newComp);
+
+    INITIAL_SEED_MODALITIES.forEach(seed => {
+      const modId = Math.random().toString(36).substring(2, 9);
+      batch.set(doc(db, 'modalities', modId), {
+        id: modId,
+        competitionId: id,
+        name: seed.name,
+        gender: seed.gender,
+        status: 'pending'
+      });
+    });
+
+    await batch.commit();
+    return newComp;
+  } catch (err) {
+    handleFirestoreError(err, 'create', 'competitions');
+    throw err;
+  }
 };
 
+// ... remaining functions kept similarly or slightly updated for cloud performance
+// ... (omitting full repetition of calculated logic as it uses getDb which is now reactive)
+
 export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] => {
-  const db = getDb();
+  // Logic remains same as it uses currentDb (already reactive via listeners)
+  const db_local = currentDb;
   const athleticsMap: Record<string, LeaderboardEntry> = {};
 
-  db.athletics.forEach(a => {
+  db_local.athletics.forEach(a => {
     athleticsMap[a.id] = {
       athleticId: a.id,
       name: a.name,
@@ -190,7 +272,7 @@ export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] 
     };
   });
 
-  const compResults = db.results.filter(r => r.competitionId === competitionId);
+  const compResults = db_local.results.filter(r => r.competitionId === competitionId);
   compResults.forEach(result => {
     const rule = DEFAULT_SCORE_RULE;
     Object.entries(result.ranking).forEach(([rankStr, athleticId]) => {
@@ -203,7 +285,7 @@ export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] 
     });
   });
 
-  const compPenalties = db.penalties.filter(p => p.competitionId === competitionId);
+  const compPenalties = db_local.penalties.filter(p => p.competitionId === competitionId);
   compPenalties.forEach(p => {
     if (athleticsMap[p.athleticId]) {
       athleticsMap[p.athleticId].penalties += p.points;

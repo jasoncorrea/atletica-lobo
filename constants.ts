@@ -1,16 +1,5 @@
 import { Modality } from './types';
 
-// SUAS CREDENCIAIS FIREBASE
-export const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyB_ZxzVidBTuz7pve59vY6e8TmJu-ZATFY",
-  authDomain: "atletica-lobo.firebaseapp.com",
-  databaseURL: "https://atletica-lobo-default-rtdb.firebaseio.com",
-  projectId: "atletica-lobo",
-  storageBucket: "atletica-lobo.firebasestorage.app",
-  messagingSenderId: "209377214468",
-  appId: "1:209377214468:web:f24e9dd3f0ecfce4e83551"
-};
-
 // Seed v2: 22 Modalidades
 export const INITIAL_SEED_MODALITIES: { name: string; gender: Modality['gender'] }[] = [
   { name: "Atletismo", gender: "M" },

@@ -1,0 +1,184 @@
+{
+  "entities": {
+    "competition": {
+      "title": "Competition",
+      "description": "Represents an athletic competition event",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "year": { "type": "integer" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["id", "name", "year", "isActive", "createdAt"]
+    },
+    "athletic": {
+      "title": "Athletic",
+      "description": "Represents an athletic institution or team",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "logoUrl": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "modality": {
+      "title": "Modality",
+      "description": "A sport modality within a competition",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "competitionId": { "type": "string" },
+        "name": { "type": "string" },
+        "gender": { "type": "string", "enum": ["M", "F", "Misto"] },
+        "status": { "type": "string", "enum": ["pending", "finished"] }
+      },
+      "required": ["id", "competitionId", "name", "gender", "status"]
+    },
+    "result": {
+      "title": "Result",
+      "description": "Ranking result for a specific modality",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "modalityId": { "type": "string" },
+        "competitionId": { "type": "string" },
+        "ranking": { "type": "object" }
+      },
+      "required": ["id", "modalityId", "competitionId", "ranking"]
+    },
+    "penalty": {
+      "title": "Penalty",
+      "description": "Points deducted from an athletic team",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "competitionId": { "type": "string" },
+        "athleticId": { "type": "string" },
+        "points": { "type": "integer" },
+        "reason": { "type": "string" },
+        "date": { "type": "integer" }
+      },
+      "required": ["id", "competitionId", "athleticId", "points", "reason", "date"]
+    },
+    "transaction": {
+      "title": "Transaction",
+      "description": "Financial transaction (income or expense)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["income", "expense"] },
+        "amount": { "type": "number" },
+        "date": { "type": "integer" },
+        "description": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "account": { "type": "string" },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["id", "type", "amount", "date", "description", "categoryId", "account", "createdAt"]
+    },
+    "financeCategory": {
+      "title": "FinanceCategory",
+      "description": "Category for financial classification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "isDefault": { "type": "boolean" }
+      },
+      "required": ["id", "name", "isDefault"]
+    },
+    "product": {
+      "title": "Product",
+      "description": "Product in inventory",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "quantity": { "type": "integer" },
+        "priceMember": { "type": "number" },
+        "priceNonMember": { "type": "number" },
+        "costPrice": { "type": "number" },
+        "size": { "type": "string" }
+      },
+      "required": ["id", "name", "quantity", "priceMember", "priceNonMember"]
+    },
+    "birthday": {
+      "title": "BirthdayMember",
+      "description": "Board member birthday info",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "birthDate": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "birthDate"]
+    },
+    "scoreRule": {
+      "title": "ScoreRule",
+      "description": "Points rule for a competition or modality",
+      "type": "object",
+      "properties": {
+        "rule": { "type": "array" }
+      }
+    }
+  },
+  "firestore": {
+    "/competitions/{competitionId}": {
+      "schema": "competition",
+      "description": "Global competitions list"
+    },
+    "/athletics/{athleticId}": {
+      "schema": "athletic",
+      "description": "Global athletics list"
+    },
+    "/modalities/{modalityId}": {
+      "schema": "modality",
+      "description": "Modalities within competitions"
+    },
+    "/results/{resultId}": {
+      "schema": "result",
+      "description": "Results for modalities"
+    },
+    "/penalties/{penaltyId}": {
+      "schema": "penalty",
+      "description": "Penalties for athletics"
+    },
+    "/transactions/{transactionId}": {
+      "schema": "transaction",
+      "description": "Financial records"
+    },
+    "/financeCategories/{categoryId}": {
+      "schema": "financeCategory",
+      "description": "Default and custom finance categories"
+    },
+    "/products/{productId}": {
+      "schema": "product",
+      "description": "Inventory products"
+    },
+    "/birthdays/{memberId}": {
+      "schema": "birthday",
+      "description": "Board member birthdays"
+    },
+    "/scoreRules/{ruleId}": {
+      "schema": "scoreRule",
+      "description": "Custom score rules"
+    },
+    "/config/global": {
+      "schema": {
+        "title": "AppConfig",
+        "type": "object",
+        "properties": {
+           "primaryColor": { "type": "string" },
+           "secondaryColor": { "type": "string" },
+           "logoUrl": { "type": "string" }
+        }
+      },
+      "description": "Global app visual configuration"
+    }
+  }
+}

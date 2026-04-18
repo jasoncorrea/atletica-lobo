@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, LogIn, Lock, User, AlertCircle, ShieldCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 
 export const AdminLogin: React.FC = () => {
   const [user, setUser] = useState('');
@@ -16,22 +17,28 @@ export const AdminLogin: React.FC = () => {
     setError('');
     setLoading(true);
     
-    // Artificial delay for feel
-    await new Promise(r => setTimeout(r, 600));
+    try {
+      // Artificial delay for feel
+      await new Promise(r => setTimeout(r, 600));
 
-    // Reset login antigo
-    localStorage.removeItem('lobo_role');
+      // Reset login antigo
+      localStorage.removeItem('lobo_role');
 
-    if (user === 'admin' && pass === 'lobo123') {
-      localStorage.setItem('lobo_auth', 'true');
-      localStorage.setItem('lobo_role', 'DIRETORIA');
-      navigate('/admin/dashboard');
-    } else if (user === 'dev' && pass === 'jason123') {
-      localStorage.setItem('lobo_auth', 'true');
-      localStorage.setItem('lobo_role', 'SUPER_ADMIN');
-      navigate('/admin/dashboard');
-    } else {
-      setError('Credenciais inválidas. Verifique seu acesso.');
+      if ((user === 'admin' && pass === 'lobo123') || (user === 'dev' && pass === 'jason123')) {
+        // Firebase Auth login to enable cloud writes
+        const auth = getAuth();
+        await signInAnonymously(auth);
+
+        const role = user === 'dev' ? 'SUPER_ADMIN' : 'DIRETORIA';
+        localStorage.setItem('lobo_auth', 'true');
+        localStorage.setItem('lobo_role', role);
+        navigate('/admin/dashboard');
+      } else {
+        setError('Credenciais inválidas. Verifique seu acesso.');
+        setLoading(false);
+      }
+    } catch (err: any) {
+      setError('Erro de conexão: ' + err.message);
       setLoading(false);
     }
   };
