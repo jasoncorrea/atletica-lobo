@@ -51,21 +51,26 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
-    // Finance and Inventory - more restricted if needed, but for now board members
-    match /transactions/{id} {
-      allow read, write: if isSignedIn();
-    }
-
-    match /financeCategories/{id} {
-      allow read, write: if isSignedIn();
-    }
-
+    // Products and Score Rules - Publicly readable
     match /products/{id} {
-      allow read, write: if isSignedIn();
+      allow read: if true;
+      allow write: if isSignedIn();
     }
 
     match /scoreRules/{id} {
-      allow read, write: if isSignedIn();
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Finance and Inventory - more restricted
+    match /transactions/{id} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    match /financeCategories/{id} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
   }
 }

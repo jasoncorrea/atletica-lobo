@@ -29,7 +29,7 @@ export interface FirestoreErrorInfo {
 
 // Initializing Firebase
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app);
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
 let isFirebaseReady = false;
@@ -106,27 +106,56 @@ let currentConfig: AppConfig = {
 };
 
 // Syncing Firestore collections to Local State
-const collections = [
+const publicCollections = [
   'competitions', 'athletics', 'modalities', 'results', 
-  'penalties', 'transactions', 'financeCategories', 
-  'products', 'birthdays', 'scoreRules'
+  'penalties', 'products', 'birthdays', 'scoreRules'
 ];
 
-collections.forEach(colName => {
-  onSnapshot(collection(db, colName), (snapshot) => {
+const restrictedCollections = [
+  'transactions', 'financeCategories'
+];
+
+const activeListeners: Record<string, () => void> = {};
+
+const startListener = (colName: string) => {
+  if (activeListeners[colName]) return;
+  
+  const unsub = onSnapshot(collection(db, colName), (snapshot) => {
     const data = snapshot.docs.map(d => d.data());
     if (colName === 'scoreRules') {
       const map: any = {};
       data.forEach((item: any) => {
-        if (item.id) map[item.id] = item.rule; // assuming structure {id: modId, rule: []}
+        if (item.id) map[item.id] = item.rule;
       });
       currentDb.scoreRules = map;
     } else {
       (currentDb as any)[colName] = data;
     }
-    // Notify app
     window.dispatchEvent(new Event('storage'));
-  }, (err) => console.error(`Error syncing ${colName}:`, err));
+  }, (err) => {
+    if (!err.message?.includes('insufficient permissions')) {
+      console.error(`Error syncing ${colName}:`, err);
+    }
+  });
+  
+  activeListeners[colName] = unsub;
+};
+
+// Start public listeners immediately
+publicCollections.forEach(startListener);
+
+// Manage restricted listeners based on Auth state
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    restrictedCollections.forEach(startListener);
+  } else {
+    restrictedCollections.forEach(colName => {
+      if (activeListeners[colName]) {
+        activeListeners[colName]();
+        delete activeListeners[colName];
+      }
+    });
+  }
 });
 
 // Syncing Config
