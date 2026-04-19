@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getDb, saveDb, deleteItem } from '../../../services/storageService';
-import { ShareMember, SharePost } from '../../../types';
+import { ShareMember, SharePost, ShareRecord } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Share2, 
@@ -13,13 +13,30 @@ import {
   User,
   Users,
   Search,
-  Sparkles
+  Sparkles,
+  TrendingUp,
+  BarChart2,
+  Trophy,
+  PieChart as PieIcon
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  Cell,
+  PieChart,
+  Pie
+} from 'recharts';
 
 export const MarketingTab: React.FC = () => {
   const [members, setMembers] = useState<ShareMember[]>([]);
   const [posts, setPosts] = useState<SharePost[]>([]);
+  const [records, setRecords] = useState<ShareRecord[]>([]);
   
   // Member Form
   const [memberName, setMemberName] = useState('');
@@ -32,6 +49,7 @@ export const MarketingTab: React.FC = () => {
     const db = getDb();
     setMembers(db.shareMembers || []);
     setPosts(db.sharePosts || []);
+    setRecords(db.shareRecords || []);
   };
 
   useEffect(() => {
@@ -39,6 +57,25 @@ export const MarketingTab: React.FC = () => {
     window.addEventListener('storage', load);
     return () => window.removeEventListener('storage', load);
   }, []);
+
+  // Stats Calculations
+  const memberStats = members.map(m => ({
+    name: m.name,
+    shares: records.filter(r => r.memberId === m.id).length
+  })).sort((a, b) => b.shares - a.shares);
+
+  const totalPossibleShares = members.length * posts.length;
+  const currentTotalShares = records.length;
+  const healthRatio = totalPossibleShares > 0 ? (currentTotalShares / totalPossibleShares) * 100 : 0;
+
+  const topMember = memberStats[0]?.shares > 0 ? memberStats[0] : null;
+
+  const postStats = posts.map(p => ({
+    name: p.title.substring(0, 15) + (p.title.length > 15 ? '...' : ''),
+    shares: records.filter(r => r.postId === p.id).length
+  }));
+
+  const COLORS = ['#E38702', '#5a0509', '#fdf6ec', '#cbd5e1'];
 
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +131,126 @@ export const MarketingTab: React.FC = () => {
           <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">Gestão de Engajamento Social</p>
         </div>
       </header>
+
+      {/* Stats Dashboard */}
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm flex items-center space-x-4">
+          <div className="w-12 h-12 rounded-2xl bg-lobo-primary/10 flex items-center justify-center text-lobo-primary shrink-0">
+            <TrendingUp className="w-6 h-6" />
+          </div>
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Taxa de Engajamento</span>
+            <div className="flex items-end gap-2">
+              <h4 className="text-2xl font-black text-zinc-900 leading-none">{healthRatio.toFixed(0)}%</h4>
+              <span className="text-[10px] font-bold text-zinc-400 mb-0.5">{currentTotalShares}/{totalPossibleShares} checks</span>
+            </div>
+            <div className="w-full h-1.5 bg-zinc-100 rounded-full mt-2 overflow-hidden">
+               <motion.div 
+                 initial={{ width: 0 }}
+                 animate={{ width: `${healthRatio}%` }}
+                 className="h-full bg-lobo-primary" 
+               />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm flex items-center space-x-4">
+          <div className="w-12 h-12 rounded-2xl bg-lobo-secondary/10 flex items-center justify-center text-lobo-secondary shrink-0">
+            <Trophy className="w-6 h-6" />
+          </div>
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Membro em Destaque</span>
+            <h4 className="text-xl font-black text-zinc-900 leading-tight">
+              {topMember ? topMember.name : "Nenhum ainda"}
+            </h4>
+            <span className="text-[10px] font-black text-lobo-secondary uppercase tracking-widest">
+              {topMember ? `${topMember.shares} compartilhamentos` : "--"}
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-3xl border border-zinc-200 shadow-sm flex items-center space-x-4">
+          <div className="w-12 h-12 rounded-2xl bg-zinc-100 flex items-center justify-center text-zinc-500 shrink-0">
+            <PieIcon className="w-6 h-6" />
+          </div>
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Posts no Controle</span>
+            <h4 className="text-2xl font-black text-zinc-900 leading-none">{posts.length}</h4>
+            <span className="text-[10px] font-bold text-zinc-400">Total de publicações</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Charts Section */}
+      {members.length > 0 && posts.length > 0 && (
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-zinc-50 rounded-[2.5rem] p-8">
+          <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
+            <h3 className="text-sm font-black text-zinc-900 mb-6 flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 text-lobo-primary" />
+              Ranking de Engajamento por Membro
+            </h3>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={memberStats} layout="vertical" margin={{ left: 40, right: 30 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                  <XAxis type="number" hide />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} 
+                  />
+                  <Tooltip 
+                    cursor={{ fill: '#f8fafc' }}
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', fontWeight: 800, fontSize: '10px' }}
+                  />
+                  <Bar dataKey="shares" radius={[0, 4, 4, 0]} barSize={20}>
+                    {memberStats.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={index === 0 ? '#E38702' : '#cbd5e1'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm">
+            <h3 className="text-sm font-black text-zinc-900 mb-6 flex items-center gap-2">
+              <PieIcon className="w-4 h-4 text-lobo-primary" />
+              Proporção de Alcance por Post
+            </h3>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={postStats}
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="shares"
+                  >
+                    {postStats.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', fontWeight: 800, fontSize: '10px' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-wrap justify-center gap-4 mt-2">
+                {postStats.slice(0, 4).map((p, i) => (
+                  <div key={i} className="flex items-center gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                    <span className="text-[9px] font-bold text-zinc-500 uppercase">{p.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Members Management */}

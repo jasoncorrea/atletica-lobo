@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { getDb, calculateLeaderboard } from '../services/storageService';
 import { Competition, LeaderboardEntry, BirthdayMember } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Medal, AlertCircle, ChevronDown, Award, Cake, Calendar, Star, Users, Share2, CheckCircle2, Circle } from 'lucide-react';
+import { Trophy, Medal, AlertCircle, ChevronDown, Award, Cake, Calendar, Star, Users, Share2, CheckCircle2, Circle, BarChart2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getAuth } from 'firebase/auth';
 import { ShareMember, SharePost, ShareRecord } from '../types';
@@ -78,7 +78,14 @@ export const PublicDashboard: React.FC = () => {
     return dateA.getMonth() - dateB.getMonth() || dateA.getDate() - dateB.getDate();
   });
 
-  if (competitions.length === 0 && birthdays.length === 0) {
+  // Set default tab if leaderboard or birthdays are empty but marketing has data
+  useEffect(() => {
+    if (activeTab === 'leaderboard' && competitions.length === 0 && shareMembers.length > 0) {
+      setActiveTab('marketing');
+    }
+  }, [competitions.length, birthdays.length, shareMembers.length]);
+
+  if (competitions.length === 0 && birthdays.length === 0 && shareMembers.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-32 text-center text-zinc-400">
         <AlertCircle className="w-12 h-12 mb-4 opacity-20" />
@@ -390,6 +397,57 @@ export const PublicDashboard: React.FC = () => {
                   </p>
                 </div>
               )}
+
+              {/* Public Mini-Dashboard */}
+              <div className="mt-12 pt-8 border-t border-zinc-50">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="p-2 bg-orange-100 rounded-lg text-lobo-primary">
+                    <BarChart2 className="w-4 h-4" />
+                  </div>
+                  <h4 className="text-sm font-black text-zinc-900 uppercase tracking-widest">Ranking de Engajamento</h4>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                  <div className="space-y-4">
+                    {shareMembers.map(m => {
+                      const shareCount = shareRecords.filter(r => r.memberId === m.id).length;
+                      const percentage = sharePosts.length > 0 ? (shareCount / sharePosts.length) * 100 : 0;
+                      
+                      return (
+                        <div key={m.id} className="space-y-1.5">
+                          <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                            <span className="text-zinc-600 font-bold">{m.name}</span>
+                            <span className="text-lobo-primary">{shareCount} / {sharePosts.length}</span>
+                          </div>
+                          <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              animate={{ width: `${percentage}%` }}
+                              className="h-full bg-lobo-primary"
+                            />
+                          </div>
+                        </div>
+                      );
+                    }).sort((a, b) => {
+                       // Sort logic in rendering is tricky, but we'll stick to simple list for public
+                       return 0; 
+                    })}
+                  </div>
+                  
+                  <div className="bg-lobo-primary/5 rounded-3xl p-6 flex flex-col items-center text-center">
+                    <Trophy className="w-10 h-10 text-lobo-primary mb-3" />
+                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-1">Destaque Social</span>
+                    <h5 className="text-xl font-black text-lobo-secondary tracking-tight">
+                      {shareMembers.length > 0 ? 
+                        [...shareMembers].sort((a,b) => 
+                          shareRecords.filter(r => r.memberId === b.id).length - 
+                          shareRecords.filter(r => r.memberId === a.id).length
+                        )[0].name : "---"}
+                    </h5>
+                    <p className="text-[10px] font-bold text-lobo-primary/60 mt-1 uppercase">Maior Engajamento</p>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </motion.div>
