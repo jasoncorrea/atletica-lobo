@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { getDb, calculateLeaderboard } from '../services/storageService';
-import { Competition, LeaderboardEntry, BirthdayMember } from '../types';
+import { getDb, calculateLeaderboard, saveDb, deleteItem } from '../services/storageService';
+import { Competition, LeaderboardEntry, BirthdayMember, ShareMember, SharePost, ShareRecord } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Medal, AlertCircle, ChevronDown, Award, Cake, Calendar, Star, Users, Share2, CheckCircle2, Circle, BarChart2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getAuth } from 'firebase/auth';
-import { ShareMember, SharePost, ShareRecord } from '../types';
-import { saveDb } from '../services/storageService';
 
 export const PublicDashboard: React.FC = () => {
   const [competitions, setCompetitions] = useState<Competition[]>([]);
@@ -43,17 +41,17 @@ export const PublicDashboard: React.FC = () => {
   const toggleShare = async (memberId: string, postId: string) => {
     if (!isAdmin) return;
     
-    const db = getDb();
     const recordId = `${memberId}_${postId}`;
-    const existingIdx = db.shareRecords.findIndex(r => r.id === recordId);
+    const exists = shareRecords.some(r => r.id === recordId);
     
-    if (existingIdx > -1) {
-      db.shareRecords = db.shareRecords.filter(r => r.id !== recordId);
+    if (exists) {
+      await deleteItem('shareRecords', recordId);
     } else {
-      db.shareRecords = [...db.shareRecords, { id: recordId, memberId, postId, shared: true }];
+      const db = getDb();
+      const newRecord: ShareRecord = { id: recordId, memberId, postId, shared: true };
+      db.shareRecords = [...(db.shareRecords || []), newRecord];
+      await saveDb(db);
     }
-    
-    await saveDb(db);
   };
 
   useEffect(() => {
