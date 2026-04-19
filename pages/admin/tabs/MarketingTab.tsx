@@ -17,7 +17,10 @@ import {
   TrendingUp,
   BarChart2,
   Trophy,
-  PieChart as PieIcon
+  PieChart as PieIcon,
+  Zap,
+  Copy,
+  Check
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { 

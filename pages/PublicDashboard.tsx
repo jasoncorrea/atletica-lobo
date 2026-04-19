@@ -407,29 +407,31 @@ export const PublicDashboard: React.FC = () => {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                   <div className="space-y-4">
-                    {shareMembers.map(m => {
-                      const shareCount = shareRecords.filter(r => r.memberId === m.id).length;
-                      const percentage = sharePosts.length > 0 ? (shareCount / sharePosts.length) * 100 : 0;
-                      
-                      return (
-                        <div key={m.id} className="space-y-1.5">
-                          <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                            <span className="text-zinc-600 font-bold">{m.name}</span>
-                            <span className="text-lobo-primary">{shareCount} / {sharePosts.length}</span>
+                    {shareMembers
+                      .map(m => {
+                        const shareCount = shareRecords.filter(r => r.memberId === m.id).length;
+                        return { ...m, shareCount };
+                      })
+                      .sort((a, b) => b.shareCount - a.shareCount)
+                      .map(m => {
+                        const percentage = sharePosts.length > 0 ? (m.shareCount / sharePosts.length) * 100 : 0;
+                        
+                        return (
+                          <div key={m.id} className="space-y-1.5">
+                            <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                              <span className="text-zinc-600 font-bold">{m.name}</span>
+                              <span className="text-lobo-primary">{m.shareCount} / {sharePosts.length}</span>
+                            </div>
+                            <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
+                              <motion.div 
+                                initial={{ width: 0 }}
+                                animate={{ width: `${percentage}%` }}
+                                className="h-full bg-lobo-primary"
+                              />
+                            </div>
                           </div>
-                          <div className="h-2 bg-zinc-100 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              animate={{ width: `${percentage}%` }}
-                              className="h-full bg-lobo-primary"
-                            />
-                          </div>
-                        </div>
-                      );
-                    }).sort((a, b) => {
-                       // Sort logic in rendering is tricky, but we'll stick to simple list for public
-                       return 0; 
-                    })}
+                        );
+                      })}
                   </div>
                   
                   <div className="bg-lobo-primary/5 rounded-3xl p-6 flex flex-col items-center text-center">
