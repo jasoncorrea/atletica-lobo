@@ -52,7 +52,7 @@ export const handleFirestoreError = (error: any, op: string, path: string | null
   if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
     const user = auth.currentUser;
     const info: FirestoreErrorInfo = {
-      error: error.message,
+      error: error.message || 'Unknown Firestore Error',
       operationType: op as any,
       path,
       authInfo: {
@@ -67,7 +67,7 @@ export const handleFirestoreError = (error: any, op: string, path: string | null
         })) || []
       }
     };
-    throw new Error(JSON.stringify(info));
+    throw new Error(safeStringify(info));
   }
   throw error;
 };
@@ -126,6 +126,22 @@ const restrictedCollections = [
 ];
 
 const activeListeners: Record<string, () => void> = {};
+
+// Safe stringify to avoid circular references
+const safeStringify = (obj: any): string => {
+  try {
+    return JSON.stringify(obj);
+  } catch (err) {
+    const cache = new Set();
+    return JSON.stringify(obj, (key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        if (cache.has(value)) return '[Circular]';
+        cache.add(value);
+      }
+      return value;
+    });
+  }
+};
 
 const startListener = (colName: string) => {
   if (activeListeners[colName]) return;
@@ -197,18 +213,18 @@ export const saveDb = async (dbUpdate: DatabaseSchema) => {
   try {
     // Helper to clean undefined values recursively (Firestore fails on undefined)
     const cleanObject = (obj: any): any => {
+      if (obj === null || typeof obj !== 'object') return obj;
+      if (Array.isArray(obj)) return obj.map(cleanObject);
+      
+      // If it's a Firestore-like object (with parent/db refs), don't recurse deep
+      if (obj.constructor && (obj.constructor.name === 'DocumentReference' || obj.constructor.name === 'Firestore')) {
+        return obj.path || '[Complex Object]';
+      }
+
       const newObj: any = {};
       Object.keys(obj).forEach(key => {
         if (obj[key] === undefined) return;
-        if (obj[key] !== null && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
-          newObj[key] = cleanObject(obj[key]);
-        } else if (Array.isArray(obj[key])) {
-          newObj[key] = obj[key].map((item: any) => 
-            (item !== null && typeof item === 'object') ? cleanObject(item) : item
-          );
-        } else {
-          newObj[key] = obj[key];
-        }
+        newObj[key] = cleanObject(obj[key]);
       });
       return newObj;
     };
@@ -240,7 +256,7 @@ export const saveDb = async (dbUpdate: DatabaseSchema) => {
       await batch.commit();
     }
 
-    localStorage.setItem(DB_KEY, JSON.stringify(dbUpdate));
+    localStorage.setItem(DB_KEY, safeStringify(dbUpdate));
     window.dispatchEvent(new Event('storage'));
   } catch (err) {
     handleFirestoreError(err, 'write');
@@ -254,7 +270,7 @@ export const getConfig = (): AppConfig => {
 export const saveConfig = async (config: AppConfig) => {
   try {
     await setDoc(doc(db, 'config', 'global'), config);
-    localStorage.setItem(APP_CONFIG_KEY, JSON.stringify(config));
+    localStorage.setItem(APP_CONFIG_KEY, safeStringify(config));
   } catch (err) {
     handleFirestoreError(err, 'write', 'config/global');
   }

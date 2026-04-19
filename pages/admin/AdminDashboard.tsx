@@ -30,7 +30,16 @@ import {
   Cake,
   Share2,
   UserCheck,
-  ChevronRight
+  ChevronRight,
+  Cloud,
+  ExternalLink,
+  Wallet,
+  Megaphone,
+  Gamepad,
+  History,
+  FolderOpen,
+  Camera,
+  Tag
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -40,6 +49,16 @@ export const AdminDashboard: React.FC = () => {
   const [activeComp, setActiveComp] = useState<Competition | null>(null);
   const [role, setRole] = useState<Role>('DIRETORIA');
   const [config, setConfig] = useState<AppConfig>(getConfig());
+  const [showDriveLinks, setShowDriveLinks] = useState(false);
+
+  const driveFolders = [
+    { name: 'Geral (Minha Unidade)', icon: FolderOpen, color: 'text-zinc-600', bg: 'bg-zinc-100', link: 'https://drive.google.com/drive/folders/1zs49o7pf-xjI4RfhnGpqf4UGXcEEAYRL?usp=sharing' },
+    { name: 'Marketing / Comunicação', icon: Megaphone, color: 'text-lobo-primary', bg: 'bg-orange-50', link: 'https://drive.google.com/drive/folders/1ktlXSzMT-ZdgNA3b3onIlBeLQyM4KbPd?usp=sharing' },
+    { name: 'Produtos / Comercial', icon: Tag, color: 'text-emerald-500', bg: 'bg-emerald-50', link: 'https://drive.google.com/drive/folders/1yKJq2iMJx6htQlFT3-k3c-UGXQFhbUW1?usp=sharing' },
+    { name: 'Diretoria de Esportes', icon: Gamepad, color: 'text-blue-500', bg: 'bg-blue-50', link: 'https://drive.google.com/drive/folders/1e8ye8kdNDrx6Nq2WbZLwOBbl99nWjW0t?usp=sharing' },
+    { name: 'Secretaria / Atas', icon: History, color: 'text-purple-500', bg: 'bg-purple-50', link: 'https://drive.google.com/drive/folders/1P8WuOtIXnhFNi2ixVHTvs1KMSwol_FMM?usp=sharing' },
+    { name: 'Fotos / Cobertura', icon: Camera, color: 'text-pink-500', bg: 'bg-pink-50', link: 'https://drive.google.com/drive/folders/1-wCB-5XloAGaP6gB666et0rqJtRnvsCw?usp=sharing' },
+  ];
 
   useEffect(() => {
     if (!localStorage.getItem('lobo_auth')) {
@@ -251,6 +270,70 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="flex items-start gap-6 pt-20">
+             <div className="relative">
+               <button 
+                 onClick={() => setShowDriveLinks(!showDriveLinks)}
+                 className={cn(
+                   "flex items-center gap-3 px-6 py-2.5 rounded-2xl border transition-all shadow-sm active:scale-95 group",
+                   showDriveLinks ? "bg-zinc-900 border-zinc-900 text-white" : "bg-white border-zinc-100 text-zinc-600 hover:bg-zinc-50"
+                 )}
+               >
+                 <Cloud className={cn("w-4 h-4 transition-colors", showDriveLinks ? "text-lobo-primary" : "text-zinc-400 group-hover:text-lobo-primary")} />
+                 <span className="text-[10px] font-black uppercase tracking-widest">Drive da Atlética</span>
+               </button>
+
+               <AnimatePresence>
+                 {showDriveLinks && (
+                   <>
+                     <div 
+                       className="fixed inset-0 z-40" 
+                       onClick={() => setShowDriveLinks(false)} 
+                     />
+                     <motion.div
+                       initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                       animate={{ opacity: 1, scale: 1, y: 0 }}
+                       exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                       className="absolute right-0 mt-3 w-72 bg-white rounded-[2rem] shadow-2xl border border-zinc-100 overflow-hidden z-50 p-2"
+                     >
+                       <div className="px-5 py-4 border-b border-zinc-50">
+                         <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] leading-none mb-1">Repositório Digital</p>
+                         <h4 className="text-xs font-black text-zinc-900 uppercase">Acesso por Diretoria</h4>
+                       </div>
+                       
+                       <div className="p-2 space-y-1">
+                         {driveFolders.map((folder, i) => (
+                           <a
+                             key={i}
+                             href={folder.link}
+                             target="_blank"
+                             rel="noopener noreferrer"
+                             className="flex items-center gap-4 p-3 rounded-2xl hover:bg-zinc-50 transition-all group"
+                           >
+                             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", folder.bg)}>
+                               <folder.icon className={cn("w-5 h-5", folder.color)} />
+                             </div>
+                             <div className="flex-grow">
+                               <p className="text-[11px] font-black text-zinc-900 tracking-tight leading-none mb-1">{folder.name}</p>
+                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                 <span className="text-[8px] font-bold text-zinc-400 uppercase">Abrir no Drive</span>
+                                 <ExternalLink className="w-2.5 h-2.5 text-zinc-300" />
+                               </div>
+                             </div>
+                           </a>
+                         ))}
+                       </div>
+
+                       <div className="p-4 bg-zinc-50 rounded-b-[1.5rem] mt-2 border-t border-zinc-100">
+                          <p className="text-[8px] font-bold text-zinc-400 text-center uppercase tracking-widest leading-relaxed">
+                            Mantenha o Drive organizado para as próximas gestões.
+                          </p>
+                       </div>
+                     </motion.div>
+                   </>
+                 )}
+               </AnimatePresence>
+             </div>
+
              <div className="hidden lg:flex items-center gap-4 px-5 py-2.5 bg-zinc-50 rounded-2xl border border-zinc-100 italic">
                 <LayoutDashboard className="w-4 h-4 text-zinc-300" />
                 {activeComp ? (
