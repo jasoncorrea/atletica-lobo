@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDb } from '../../services/storageService';
-import { Competition, Role } from '../../types';
+import { getDb, getConfig } from '../../services/storageService';
+import { Competition, Role, AppConfig } from '../../types';
 import { DashboardTab } from './tabs/DashboardTab';
 import { CompetitionsTab } from './tabs/CompetitionsTab';
 import { AthleticsTab } from './tabs/AthleticsTab';
@@ -38,6 +38,7 @@ export const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeComp, setActiveComp] = useState<Competition | null>(null);
   const [role, setRole] = useState<Role>('DIRETORIA');
+  const [config, setConfig] = useState<AppConfig>(getConfig());
 
   useEffect(() => {
     if (!localStorage.getItem('lobo_auth')) {
@@ -47,7 +48,10 @@ export const AdminDashboard: React.FC = () => {
     const savedRole = localStorage.getItem('lobo_role') as Role;
     if (savedRole) setRole(savedRole);
 
+    const updateConfig = () => setConfig(getConfig());
+    window.addEventListener('storage', updateConfig);
     refresh();
+    return () => window.removeEventListener('storage', updateConfig);
   }, []);
 
   const refresh = () => {
@@ -71,27 +75,33 @@ export const AdminDashboard: React.FC = () => {
 
   if (role === 'SUPER_ADMIN') {
     tabs.splice(tabs.length - 1, 0, { id: 'finance', label: 'Financeiro', icon: DollarSign, color: 'bg-emerald-500' });
-    tabs.splice(tabs.length - 1, 0, { id: 'inventory', label: 'Estoque', icon: Package, color: 'bg-orange-500' });
   }
+
+  // Estoque agora disponível para DIRETORIA e SUPER_ADMIN
+  tabs.splice(tabs.length - 1, 0, { id: 'inventory', label: 'Estoque', icon: Package, color: 'bg-orange-500' });
 
   return (
     <div className="flex min-h-screen bg-zinc-50 -m-4 md:-m-8">
       {/* Sidebar - Datletica Style */}
-      <aside className="w-20 md:w-72 bg-zinc-900 text-white flex flex-col shrink-0 sticky top-0 h-screen transition-all duration-300 z-50 shadow-2xl">
-        <div className="p-8 flex flex-col items-center md:items-start">
+      <aside className="w-20 md:w-72 bg-lobo-secondary text-white flex flex-col shrink-0 sticky top-0 h-screen transition-all duration-300 z-50 shadow-2xl">
+        <div className="p-8 pl-14 flex flex-col items-center md:items-start pt-12">
           <div 
             onClick={() => navigate('/')}
-            className="w-12 h-12 md:w-16 md:h-16 bg-lobo-primary rounded-[1.5rem] flex items-center justify-center cursor-pointer hover:scale-105 hover:rotate-3 transition-all shadow-lg shadow-lobo-primary/20"
+            className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-[1.5rem] flex items-center justify-center cursor-pointer hover:scale-105 hover:rotate-3 transition-all shadow-lg shadow-black/20 overflow-hidden"
           >
-            <Trophy className="w-6 h-6 md:w-10 md:h-10 text-zinc-900" />
+            {config.logoUrl ? (
+              <img src={config.logoUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <Trophy className="w-6 h-6 md:w-10 md:h-10 text-zinc-900" />
+            )}
           </div>
           <div className="hidden md:block mt-6 overflow-hidden">
             <h1 className="text-lg font-black uppercase tracking-tight truncate leading-none">Atlética Lobo</h1>
-            <p className="text-[10px] text-lobo-primary font-bold uppercase tracking-[0.3em] leading-none mt-2">Intelligence Hub</p>
+            <p className="text-[10px] text-lobo-primary font-bold uppercase tracking-[0.3em] leading-none mt-3">Painel de Gestão</p>
           </div>
         </div>
 
-        <nav className="flex-grow py-4 px-4 space-y-1.5 overflow-y-auto custom-scrollbar">
+        <nav className="flex-grow py-4 pl-10 pr-4 space-y-1.5 overflow-y-auto custom-scrollbar">
           <div className="md:px-4 mb-4">
              <p className="hidden md:block text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Dashboard Principal</p>
           </div>
@@ -106,7 +116,7 @@ export const AdminDashboard: React.FC = () => {
                 className={cn(
                   "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative",
                   isActive 
-                    ? "bg-white text-zinc-900 shadow-xl" 
+                    ? "bg-white text-lobo-secondary shadow-xl" 
                     : "text-white/40 hover:text-white hover:bg-white/5"
                 )}
               >
@@ -127,7 +137,7 @@ export const AdminDashboard: React.FC = () => {
                 )}
 
                 {/* Tooltip for mobile */}
-                <span className="md:hidden absolute left-full ml-4 px-2 py-1 bg-zinc-900 text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
+                <span className="md:hidden absolute left-full ml-4 px-2 py-1 bg-lobo-secondary text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
                   {t.label}
                 </span>
               </button>
@@ -151,10 +161,10 @@ export const AdminDashboard: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-grow flex flex-col overflow-hidden">
         {/* Top Bar */}
-        <header className="h-24 bg-white/80 backdrop-blur-md border-b border-zinc-100 px-10 flex items-center justify-between shrink-0 sticky top-0 z-40">
-          <div className="flex items-center gap-6">
+        <header className="h-40 bg-white/80 backdrop-blur-md border-b border-zinc-100 px-10 flex items-start justify-between shrink-0 sticky top-0 z-40 transition-all duration-500">
+          <div className="flex items-start gap-6 pt-20">
             <div className="flex flex-col">
-               <h2 className="text-2xl font-black text-zinc-900 tracking-tighter uppercase leading-none">
+               <h2 className="text-2xl font-black text-lobo-secondary tracking-tighter uppercase leading-none">
                  {tabs.find(t => t.id === activeTab)?.label}
                </h2>
                <div className="flex items-center gap-2 mt-2">
@@ -165,7 +175,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-start gap-6 pt-20">
              <div className="hidden lg:flex items-center gap-4 px-5 py-2.5 bg-zinc-50 rounded-2xl border border-zinc-100 italic">
                 <LayoutDashboard className="w-4 h-4 text-zinc-300" />
                 {activeComp ? (
@@ -175,12 +185,12 @@ export const AdminDashboard: React.FC = () => {
                 )}
              </div>
              
-             <div className="flex items-center gap-4 pl-6 border-l border-zinc-100">
+             <div className="flex items-center gap-4 pl-6 border-l border-zinc-100 h-10">
                <div className="text-right hidden sm:block">
                  <p className="text-xs font-black text-zinc-900 tracking-tight leading-none">{role}</p>
                  <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Status Verificado</p>
                </div>
-               <div className="w-12 h-12 rounded-2xl bg-zinc-900 flex items-center justify-center text-lobo-primary shadow-lg shadow-black/10">
+               <div className="w-12 h-12 rounded-2xl bg-lobo-secondary flex items-center justify-center text-lobo-primary shadow-lg shadow-black/10">
                  <Users className="w-6 h-6" />
                </div>
              </div>
@@ -206,7 +216,7 @@ export const AdminDashboard: React.FC = () => {
               {activeTab === 'marketing' && <MarketingTab />}
               {activeTab === 'settings' && <SettingsTab />}
               {activeTab === 'finance' && role === 'SUPER_ADMIN' && <FinanceTab />}
-              {activeTab === 'inventory' && role === 'SUPER_ADMIN' && <InventoryTab />}
+              {activeTab === 'inventory' && <InventoryTab />}
               
               {(!activeComp && ['modalities', 'results', 'penalties'].includes(activeTab)) ? (
                 <div className="bg-white rounded-[2.5rem] border border-zinc-100 shadow-sm p-20 text-center flex flex-col items-center">
@@ -219,7 +229,7 @@ export const AdminDashboard: React.FC = () => {
                   </p>
                   <button 
                     onClick={() => setActiveTab('competitions')}
-                    className="mt-8 bg-zinc-900 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-lobo-primary transition-all"
+                    className="mt-8 bg-lobo-secondary text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:brightness-110 transition-all"
                   >
                     Ativar Competição agora
                   </button>

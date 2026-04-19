@@ -41,18 +41,12 @@ export const DashboardTab: React.FC = () => {
 
   // Stats Calculations
   const activeCompetition = db.competitions.find(c => c.isActive);
-  const totalFinance = db.transactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
   const totalSocios = db.socios.length;
   const activeSocios = db.socios.filter(s => {
     const endPlan = new Date(s.expiryDate || '');
     return endPlan >= new Date();
   }).length;
   const lowStock = db.products.filter(p => p.quantity < 5).length;
-
-  const financeData = db.transactions.slice(-7).map(t => ({
-    name: new Date(t.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-    value: t.amount * (t.type === 'income' ? 1 : -1)
-  }));
 
   const sociosData = [
     { name: 'Ativos', value: activeSocios },
@@ -67,7 +61,7 @@ export const DashboardTab: React.FC = () => {
       {/* Header Overview */}
       <section className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
-          <h2 className="text-4xl font-black text-zinc-900 tracking-tighter uppercase leading-none">Visão Central</h2>
+          <h2 className="text-4xl font-black text-lobo-secondary tracking-tighter uppercase leading-none">Visão Central</h2>
           <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest leading-none">Inteligência Operacional Atlética Lobo</p>
         </div>
         <div className="flex items-center gap-4">
@@ -80,7 +74,7 @@ export const DashboardTab: React.FC = () => {
                 </div>
              </div>
            )}
-           <div className="bg-zinc-900 px-6 py-3 rounded-2xl text-white shadow-xl flex items-center gap-3">
+           <div className="bg-lobo-secondary px-6 py-3 rounded-2xl text-white shadow-xl flex items-center gap-3">
               <Calendar className="w-5 h-5 text-lobo-primary" />
               <div className="text-right">
                  <p className="text-[9px] font-black text-white/40 uppercase tracking-widest leading-none">Data Atual</p>
@@ -91,17 +85,8 @@ export const DashboardTab: React.FC = () => {
       </section>
 
       {/* Main Stats Grid */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
          {[
-           { 
-             label: 'Patrimônio Líquido', 
-             value: formatCurrency(totalFinance), 
-             icon: DollarSign, 
-             color: 'text-emerald-500', 
-             bg: 'bg-emerald-500/10',
-             trend: '+12%',
-             positive: true
-           },
            { 
              label: 'Sócios Ativos', 
              value: activeSocios, 
@@ -154,60 +139,9 @@ export const DashboardTab: React.FC = () => {
          ))}
       </section>
 
-      {/* Charts & Detail Info */}
-      <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-         {/* Financial Performance Chart */}
-         <div className="lg:col-span-8 bg-white border border-zinc-100 rounded-[3rem] p-10 shadow-sm">
-            <div className="flex items-center justify-between mb-10">
-               <div className="flex items-center gap-3">
-                  <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600">
-                     <TrendingUp className="w-5 h-5" />
-                  </div>
-                  <div>
-                     <h3 className="text-xl font-black text-zinc-900 tracking-tight uppercase leading-none">Fluxo de Caixa</h3>
-                     <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Últimas Movimentações</p>
-                  </div>
-               </div>
-               <button className="text-[10px] font-black text-lobo-secondary uppercase tracking-[0.2em] px-4 py-2 bg-zinc-50 rounded-xl hover:bg-zinc-100 transition-colors">Relatório Completo</button>
-            </div>
-
-            <div className="h-[350px] w-full">
-               <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={financeData}>
-                     <defs>
-                        <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                           <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                           <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                        </linearGradient>
-                     </defs>
-                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                     <XAxis 
-                        dataKey="name" 
-                        axisLine={false} 
-                        tickLine={false} 
-                        tick={{ fontSize: 10, fontWeight: 900, fill: '#cbd5e1' }} 
-                        dy={10}
-                     />
-                     <YAxis hide />
-                     <Tooltip 
-                        contentStyle={{ borderRadius: '1.5rem', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', fontWeight: 900, fontSize: '10px' }}
-                     />
-                     <Area 
-                        type="monotone" 
-                        dataKey="value" 
-                        stroke="#10b981" 
-                        strokeWidth={4}
-                        fillOpacity={1} 
-                        fill="url(#colorValue)" 
-                     />
-                  </AreaChart>
-               </ResponsiveContainer>
-            </div>
-         </div>
-
-         {/* Distribution & Lists */}
-         <div className="lg:col-span-4 space-y-8">
-            <div className="bg-zinc-900 rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden">
+      {/* Distribution & Lists */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+         <div className="bg-lobo-secondary rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden">
                <div className="relative z-10">
                   <h3 className="text-xl font-black uppercase tracking-tight mb-8">Saúde Social</h3>
                   <div className="space-y-6">
@@ -267,7 +201,6 @@ export const DashboardTab: React.FC = () => {
                </div>
                <button className="w-full mt-6 py-4 rounded-2xl bg-zinc-50 text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] hover:bg-zinc-900 hover:text-white transition-all">Ver Calendário Completo</button>
             </div>
-         </div>
       </section>
     </div>
   );

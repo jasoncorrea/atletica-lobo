@@ -80,7 +80,7 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
                 <div className="p-3 bg-lobo-primary rounded-2xl text-zinc-900">
                   <Plus className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-black uppercase tracking-tight">Novo Certame</h3>
+                <h3 className="text-xl font-black uppercase tracking-tight">Nova Competição</h3>
               </div>
               
               <form onSubmit={add} className="space-y-6">
