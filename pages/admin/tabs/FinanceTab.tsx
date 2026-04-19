@@ -1,13 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { getDb, saveDb } from '../../../services/storageService';
 import { FinanceCategory, Transaction, PaymentAccount, TransactionType } from '../../../types';
+import { 
+  DollarSign, 
+  TrendingUp, 
+  TrendingDown, 
+  Activity, 
+  Plus, 
+  Minus, 
+  Download, 
+  Filter, 
+  Calendar as CalendarIcon,
+  ShoppingBag,
+  PartyPopper,
+  Zap,
+  Trash2,
+  PieChart as PieChartIcon,
+  X
+} from 'lucide-react';
+import { cn } from '../../../lib/utils';
+import { motion, AnimatePresence } from 'motion/react';
 
 export const FinanceTab: React.FC = () => {
-  const [subTab, setSubTab] = useState<'transactions' | 'categories' | 'reports'>('transactions');
+  const [subTab, setSubTab] = useState<'summary' | 'transactions' | 'categories'>('summary');
   const [categories, setCategories] = useState<FinanceCategory[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   
   // States para Nova Transação
+  const [showAddModal, setShowAddModal] = useState(false);
   const [type, setType] = useState<TransactionType>('expense');
   const [amount, setAmount] = useState('');
   const [desc, setDesc] = useState('');
@@ -15,10 +35,8 @@ export const FinanceTab: React.FC = () => {
   const [acc, setAcc] = useState<PaymentAccount>('Mercado Pago');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // States para Categorias (Criação e Edição)
+  // States para Categorias
   const [newCatName, setNewCatName] = useState('');
-  const [editingCatId, setEditingCatId] = useState<string | null>(null);
-  const [editingCatName, setEditingCatName] = useState('');
 
   // State para Filtro de Extrato
   const [filterCategory, setFilterCategory] = useState('');
@@ -26,7 +44,6 @@ export const FinanceTab: React.FC = () => {
   const load = () => {
     const db = getDb();
     setCategories(db.financeCategories);
-    // Ordena transações da mais recente para a mais antiga
     setTransactions(db.transactions.sort((a, b) => b.date - a.date));
   };
 
@@ -62,10 +79,9 @@ export const FinanceTab: React.FC = () => {
     saveDb(db);
     window.dispatchEvent(new Event('storage'));
     
-    // Reset form
     setAmount('');
     setDesc('');
-    alert('Lançamento salvo!');
+    setShowAddModal(false);
     load();
   };
 
@@ -77,8 +93,6 @@ export const FinanceTab: React.FC = () => {
     window.dispatchEvent(new Event('storage'));
     load();
   };
-
-  // --- LÓGICA DE CATEGORIAS ---
 
   const addCategory = (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,50 +109,14 @@ export const FinanceTab: React.FC = () => {
     load();
   };
 
-  const startEditingCategory = (cat: FinanceCategory) => {
-    setEditingCatId(cat.id);
-    setEditingCatName(cat.name);
+  const formatCurrency = (val: number) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
   };
 
-  const saveCategoryEdit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCatId || !editingCatName.trim()) return;
-
-    const db = getDb();
-    const index = db.financeCategories.findIndex(c => c.id === editingCatId);
-    if (index !== -1) {
-      db.financeCategories[index].name = editingCatName.toUpperCase();
-      saveDb(db);
-      window.dispatchEvent(new Event('storage'));
-    }
-    
-    setEditingCatId(null);
-    setEditingCatName('');
-    load();
+  const getFilteredTransactions = () => {
+    return transactions.filter(t => !filterCategory || t.categoryId === filterCategory);
   };
 
-  const cancelCategoryEdit = () => {
-    setEditingCatId(null);
-    setEditingCatName('');
-  };
-
-  const deleteCategory = (id: string) => {
-    const db = getDb();
-    const inUse = db.transactions.some(t => t.categoryId === id);
-    if (inUse) {
-      alert('Não é possível excluir: existem transações vinculadas a esta categoria. Exclua ou edite as transações primeiro.');
-      return;
-    }
-    
-    if (!confirm('Tem certeza que deseja excluir esta categoria?')) return;
-    
-    db.financeCategories = db.financeCategories.filter(c => c.id !== id);
-    saveDb(db);
-    window.dispatchEvent(new Event('storage'));
-    load();
-  };
-
-  // --- RELATÓRIOS ---
   const getBalance = (account?: PaymentAccount) => {
     return transactions
       .filter(t => !account || t.account === account)
@@ -153,240 +131,476 @@ export const FinanceTab: React.FC = () => {
         const catName = categories.find(c => c.id === t.categoryId)?.name || 'Sem Categoria';
         summary[catName] = (summary[catName] || 0) + t.amount;
       });
-    return Object.entries(summary).sort((a, b) => b[1] - a[1]); // Order by highest expense
+    return Object.entries(summary).sort((a, b) => b[1] - a[1]);
   };
 
-  const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-  };
+  const menuItems = [
+    { id: 'summary', label: 'Resumo' },
+    { id: 'transactions', label: 'Extrato' },
+    { id: 'categories', label: 'Categorias' }
+  ];
 
-  // Filtra transações para o extrato
-  const filteredTransactions = transactions.filter(t => {
-    if (!filterCategory) return true;
-    return t.categoryId === filterCategory;
-  });
+  const statCards = [
+    { label: 'Renda com Festas', value: 0, icon: PartyPopper, color: 'bg-lobo-secondary' },
+    { label: 'Renda com Produtos', value: 0, icon: ShoppingBag, color: 'bg-lobo-secondary' },
+    { label: 'Mensalidades', value: getBalance(), icon: Zap, color: 'bg-lobo-secondary' },
+    { label: 'Renda Avulsa', value: 0, icon: DollarSign, color: 'bg-lobo-secondary' },
+  ];
 
   return (
-    <div>
-      <div className="flex gap-2 mb-6 border-b pb-4">
-        <button onClick={() => setSubTab('transactions')} className={`px-4 py-2 rounded-full text-sm font-bold ${subTab === 'transactions' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'}`}>Lançamentos</button>
-        <button onClick={() => setSubTab('categories')} className={`px-4 py-2 rounded-full text-sm font-bold ${subTab === 'categories' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'}`}>Categorias</button>
-        <button onClick={() => setSubTab('reports')} className={`px-4 py-2 rounded-full text-sm font-bold ${subTab === 'reports' ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600'}`}>Relatórios</button>
+    <div className="space-y-8 animate-fade-in">
+      {/* Finance Navigation */}
+      <div className="flex items-center border-b border-zinc-200">
+        {menuItems.map(item => (
+          <button
+            key={item.id}
+            onClick={() => setSubTab(item.id as any)}
+            className={cn(
+              "px-8 py-4 text-xs font-black uppercase tracking-widest transition-all relative",
+              subTab === item.id ? "text-lobo-secondary" : "text-zinc-400 hover:text-zinc-600"
+            )}
+          >
+            {item.label}
+            {subTab === item.id && (
+              <motion.div 
+                layoutId="financeTab"
+                className="absolute bottom-0 left-8 right-8 h-0.5 bg-lobo-secondary" 
+              />
+            )}
+          </button>
+        ))}
       </div>
 
-      {subTab === 'transactions' && (
-        <div className="grid md:grid-cols-3 gap-8">
-          <form onSubmit={addTransaction} className="bg-gray-50 p-6 rounded shadow-sm h-fit">
-            <h3 className="font-bold text-lg mb-4 text-gray-800">Novo Lançamento</h3>
-            
-            <div className="flex gap-2 mb-4">
-              <button type="button" onClick={() => setType('income')} className={`flex-1 py-2 rounded font-bold text-sm ${type === 'income' ? 'bg-green-600 text-white' : 'bg-white border text-gray-500'}`}>Entrada</button>
-              <button type="button" onClick={() => setType('expense')} className={`flex-1 py-2 rounded font-bold text-sm ${type === 'expense' ? 'bg-red-600 text-white' : 'bg-white border text-gray-500'}`}>Saída</button>
+      {subTab === 'summary' && (
+        <div className="space-y-10">
+          {/* Summary Cards Row */}
+          <section>
+            <h3 className="text-xl font-black text-zinc-900 tracking-tight mb-6">Geração de Renda</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {statCards.map((card, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className={cn("p-6 rounded-2xl text-white shadow-lg shadow-black/5 relative overflow-hidden group", card.color)}
+                >
+                  <div className="relative z-10">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <card.icon className="w-5 h-5 text-white" />
+                    </div>
+                    <p className="text-2xl font-black tracking-tight mb-1">{formatCurrency(card.value)}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-white/70">{card.label}</p>
+                  </div>
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-12 -mt-12 blur-2xl" />
+                </motion.div>
+              ))}
             </div>
+          </section>
 
-            <div className="space-y-3">
-              <div>
-                <label className="text-xs font-bold text-gray-500">Valor (R$)</label>
-                <input className="w-full p-2 border rounded bg-white text-gray-900" type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required />
-              </div>
-              
-              <div>
-                <label className="text-xs font-bold text-gray-500">Data</label>
-                <input className="w-full p-2 border rounded bg-white text-gray-900" type="date" value={date} onChange={e => setDate(e.target.value)} required />
-              </div>
+          {/* Action Bar */}
+          <section className="bg-zinc-100/50 border border-zinc-200 p-4 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button className="flex items-center gap-2 px-4 py-2 bg-lobo-secondary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all">
+                <Download className="w-3.5 h-3.5" />
+                Exportar
+              </button>
+              <div className="h-6 w-px bg-zinc-200 mx-2" />
+              <button className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-50 transition-all">
+                <CalendarIcon className="w-3.5 h-3.5" />
+                Selecionar Período
+                <Plus className="w-3 h-3 text-zinc-400" />
+              </button>
+              <button className="flex items-center gap-2 px-4 py-2 bg-white border border-zinc-200 text-zinc-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-zinc-50 transition-all">
+                <Filter className="w-3.5 h-3.5" />
+                Filtros
+              </button>
+            </div>
+          </section>
 
-              <div>
-                <label className="text-xs font-bold text-gray-500">Descrição</label>
-                <input className="w-full p-2 border rounded bg-white text-gray-900" value={desc} onChange={e => setDesc(e.target.value)} placeholder="Ex: Venda de Canecas" required />
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-500">Conta</label>
-                <select className="w-full p-2 border rounded bg-white text-gray-900" value={acc} onChange={e => setAcc(e.target.value as PaymentAccount)}>
-                  <option value="Mercado Pago">Mercado Pago</option>
-                  <option value="PagBank">PagBank</option>
-                </select>
-              </div>
-
-              {type === 'expense' && (
+          {/* Secondary Stats & Quick Actions */}
+          <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* Receivables/Payables */}
+              <div className="bg-white border border-zinc-200 p-8 rounded-[2.5rem] shadow-sm flex flex-col justify-between">
                 <div>
-                  <label className="text-xs font-bold text-gray-500">Categoria</label>
-                  <select className="w-full p-2 border rounded bg-white text-gray-900" value={catId} onChange={e => setCatId(e.target.value)} required>
-                    <option value="">Selecione...</option>
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">A receber</p>
+                  <p className="text-2xl font-black text-zinc-900 tracking-tight">R$ 0,00</p>
                 </div>
-              )}
+                <button 
+                  onClick={() => { setType('income'); setShowAddModal(true); }}
+                  className="mt-8 w-full bg-green-500 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-green-500/20 hover:scale-[1.02] transition-all"
+                >
+                  Novo Recebimento
+                </button>
+              </div>
 
-              <button className="w-full bg-gray-900 text-white py-3 rounded font-bold mt-4">Salvar Lançamento</button>
+              <div className="bg-white border border-zinc-200 p-8 rounded-[2.5rem] shadow-sm flex flex-col justify-between">
+                <div>
+                  <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">A pagar</p>
+                  <p className="text-2xl font-black text-zinc-900 tracking-tight">R$ 0,00</p>
+                </div>
+                <button 
+                  onClick={() => { setType('expense'); setShowAddModal(true); }}
+                  className="mt-8 w-full bg-red-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-red-600/20 hover:scale-[1.02] transition-all"
+                >
+                  Novo Pagamento
+                </button>
+              </div>
             </div>
-          </form>
 
-          <div className="md:col-span-2">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg text-gray-800">Extrato Recente</h3>
+            <div className="bg-zinc-900 text-white p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden">
+              <div className="relative z-10 h-full flex flex-col justify-between">
+                <div>
+                  <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mb-6">
+                    <Activity className="w-6 h-6 text-lobo-primary" />
+                  </div>
+                  <h4 className="text-xl font-black tracking-tight mb-2 uppercase">Resultado Atual</h4>
+                  <p className="text-4xl font-black text-lobo-primary tracking-tighter">{formatCurrency(getBalance())}</p>
+                </div>
+                <div className="mt-8 pt-8 border-t border-white/10 flex items-center justify-between">
+                  <div className="text-center">
+                    <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest mb-1">Entradas</p>
+                    <p className="text-sm font-black text-green-400">{formatCurrency(transactions.filter(t => t.type === 'income').reduce((a, b) => a + b.amount, 0))}</p>
+                  </div>
+                  <div className="w-px h-8 bg-white/10" />
+                  <div className="text-center">
+                    <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest mb-1">Saídas</p>
+                    <p className="text-sm font-black text-red-400">{formatCurrency(transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0))}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="absolute bottom-0 right-0 w-64 h-64 bg-lobo-primary/10 rounded-full -mr-32 -mb-32 blur-3xl" />
+            </div>
+          </section>
+
+          {/* Charts Placeholder */}
+          <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+             <div className="bg-white border border-zinc-200 p-8 rounded-[2.5rem] shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-lg font-black text-zinc-900 tracking-tight uppercase">DRE - Gráfico</h3>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-green-500" />
+                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Receitas</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="w-2 h-2 rounded-full bg-red-500" />
+                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">Despesas</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="h-64 flex items-end justify-between gap-4 px-4">
+                  {[40, 70, 45, 90, 65, 80].map((h, i) => (
+                    <div key={i} className="flex-1 flex flex-col gap-1 items-center">
+                       <div className="w-full bg-zinc-50 rounded-t-lg relative group h-48 flex items-end">
+                          <motion.div 
+                            initial={{ height: 0 }}
+                            animate={{ height: `${h}%` }}
+                            className="w-1/2 bg-green-500/80 rounded-t-sm group-hover:brightness-110 transition-all"
+                          />
+                          <motion.div 
+                            initial={{ height: 0 }}
+                            animate={{ height: `${h * 0.6}%` }}
+                            className="w-1/2 bg-red-500/80 rounded-t-sm group-hover:brightness-110 transition-all"
+                          />
+                       </div>
+                       <span className="text-[9px] font-bold text-zinc-400 uppercase italic">Mês {i+1}</span>
+                    </div>
+                  ))}
+                </div>
+             </div>
+
+             <div className="bg-white border border-zinc-200 p-8 rounded-[2.5rem] shadow-sm">
+                <h3 className="text-lg font-black text-zinc-900 tracking-tight uppercase mb-8">Distribuição por Categoria</h3>
+                <div className="space-y-5">
+                   {getExpensesByCategory().slice(0, 5).map(([cat, val], i) => {
+                     const total = transactions.filter(t => t.type === 'expense').reduce((a, b) => a + b.amount, 0);
+                     const percentage = total > 0 ? (val / total) * 100 : 0;
+                     return (
+                       <div key={cat} className="space-y-1.5">
+                         <div className="flex justify-between items-end">
+                            <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tight">{cat}</span>
+                            <span className="text-[10px] font-bold text-zinc-400 tabular-nums">{formatCurrency(val)}</span>
+                         </div>
+                         <div className="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden">
+                           <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${percentage}%` }}
+                            className="h-full bg-lobo-secondary rounded-full" 
+                           />
+                         </div>
+                       </div>
+                     );
+                   })}
+                   {getExpensesByCategory().length === 0 && (
+                     <div className="h-48 flex flex-col items-center justify-center text-center opacity-30">
+                        <PieChartIcon className="w-12 h-12 mb-2" />
+                        <p className="text-xs font-bold uppercase tracking-widest">Nenhuma despesa para análise</p>
+                     </div>
+                   )}
+                </div>
+             </div>
+          </section>
+        </div>
+      )}
+
+      {subTab === 'transactions' && (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <h3 className="text-xl font-black text-zinc-900 tracking-tight uppercase">Histórico de Lançamentos</h3>
+            <div className="flex items-center gap-3">
               <select 
-                className="border p-2 rounded text-sm bg-white text-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-300"
+                className="bg-zinc-100 border-none rounded-xl text-xs font-bold px-4 py-2.5 focus:ring-2 focus:ring-lobo-primary transition-all pointer-events-auto"
                 value={filterCategory}
                 onChange={(e) => setFilterCategory(e.target.value)}
               >
                 <option value="">Todas as Categorias</option>
-                {categories.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+              <button 
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 bg-lobo-secondary text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-lobo-primary/20"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Novo Lançamento
+              </button>
             </div>
-            
-            <div className="bg-white rounded shadow-sm border overflow-hidden">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-gray-100 text-gray-600">
-                  <tr>
-                    <th className="p-3">Data</th>
-                    <th className="p-3">Descrição</th>
-                    <th className="p-3">Conta</th>
-                    <th className="p-3 text-right">Valor</th>
-                    <th className="p-3 w-10"></th>
-                  </tr>
+          </div>
+
+          <div className="bg-white border border-zinc-200 rounded-[2rem] overflow-hidden shadow-sm">
+             <table className="w-full text-left">
+                <thead>
+                   <tr className="bg-zinc-50 border-b border-zinc-100">
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Data</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Descrição</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Conta</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right">Valor</th>
+                      <th className="px-6 py-4 w-20"></th>
+                   </tr>
                 </thead>
-                <tbody className="divide-y">
-                  {filteredTransactions.map(t => (
-                    <tr key={t.id} className="hover:bg-gray-50">
-                      <td className="p-3 text-gray-500">{new Date(t.date).toLocaleDateString()}</td>
-                      <td className="p-3">
-                        <div className="font-bold text-gray-800">{t.description}</div>
-                        {t.type === 'expense' && (
-                          <div className="text-xs text-gray-400 uppercase">{categories.find(c => c.id === t.categoryId)?.name}</div>
-                        )}
-                      </td>
-                      <td className="p-3 text-gray-500">{t.account}</td>
-                      <td className={`p-3 text-right font-bold ${t.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                        {t.type === 'expense' ? '- ' : '+ '}{formatCurrency(t.amount)}
-                      </td>
-                      <td className="p-3">
-                        <button onClick={() => deleteTransaction(t.id)} className="text-red-400 hover:text-red-600">🗑️</button>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredTransactions.length === 0 && (
-                    <tr><td colSpan={5} className="p-8 text-center text-gray-400">Nenhum lançamento encontrado.</td></tr>
-                  )}
+                <tbody className="divide-y divide-zinc-100 font-medium">
+                   {getFilteredTransactions().map(t => (
+                      <tr key={t.id} className="group hover:bg-zinc-50/50 transition-colors">
+                         <td className="px-6 py-4">
+                            <span className="text-[11px] font-bold text-zinc-400 tabular-nums">
+                               {new Date(t.date).toLocaleDateString()}
+                            </span>
+                         </td>
+                         <td className="px-6 py-4">
+                            <div>
+                               <p className="text-sm font-black text-zinc-900 tracking-tight">{t.description}</p>
+                               <span className="text-[9px] font-bold text-lobo-primary/60 uppercase tracking-widest">
+                                  {categories.find(c => c.id === t.categoryId)?.name || 'Geral'}
+                               </span>
+                            </div>
+                         </td>
+                         <td className="px-6 py-4">
+                            <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-zinc-100 rounded-lg text-[9px] font-bold text-zinc-500 uppercase tracking-wider">
+                               {t.account}
+                            </span>
+                         </td>
+                         <td className="px-6 py-4 text-right">
+                            <span className={cn(
+                               "text-sm font-black tabular-nums",
+                               t.type === 'income' ? "text-green-600" : "text-red-500"
+                            )}>
+                               {t.type === 'income' ? '+' : '-'} {formatCurrency(t.amount).replace('R$', '').trim()}
+                            </span>
+                            <span className="ml-1 text-[10px] font-bold text-zinc-400">BRL</span>
+                         </td>
+                         <td className="px-6 py-4">
+                            <button 
+                               onClick={() => deleteTransaction(t.id)}
+                               className="w-8 h-8 rounded-lg bg-red-50 text-red-400 flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                            >
+                               <Trash2 className="w-4 h-4" />
+                            </button>
+                         </td>
+                      </tr>
+                   ))}
                 </tbody>
-              </table>
-            </div>
+             </table>
+             {getFilteredTransactions().length === 0 && (
+                <div className="py-24 flex flex-col items-center justify-center text-center opacity-20">
+                   <Activity className="w-16 h-16 mb-4" />
+                   <p className="text-sm font-bold uppercase tracking-widest">Nenhum lançamento registrado</p>
+                </div>
+             )}
           </div>
         </div>
       )}
 
       {subTab === 'categories' && (
-        <div className="grid md:grid-cols-2 gap-8">
-          <form onSubmit={addCategory} className="bg-gray-50 p-6 rounded shadow-sm h-fit">
-            <h3 className="font-bold text-gray-800 mb-4">Nova Categoria</h3>
-            <div className="flex gap-2">
-              <input 
-                className="flex-1 p-2 border rounded bg-white text-gray-900" 
-                placeholder="Nome da Categoria (Ex: UNIFORMES)" 
-                value={newCatName} 
-                onChange={e => setNewCatName(e.target.value)} 
-                required 
-              />
-              <button className="bg-gray-900 text-white px-4 rounded font-bold">Add</button>
-            </div>
-          </form>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+           <div className="bg-white border border-zinc-200 p-8 rounded-[2.5rem] shadow-sm h-fit">
+              <h3 className="text-xl font-black text-zinc-900 tracking-tight uppercase mb-6">Nova Categoria</h3>
+              <form onSubmit={addCategory} className="space-y-4">
+                 <div>
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1.5 block">Nome da Categoria</label>
+                    <input 
+                       className="w-full bg-zinc-100 border-none rounded-2xl p-4 text-sm font-bold placeholder:text-zinc-300 focus:ring-2 focus:ring-lobo-primary transition-all"
+                       placeholder="Ex: EVENTOS, UNIFORMES..."
+                       value={newCatName} 
+                       onChange={e => setNewCatName(e.target.value)}
+                       required 
+                    />
+                 </div>
+                 <button className="w-full bg-zinc-900 text-white p-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-lobo-primary transition-all">
+                    Criar Categoria
+                 </button>
+              </form>
+           </div>
 
-          <div className="bg-white rounded shadow-sm border p-4">
-            <h3 className="font-bold text-gray-800 mb-4">Categorias Cadastradas</h3>
-            <ul className="divide-y">
-              {categories.map(c => (
-                <li key={c.id} className="py-3 flex justify-between items-center group">
-                  {editingCatId === c.id ? (
-                    <form onSubmit={saveCategoryEdit} className="flex gap-2 w-full">
-                      <input 
-                        className="flex-grow border p-1 rounded text-sm bg-white text-gray-900"
-                        value={editingCatName}
-                        onChange={e => setEditingCatName(e.target.value)}
-                        autoFocus
-                      />
-                      <button type="submit" className="text-green-600 text-xs font-bold px-2 py-1 bg-green-50 rounded">Salvar</button>
-                      <button type="button" onClick={cancelCategoryEdit} className="text-gray-500 text-xs font-bold px-2 py-1 bg-gray-100 rounded">Cancelar</button>
-                    </form>
-                  ) : (
-                    <>
-                      <span className="font-bold text-gray-700">{c.name}</span>
-                      <div className="flex items-center gap-2">
-                         <button 
-                            type="button"
-                            onClick={() => startEditingCategory(c)} 
-                            className="text-blue-500 text-xs hover:bg-blue-50 px-2 py-1 rounded transition"
-                         >
-                           Editar
-                         </button>
-                         <button 
-                            type="button"
-                            onClick={() => deleteCategory(c.id)} 
-                            className="text-red-500 text-xs hover:bg-red-50 px-2 py-1 rounded transition"
-                         >
-                           Excluir
-                         </button>
-                         {c.isDefault && <span className="text-[10px] text-gray-400 border border-gray-200 px-1 rounded">Padrão</span>}
-                      </div>
-                    </>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {subTab === 'reports' && (
-        <div className="space-y-8">
-          {/* CARDS DE SALDO */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white p-6 rounded shadow border-l-4 border-blue-500">
-              <div className="text-gray-500 text-sm font-bold uppercase mb-1">Saldo Geral</div>
-              <div className={`text-2xl font-black ${getBalance() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(getBalance())}
+           <div className="bg-white border border-zinc-200 p-8 rounded-[2.5rem] shadow-sm">
+              <h3 className="text-xl font-black text-zinc-900 tracking-tight uppercase mb-6">Categorias do Clube</h3>
+              <div className="grid grid-cols-1 gap-3">
+                 {categories.map(c => (
+                    <div key={c.id} className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100 group transition-all hover:border-lobo-primary/20">
+                       <div className="flex items-center gap-3">
+                          <div className="w-2 h-2 rounded-full bg-lobo-primary shadow-sm shadow-lobo-primary/50" />
+                          <span className="text-xs font-black text-zinc-900 uppercase tracking-tight">{c.name}</span>
+                       </div>
+                       <div className="flex items-center gap-2">
+                          {c.isDefault ? (
+                             <span className="px-2 py-0.5 bg-zinc-200 rounded-md text-[8px] font-black text-zinc-500 uppercase">Sistema</span>
+                          ) : (
+                             <button onClick={() => deleteTransaction(c.id)} className="text-zinc-300 hover:text-red-500 transition-colors">
+                                <Trash2 className="w-4 h-4" />
+                             </button>
+                          )}
+                       </div>
+                    </div>
+                 ))}
               </div>
-            </div>
-            <div className="bg-white p-6 rounded shadow border-l-4 border-sky-400">
-              <div className="text-gray-500 text-sm font-bold uppercase mb-1">Mercado Pago</div>
-              <div className="text-xl font-bold text-gray-800">{formatCurrency(getBalance('Mercado Pago'))}</div>
-            </div>
-            <div className="bg-white p-6 rounded shadow border-l-4 border-green-500">
-              <div className="text-gray-500 text-sm font-bold uppercase mb-1">PagBank</div>
-              <div className="text-xl font-bold text-gray-800">{formatCurrency(getBalance('PagBank'))}</div>
-            </div>
-          </div>
-
-          {/* GRÁFICO DE BARRAS CSS */}
-          <div className="bg-white p-6 rounded shadow border">
-            <h3 className="font-bold text-gray-800 mb-6">Despesas por Categoria</h3>
-            <div className="space-y-4">
-              {getExpensesByCategory().map(([catName, value], idx, arr) => {
-                const maxVal = arr[0][1]; // O maior valor define a escala 100%
-                const percent = (value / maxVal) * 100;
-                return (
-                  <div key={catName}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="font-bold text-gray-700">{catName}</span>
-                      <span className="text-gray-600">{formatCurrency(value)}</span>
-                    </div>
-                    <div className="w-full bg-gray-100 rounded-full h-3">
-                      <div 
-                        className="bg-lobo-primary h-3 rounded-full transition-all duration-500" 
-                        style={{ width: `${percent}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })}
-              {getExpensesByCategory().length === 0 && (
-                <div className="text-center text-gray-400 italic">Sem despesas registradas.</div>
-              )}
-            </div>
-          </div>
+           </div>
         </div>
       )}
+
+      {/* Add Transaction Modal */}
+      <AnimatePresence>
+         {showAddModal && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+               <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  onClick={() => setShowAddModal(false)}
+                  className="absolute inset-0 bg-zinc-900/80 backdrop-blur-sm" 
+               />
+               <motion.div 
+                  initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                  className="bg-white w-full max-w-lg rounded-[3rem] shadow-2xl relative z-10 overflow-hidden"
+               >
+                  <div className="p-10">
+                     <div className="flex items-center justify-between mb-8">
+                        <h3 className="text-2xl font-black text-zinc-900 tracking-tight uppercase">
+                           {type === 'income' ? 'Registrar Entrada' : 'Registrar Saída'}
+                        </h3>
+                        <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-zinc-100 rounded-full transition-colors">
+                           <X className="w-6 h-6 text-zinc-400" />
+                        </button>
+                     </div>
+                     
+                     <form onSubmit={addTransaction} className="space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                           <button 
+                              type="button" 
+                              onClick={() => setType('income')}
+                              className={cn(
+                                 "p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all",
+                                 type === 'income' ? "bg-green-50 border-green-500 text-green-700" : "bg-white border-zinc-200 text-zinc-400"
+                              )}
+                           >
+                              Entrada
+                           </button>
+                           <button 
+                              type="button" 
+                              onClick={() => setType('expense')}
+                              className={cn(
+                                 "p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all",
+                                 type === 'expense' ? "bg-red-50 border-red-500 text-red-700" : "bg-white border-zinc-200 text-zinc-400"
+                              )}
+                           >
+                              Saída
+                           </button>
+                        </div>
+
+                        <div className="space-y-4">
+                           <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                 <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1 block">Valor (R$)</label>
+                                 <input 
+                                    className="w-full bg-zinc-100 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-lobo-primary"
+                                    type="number" step="0.01" value={amount} onChange={e => setAmount(e.target.value)} required 
+                                 />
+                              </div>
+                              <div>
+                                 <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1 block">Data</label>
+                                 <input 
+                                    className="w-full bg-zinc-100 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-lobo-primary"
+                                    type="date" value={date} onChange={e => setDate(e.target.value)} required 
+                                 />
+                              </div>
+                           </div>
+
+                           <div>
+                              <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1 block">Descrição do Lançamento</label>
+                              <input 
+                                 className="w-full bg-zinc-100 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-lobo-primary"
+                                 value={desc} onChange={e => setDesc(e.target.value)} placeholder="Ex: Venda de Ingressos" required 
+                              />
+                           </div>
+
+                           <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                 <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1 block">Conta</label>
+                                 <select 
+                                    className="w-full bg-zinc-100 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-lobo-primary"
+                                    value={acc} onChange={e => setAcc(e.target.value as PaymentAccount)}
+                                 >
+                                    <option value="Mercado Pago">Mercado Pago</option>
+                                    <option value="PagBank">PagBank</option>
+                                 </select>
+                              </div>
+                              {type === 'expense' && (
+                                 <div>
+                                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1 block">Categoria</label>
+                                    <select 
+                                       className="w-full bg-zinc-100 border-none rounded-2xl p-4 text-sm font-bold focus:ring-2 focus:ring-lobo-primary"
+                                       value={catId} onChange={e => setCatId(e.target.value)} required
+                                    >
+                                       <option value="">Selecione...</option>
+                                       {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                    </select>
+                                 </div>
+                              )}
+                           </div>
+                        </div>
+
+                        <div className="pt-4 flex gap-3">
+                           <button 
+                              type="button"
+                              onClick={() => setShowAddModal(false)}
+                              className="flex-1 bg-zinc-100 text-zinc-500 py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-zinc-200 transition-colors"
+                           >
+                              Cancelar
+                           </button>
+                           <button 
+                              type="submit"
+                              className="flex-2 bg-lobo-secondary text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-lobo-primary/20 hover:brightness-110 transition-all"
+                           >
+                              Salvar Lançamento
+                           </button>
+                        </div>
+                     </form>
+                  </div>
+               </motion.div>
+            </div>
+         )}
+      </AnimatePresence>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getDb, saveDb, deleteItem } from '../../../services/storageService';
-import { Socio, ShareMember } from '../../../types';
+import { Socio } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, 
@@ -15,7 +15,14 @@ import {
   CheckCircle2,
   Calendar,
   Zap,
-  Info
+  Info,
+  X,
+  Plus,
+  ArrowRight,
+  ShieldCheck,
+  CreditCard,
+  Hash,
+  Smartphone
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import * as XLSX from 'xlsx';
@@ -70,9 +77,6 @@ export const SociosTab: React.FC = () => {
       return;
     }
 
-    // Mapping based on user's image
-    // Comprador, RA, Cpf do Comprador, Telefone do Comprador, Plano, Fim do Plano
-    
     const processed = data.map((row: any) => {
       const name = row['Comprador'] || row['comprador'];
       const ra = row['RA'] || row['ra'];
@@ -96,7 +100,6 @@ export const SociosTab: React.FC = () => {
         expiryFormatted = String(expiryRaw);
       }
 
-      // Check if active (current date vs expiry) or future year 2025+
       const today = new Date();
       const isActiveByDate = expiryRaw instanceof Date && expiryRaw >= today;
       const isActiveByYear = expiryYear >= 2025;
@@ -116,7 +119,6 @@ export const SociosTab: React.FC = () => {
       };
     }).filter(Boolean) as any[];
 
-    // Filter only those active OR expiring in 2025 or later
     const filtered = processed.filter(s => s.isValid);
     
     setImportPreview(filtered);
@@ -132,31 +134,14 @@ export const SociosTab: React.FC = () => {
 
     try {
       const db = getDb();
-      const newSocios: Socio[] = importPreview.map(p => ({
-        id: p.id,
-        name: p.name,
-        status: p.status,
-        expiryDate: p.expiryDate,
-        plan: p.plan,
-        ra: p.ra,
-        rg: p.rg,
-        cpf: p.cpf,
-        phone: p.phone,
-        expiryYear: p.expiryYear
-      }));
-
-      db.socios = newSocios;
+      db.socios = importPreview as Socio[];
       await saveDb(db);
-      
-      // Force local update
       load();
-      
       setImportPreview([]);
       setImportStatus({ success: true, message: 'Lista de sócios atualizada com sucesso!' });
       setTimeout(() => setImportStatus(null), 5000);
     } catch (error) {
-      console.error('Erro na importação:', error);
-      setImportStatus({ success: false, message: 'Falha ao salvar no banco de dados. Tente novamente.' });
+      setImportStatus({ success: false, message: 'Falha ao salvar no banco de dados.' });
     }
   };
 
@@ -170,9 +155,7 @@ export const SociosTab: React.FC = () => {
 
   const toggleFilter = (filter: string) => {
     setActiveFilters(prev => 
-      prev.includes(filter) 
-        ? prev.filter(f => f !== filter) 
-        : [...prev, filter]
+      prev.includes(filter) ? prev.filter(f => f !== filter) : [...prev, filter]
     );
   };
 
@@ -184,9 +167,7 @@ export const SociosTab: React.FC = () => {
       s.ra?.includes(searchTerm);
     
     if (!matchesSearch) return false;
-
-    // Multi-select logic
-    if (activeFilters.length === 0) return true; // Se nada selecionado, mostra tudo (ou nada, mas usuário disse que quer ver as opções)
+    if (activeFilters.length === 0) return true;
     
     return activeFilters.some(filter => {
       if (filter === 'Ativo') return s.status === 'Ativo';
@@ -197,316 +178,384 @@ export const SociosTab: React.FC = () => {
   });
 
   return (
-    <div className="space-y-10">
-      <header className="flex items-center space-x-3 mb-2">
-        <div className="p-3 bg-lobo-primary rounded-2xl text-white shadow-xl shadow-lobo-primary/20">
-          <Users className="w-6 h-6" />
-        </div>
+    <div className="space-y-10 animate-fade-in">
+      {/* Header Actions */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
-          <h2 className="text-2xl font-black text-zinc-900 tracking-tight">Gestão de Sócios</h2>
-          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">Integração Datletica</p>
+          <h2 className="text-2xl font-black text-zinc-900 tracking-tight flex items-center gap-3">
+            <Users className="w-8 h-8 text-lobo-secondary" />
+            Gestão de Associados
+          </h2>
+          <p className="text-sm font-bold text-zinc-400 mt-1 uppercase tracking-widest">Controle operacional e financeiro da base</p>
         </div>
-      </header>
+        
+        <div className="flex items-center gap-3">
+           <button 
+             onClick={clearSocios}
+             className="px-4 py-2 text-[10px] font-black text-red-500 uppercase tracking-widest hover:bg-red-50 rounded-xl transition-all"
+           >
+             Limpar Base
+           </button>
+           <div className="w-px h-8 bg-zinc-200 mx-2 hidden lg:block" />
+           <p className="text-xs font-black text-zinc-900 tabular-nums">
+             Total: <span className="text-lobo-secondary text-base ml-1">{socios.length}</span>
+           </p>
+        </div>
+      </div>
 
-      {/* Import Section */}
-      <section className="bg-zinc-50/50 p-8 rounded-[2.5rem] border border-zinc-100">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-lobo-primary rounded-xl text-white">
-                <FileSpreadsheet className="w-5 h-5" />
+      {/* Main Grid: Import & Summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <section className="lg:col-span-2 bg-zinc-900 text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
+          <div className="relative z-10 space-y-8">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
+                <FileSpreadsheet className="w-6 h-6 text-lobo-primary" />
               </div>
-              <h3 className="text-xl font-black text-zinc-900 tracking-tight">Importar Base Datletica</h3>
+              <h3 className="text-2xl font-black tracking-tight">Importação Datletica</h3>
             </div>
-            
-            <p className="text-sm text-zinc-600 font-medium leading-relaxed">
-              Exporte seus associados no painel da Datletica e suba o arquivo aqui. 
-              O sistema utiliza as colunas <span className="font-bold underline text-lobo-primary">Comprador</span> e <span className="font-bold underline text-lobo-primary">Fim do Plano</span> para filtrar automaticamente apenas os sócios ativos em 2026+.
-            </p>
 
-            <div className="relative group">
-              <input 
-                type="file" 
-                accept=".xlsx, .xls, .csv" 
-                onChange={handleFileUpload}
-                className="hidden" 
-                id="file-upload"
-                disabled={isImporting}
-              />
-              <label 
-                htmlFor="file-upload"
-                className={cn(
-                  "flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-3xl cursor-pointer transition-all",
-                  isImporting ? "bg-zinc-100 border-zinc-200 cursor-wait" : "bg-white border-zinc-200 hover:border-lobo-primary hover:bg-lobo-primary/[0.02]"
-                )}
-              >
-                <Upload className={cn("w-10 h-10 mb-4 transition-colors", isImporting ? "text-zinc-300" : "text-zinc-400 group-hover:text-lobo-primary")} />
-                <span className="text-sm font-black text-zinc-700 tracking-tight">
-                  {isImporting ? 'Processando arquivo...' : 'Selecionar Planilha Datletica (.xlsx)'}
-                </span>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-2">{isImporting ? 'Lendo colunas: Comprador, Fim do Plano...' : 'Clique ou arraste o arquivo aqui'}</span>
-              </label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <p className="text-sm text-white/70 font-medium leading-relaxed">
+                  Suba sua exportação <span className="text-lobo-primary font-bold">.xlsx</span> para atualizar a base. O sistema aplicará filtros automáticos de validade.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                   {['Comprador', 'RA', 'CPF', 'Vencimento'].map(tag => (
+                     <span key={tag} className="px-2.5 py-1 bg-white/5 border border-white/10 rounded-lg text-[9px] font-bold text-white/50 uppercase tracking-wider">{tag}</span>
+                   ))}
+                </div>
+              </div>
+
+              <div className="relative">
+                <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileUpload} className="hidden" id="file-upload" disabled={isImporting} />
+                <label 
+                  htmlFor="file-upload"
+                  className={cn(
+                    "flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-[2rem] cursor-pointer transition-all h-full aspect-video sm:aspect-square",
+                    isImporting ? "bg-white/5 border-white/10" : "bg-white/5 border-white/20 hover:border-lobo-primary hover:bg-white/[0.08]"
+                  )}
+                >
+                  <Upload className={cn("w-10 h-10 mb-4 transition-colors", isImporting ? "text-white/20" : "text-white/40 group-hover:text-lobo-primary")} />
+                  <span className="text-xs font-black tracking-tight text-center px-4">
+                    {isImporting ? 'Lendo planilha...' : 'Upload Planilha'}
+                  </span>
+                </label>
+              </div>
             </div>
+
+            {importPreview.length > 0 && (
+              <motion.button 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                onClick={confirmImport}
+                className="w-full bg-lobo-primary text-zinc-900 py-5 rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-lobo-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+              >
+                Confirmar {importPreview.length} Sócios
+                <ArrowRight className="inline-block ml-2 w-4 h-4" />
+              </motion.button>
+            )}
 
             {importStatus && (
               <motion.div 
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 className={cn(
-                  "p-4 rounded-2xl flex items-start gap-4",
-                  importStatus.success ? "bg-green-50 text-green-700 border border-green-100" : "bg-red-50 text-red-700 border border-red-100"
+                  "p-4 rounded-2xl flex items-center gap-3",
+                  importStatus.success ? "bg-green-500/10 text-green-400 border border-green-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"
                 )}
               >
-                {importStatus.success ? <CheckCircle2 className="w-5 h-5 shrink-0" /> : <AlertCircle className="w-5 h-5 shrink-0" />}
-                <p className="text-[10px] sm:text-xs font-bold leading-normal uppercase tracking-wider">{importStatus.message}</p>
+                {importStatus.success ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                <p className="text-[10px] font-black uppercase tracking-wider">{importStatus.message}</p>
               </motion.div>
             )}
-
-            {importPreview.length > 0 && (
-              <button 
-                onClick={confirmImport}
-                className="w-full bg-lobo-primary text-white py-4 rounded-2xl font-black text-sm shadow-xl shadow-lobo-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
-              >
-                Confirmar Importação de {importPreview.length} Sócios Ativos
-              </button>
-            )}
           </div>
+          <div className="absolute top-0 right-0 w-96 h-96 bg-lobo-primary/10 rounded-full blur-[100px] -mr-48 -mt-48 pointer-events-none" />
+        </section>
 
-          <div className="bg-white p-6 rounded-3xl border border-zinc-100 shadow-sm space-y-4">
+        <section className="bg-white border border-zinc-200 p-8 rounded-[3rem] shadow-sm flex flex-col justify-between">
+          <div className="space-y-6">
             <h4 className="flex items-center gap-2 text-xs font-black text-zinc-900 uppercase tracking-widest">
-              <Filter className="w-4 h-4 text-lobo-primary" />
-              Lógica de Registro Ativa
+              <Zap className="w-4 h-4 text-lobo-primary" />
+              Painel de Status
             </h4>
             
-            <div className="space-y-3">
-              <div className="flex items-start gap-3 p-3 bg-zinc-50 rounded-2xl">
-                <div className="w-8 h-8 rounded-lg bg-green-500 flex items-center justify-center text-white shrink-0">
-                  <UserCheck className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-zinc-900">IDENTIFICA COLUNAS</p>
-                  <p className="text-[9px] text-zinc-500 font-bold">Puxa automaticamente: RA, CPF, Celular e Plano.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 bg-zinc-50 rounded-2xl">
-                <div className="w-8 h-8 rounded-lg bg-lobo-secondary flex items-center justify-center text-white shrink-0">
-                  <Calendar className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-zinc-900">VERIFICAÇÃO 2026+</p>
-                  <p className="text-[9px] text-zinc-500 font-bold">Quem vence em 2026, 2027 ou está ativo hoje entra na lista.</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 p-3 bg-zinc-50 rounded-2xl">
-                <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center text-white shrink-0">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black text-zinc-900">DADOS COMPLETOS</p>
-                  <p className="text-[9px] text-zinc-500 font-bold">Clique no nome para ver RA e CPF do Comprador.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
-          <div className="flex flex-col gap-3">
-             <div className="relative w-full md:w-96">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300" />
-              <input 
-                className="w-full bg-white border border-zinc-200 rounded-2xl pl-11 pr-4 py-3.5 text-sm font-bold focus:ring-2 focus:ring-lobo-primary outline-none transition-all shadow-sm"
-                placeholder="Buscar por nome, RA ou CPF..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2">Filtrar por:</span>
-              {['Ativo', '2026', '2025'].map(filter => (
-                <button
-                  key={filter}
-                  onClick={() => toggleFilter(filter)}
-                  className={cn(
-                    "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all",
-                    activeFilters.includes(filter)
-                      ? "bg-lobo-primary border-lobo-primary text-white shadow-md shadow-lobo-primary/20"
-                      : "bg-white border-zinc-200 text-zinc-400 hover:border-zinc-300 shadow-sm"
-                  )}
-                >
-                  {filter}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {socios.length > 0 && (
-            <button 
-              onClick={clearSocios}
-              className="flex items-center gap-2 text-[10px] font-black text-red-500 uppercase tracking-widest hover:bg-red-50 px-4 py-2 rounded-xl transition-all"
-            >
-              <Trash2 className="w-4 h-4" />
-              Limpar Lista ({socios.length})
-            </button>
-          )}
-        </div>
-
-        <div className="bg-white rounded-[2rem] border border-zinc-200 shadow-sm overflow-hidden">
-           <table className="w-full text-left border-collapse">
-             <thead>
-               <tr className="bg-zinc-50/80">
-                 <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Sócio (Comprador)</th>
-                 <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">RA</th>
-                 <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Plano</th>
-                 <th className="px-6 py-4 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Fim do Plano</th>
-                 <th className="px-6 py-4"></th>
-               </tr>
-             </thead>
-             <tbody className="divide-y divide-zinc-100">
-               {filteredSocios.map(s => (
-                 <tr key={s.id} className="hover:bg-zinc-50/50 transition-colors group">
-                   <td className="px-6 py-4">
-                     <button 
-                       onClick={() => setSelectedSocio(s)}
-                       className="text-sm font-black text-zinc-800 text-left hover:text-lobo-primary transition-colors underline decoration-zinc-200 underline-offset-4"
-                     >
-                       {s.name}
-                     </button>
-                   </td>
-                   <td className="px-6 py-4">
-                     <span className="text-[10px] font-black text-zinc-400 tabular-nums">{s.ra || '---'}</span>
-                   </td>
-                   <td className="px-6 py-4">
-                     <span className="text-[10px] font-bold text-zinc-500 uppercase">{s.plan || 'N/A'}</span>
-                   </td>
-                   <td className="px-6 py-4">
-                     <div className={cn(
-                       "inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border",
-                       s.status === 'Ativo' 
-                        ? "bg-green-50 text-green-600 border-green-200" 
-                        : "bg-amber-50 text-amber-600 border-amber-200"
-                     )}>
-                       {s.expiryDate || '---'}
+            <div className="grid grid-cols-1 gap-4">
+               <div className="p-5 bg-zinc-50 rounded-[1.8rem] flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                     <div className="w-10 h-10 rounded-2xl bg-green-500/10 flex items-center justify-center text-green-600">
+                        <UserCheck className="w-5 h-5" />
                      </div>
-                   </td>
-                   <td className="px-6 py-4 text-right">
-                     <button 
-                        onClick={() => deleteItem('socios', s.id)}
-                        className="p-2 text-zinc-200 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                     >
-                       <Trash2 className="w-4 h-4" />
-                     </button>
-                   </td>
-                 </tr>
-               ))}
-               {filteredSocios.length === 0 && (
-                 <tr>
-                   <td colSpan={5} className="py-20 text-center">
-                      <Users className="w-12 h-12 text-zinc-100 mx-auto mb-4" />
-                      <p className="text-xs font-black text-zinc-300 uppercase tracking-widest">Nenhum associado encontrado</p>
-                   </td>
-                 </tr>
-               )}
-             </tbody>
-           </table>
+                     <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tight">Ativos Hoje</span>
+                  </div>
+                  <span className="text-xl font-black text-zinc-900 tabular-nums">{socios.filter(s => s.status === 'Ativo').length}</span>
+               </div>
+
+               <div className="p-5 bg-zinc-50 rounded-[1.8rem] flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                     <div className="w-10 h-10 rounded-2xl bg-lobo-primary/10 flex items-center justify-center text-lobo-primary">
+                        <Calendar className="w-5 h-5" />
+                     </div>
+                     <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tight">Validade 2026+</span>
+                  </div>
+                  <span className="text-xl font-black text-zinc-900 tabular-nums">{socios.filter(s => s.expiryYear >= 2026).length}</span>
+               </div>
+
+               <div className="p-5 bg-zinc-50 rounded-[1.8rem] flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                     <div className="w-10 h-10 rounded-2xl bg-zinc-900/10 flex items-center justify-center text-zinc-900">
+                        <CreditCard className="w-5 h-5" />
+                     </div>
+                     <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tight">Em 2025</span>
+                  </div>
+                  <span className="text-xl font-black text-zinc-900 tabular-nums">{socios.filter(s => s.expiryYear === 2025).length}</span>
+               </div>
+            </div>
+          </div>
+          
+          <div className="mt-8 pt-8 border-t border-zinc-100 flex items-center gap-3 opacity-30">
+             <ShieldCheck className="w-5 h-5 text-zinc-500" />
+             <p className="text-[9px] font-bold text-zinc-500 leading-tight uppercase tracking-widest italic">Processamento local seguro</p>
+          </div>
+        </section>
+      </div>
+
+      {/* List Filters & Actions */}
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between bg-zinc-100/50 p-4 rounded-[2rem] border border-zinc-200">
+          <div className="relative w-full md:w-[450px]">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300" />
+            <input 
+              className="w-full bg-white border border-zinc-200 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-bold focus:ring-2 focus:ring-lobo-primary outline-none transition-all shadow-sm"
+              placeholder="Pesquisar por nome, plano, RA ou CPF..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {['Ativo', '2026', '2025'].map(filter => (
+              <button
+                key={filter}
+                onClick={() => toggleFilter(filter)}
+                className={cn(
+                  "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all",
+                  activeFilters.includes(filter)
+                    ? "bg-zinc-900 border-zinc-900 text-white shadow-xl shadow-black/10"
+                    : "bg-white border-zinc-200 text-zinc-400 hover:border-zinc-300 shadow-sm"
+                )}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Members Table */}
+        <div className="bg-white rounded-[2.5rem] border border-zinc-200 shadow-sm overflow-hidden">
+           <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-zinc-50/80 border-b border-zinc-100">
+                    <th className="px-8 py-5 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Associado</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Matrícula (RA)</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Assinatura</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-zinc-400 uppercase tracking-widest">Vencimento</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-zinc-400 uppercase tracking-widest text-right">Ação</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100">
+                  {filteredSocios.map(s => (
+                    <tr key={s.id} className="hover:bg-zinc-50/50 transition-colors group">
+                      <td className="px-8 py-5">
+                        <button 
+                          onClick={() => setSelectedSocio(s)}
+                          className="flex flex-col items-start"
+                        >
+                          <span className="text-sm font-black text-zinc-900 group-hover:text-lobo-primary transition-colors tracking-tight uppercase leading-tight select-none">
+                            {s.name}
+                          </span>
+                          <span className="text-[9px] font-bold text-zinc-400 mt-0.5 select-none">{s.cpf ? `CPF: ${s.cpf}` : 'Sem identificação'}</span>
+                        </button>
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className="text-[11px] font-black text-zinc-400 tabular-nums flex items-center gap-1.5">
+                           <Hash className="w-3 h-3" />
+                           {s.ra || '---'}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className="text-[10px] font-black text-zinc-500 uppercase tracking-tight bg-zinc-100 px-3 py-1 rounded-lg">
+                           {s.plan || 'Plano Padrão'}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-2">
+                           <div className={cn("w-1.5 h-1.5 rounded-full shadow-sm", s.status === 'Ativo' ? "bg-green-500" : "bg-amber-500")} />
+                           <span className={cn(
+                             "text-[10px] font-black uppercase tracking-widest",
+                             s.status === 'Ativo' ? "text-green-600" : "text-amber-600"
+                           )}>
+                             {s.expiryDate || '---'}
+                           </span>
+                        </div>
+                      </td>
+                      <td className="px-8 py-5 text-right">
+                        <button 
+                           onClick={() => deleteItem('socios', s.id)}
+                           className="w-9 h-9 rounded-xl text-zinc-200 hover:text-red-500 hover:bg-red-50 flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 shadow-sm bg-white"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {filteredSocios.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-24 text-center">
+                         <div className="flex flex-col items-center justify-center opacity-20">
+                            <Users className="w-16 h-16 mb-4" />
+                            <p className="text-sm font-black text-zinc-900 uppercase tracking-widest italic">Base de dados vazia para esta busca</p>
+                         </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+           </div>
         </div>
       </div>
 
       {/* Socio Detail Modal */}
       <AnimatePresence>
         {selectedSocio && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[101] flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedSocio(null)}
-              className="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm"
+              className="absolute inset-0 bg-zinc-900/80 backdrop-blur-md"
             />
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-md bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+              exit={{ opacity: 0, scale: 0.95, y: 30 }}
+              className="relative w-full max-w-xl bg-white rounded-[3.5rem] shadow-2xl overflow-hidden"
             >
-              <div className="bg-lobo-primary p-8 text-white">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
-                    <UserCheck className="w-6 h-6" />
-                  </div>
-                  <button onClick={() => setSelectedSocio(null)} className="p-2 hover:bg-white/10 rounded-xl transition-all">
-                    <Trash2 className="w-5 h-5 rotate-45" />
-                  </button>
-                </div>
-                <h3 className="text-2xl font-black tracking-tight leading-tight">{selectedSocio.name}</h3>
-                <p className="text-xs font-bold opacity-80 uppercase tracking-widest mt-1">{selectedSocio.plan}</p>
+              <div className="bg-zinc-900 p-12 text-white relative">
+                 <div className="absolute top-0 right-0 p-8">
+                    <button onClick={() => setSelectedSocio(null)} className="w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all">
+                       <X className="w-6 h-6" />
+                    </button>
+                 </div>
+                 
+                 <div className="space-y-4">
+                    <div className={cn(
+                       "inline-flex items-center px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border",
+                       selectedSocio.status === 'Ativo' ? "bg-green-500/10 text-green-400 border-green-500/20" : "bg-red-500/10 text-red-400 border-red-500/20"
+                    )}>
+                       {selectedSocio.status}
+                    </div>
+                    <div>
+                       <h3 className="text-4xl font-black tracking-tight leading-tight uppercase">{selectedSocio.name}</h3>
+                       <p className="text-xs font-black text-lobo-primary uppercase tracking-[0.2em] mt-2 mb-6">{selectedSocio.plan || 'Associado Lobo'}</p>
+                    </div>
+                 </div>
+
+                 <div className="absolute bottom-0 right-0 p-12 opacity-5 pointer-events-none">
+                    <Users className="w-64 h-64 -mb-20 -mr-20" />
+                 </div>
               </div>
 
-              <div className="p-8 space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">RG</span>
-                    <p className="font-black text-zinc-900 tabular-nums">{selectedSocio.rg || 'Não informado'}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">CPF</span>
-                    <p className="font-black text-zinc-900 tabular-nums">{selectedSocio.cpf || 'Não informado'}</p>
-                  </div>
-                </div>
+              <div className="p-12">
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-10">
+                    <div className="space-y-6">
+                       <h5 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Informações Pessoais</h5>
+                       <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-400">
+                                <CreditCard className="w-5 h-5" />
+                             </div>
+                             <div>
+                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Documento (CPF)</p>
+                                <p className="text-sm font-black text-zinc-800 tabular-nums uppercase">{selectedSocio.cpf || 'NÃO INFORMADO'}</p>
+                             </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-400">
+                                <FileText className="w-5 h-5" />
+                             </div>
+                             <div>
+                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">RG</p>
+                                <p className="text-sm font-black text-zinc-800 tabular-nums uppercase">{selectedSocio.rg || 'NÃO INFORMADO'}</p>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">RA / Matrícula</span>
-                    <p className="font-black text-zinc-900 tabular-nums">{selectedSocio.ra || 'Não informado'}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Telefone</span>
-                    <p className="font-black text-zinc-900 tabular-nums text-xs">{selectedSocio.phone || 'Não informado'}</p>
-                  </div>
-                </div>
+                    <div className="space-y-6">
+                       <h5 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest border-b border-zinc-100 pb-2">Vínculo Acadêmico</h5>
+                       <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-400">
+                                <Hash className="w-5 h-5" />
+                             </div>
+                             <div>
+                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Matrícula (RA)</p>
+                                <p className="text-sm font-black text-zinc-800 tabular-nums uppercase">{selectedSocio.ra || 'NÃO INFORMADO'}</p>
+                             </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                             <div className="w-10 h-10 rounded-2xl bg-zinc-50 flex items-center justify-center text-zinc-400">
+                                <Smartphone className="w-5 h-5" />
+                             </div>
+                             <div>
+                                <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Celular</p>
+                                <p className="text-sm font-black text-zinc-800 tabular-nums uppercase">{selectedSocio.phone || 'NÃO INFORMADO'}</p>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
 
-                <div className="pt-4 border-t border-zinc-100 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Vencimento</span>
-                    <p className="text-sm font-black text-lobo-primary">{selectedSocio.expiryDate}</p>
-                  </div>
-                  <div className={cn(
-                    "px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border",
-                    selectedSocio.status === 'Ativo' ? "bg-green-50 text-green-600 border-green-200" : "bg-red-50 text-red-600 border-red-200"
-                  )}>
-                    Sócio {selectedSocio.status}
-                  </div>
-                </div>
-
-                <button 
-                  onClick={() => setSelectedSocio(null)}
-                  className="w-full bg-zinc-900 text-white py-4 rounded-2xl font-black text-sm tracking-tight hover:bg-zinc-800 transition-all"
-                >
-                  Fechar Detalhes
-                </button>
+                 <div className="mt-12 pt-8 border-t border-zinc-100 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                       <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-lobo-primary">
+                          <Calendar className="w-6 h-6" />
+                       </div>
+                       <div>
+                          <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest">Validade do Plano</p>
+                          <p className="text-lg font-black text-zinc-900 tabular-nums uppercase">{selectedSocio.expiryDate}</p>
+                       </div>
+                    </div>
+                    <div className="text-right">
+                       <p className="text-[9px] font-black text-zinc-400 uppercase tracking-widest mb-1 italic">Processado via</p>
+                       <span className="text-[10px] font-black text-lobo-secondary bg-lobo-primary/5 px-3 py-1 rounded-lg">DATLETICA INTEGRATED</span>
+                    </div>
+                 </div>
               </div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
-      <div className="p-6 bg-gradient-to-r from-lobo-secondary to-zinc-900 rounded-3xl text-white flex items-center gap-6 shadow-xl relative overflow-hidden">
-        <div className="absolute right-0 top-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16" />
-        <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm shrink-0">
-          <Info className="w-8 h-8 text-lobo-primary" />
-        </div>
-        <div>
-          <h4 className="text-lg font-black tracking-tight leading-tight mb-1">Como extrair os dados da Datletica?</h4>
-          <p className="text-[10px] opacity-70 font-bold leading-relaxed max-w-xl">
-            No seu painel Administrativo da Datletica, vá em <span className="text-lobo-primary">Associados/Sócios</span>, aplique os filtros desejados e exporte para <span className="text-lobo-primary">Excel</span>. O site vai ler as colunas <span className="underline italic">Comprador</span>, <span className="underline italic">RA</span>, <span className="underline italic">Cpf do Comprador</span> e <span className="underline italic">Fim do Plano</span> automaticamente.
-          </p>
-        </div>
-      </div>
+      <footer className="p-10 bg-zinc-100/80 rounded-[3rem] border border-zinc-200">
+         <div className="flex flex-col lg:flex-row items-center gap-10">
+            <div className="w-16 h-16 rounded-[1.5rem] bg-white border border-zinc-200 flex items-center justify-center shadow-lg shadow-black/[0.03]">
+               <Info className="w-8 h-8 text-lobo-primary" />
+            </div>
+            <div className="flex-1 space-y-2">
+               <h4 className="text-lg font-black tracking-tight uppercase">Guia de Importação Eficiente</h4>
+               <p className="text-[11px] font-medium text-zinc-400 leading-relaxed max-w-2xl">
+                  Ao exportar da Datletica, certifique-se de manter as colunas originais: <span className="text-zinc-900 font-black">Comprador, RA, Cpf do Comprador, Telefone do Comprador</span> e <span className="text-zinc-900 font-black">Fim do Plano</span>. O sistema prioriza dados limpos para garantir uma gestão de acesso impecável eventos e jogos universitários.
+               </p>
+            </div>
+            <div className="flex flex-col items-center lg:items-end opacity-20">
+               <Zap className="w-8 h-8 mb-2" />
+               <span className="text-[8px] font-black uppercase tracking-[0.4em]">Integrated DB</span>
+            </div>
+         </div>
+      </footer>
     </div>
   );
 };
