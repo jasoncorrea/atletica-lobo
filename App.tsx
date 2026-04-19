@@ -9,19 +9,44 @@ import { getConfig } from './services/storageService';
 const App: React.FC = () => {
   const [config, setConfig] = useState(getConfig());
 
+  const createCircularIcon = (url: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const size = 128;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(url);
+
+        ctx.beginPath();
+        ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.drawImage(img, 0, 0, size, size);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.onerror = () => resolve(url);
+      img.src = url;
+    });
+  };
+
   useEffect(() => {
     const updateConfig = () => setConfig(getConfig());
     window.addEventListener('storage', updateConfig);
     
     // Favicon Sync
     if (config.logoUrl) {
-      let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-      if (!link) {
-        link = document.createElement('link');
-        link.rel = 'icon';
-        document.getElementsByTagName('head')[0].appendChild(link);
-      }
-      link.href = config.logoUrl;
+      createCircularIcon(config.logoUrl).then(circularUrl => {
+        let link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+        if (!link) {
+          link = document.createElement('link');
+          link.rel = 'icon';
+          document.getElementsByTagName('head')[0].appendChild(link);
+        }
+        link.href = circularUrl;
+      });
     }
 
     return () => window.removeEventListener('storage', updateConfig);
