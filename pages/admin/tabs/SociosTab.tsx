@@ -77,6 +77,8 @@ export const SociosTab: React.FC = () => {
       return;
     }
 
+    const seenIds = new Map<string, number>();
+
     const processed = data.map((row: any) => {
       const name = row['Comprador'] || row['comprador'];
       const ra = row['RA'] || row['ra'];
@@ -101,25 +103,37 @@ export const SociosTab: React.FC = () => {
       }
 
       const today = new Date();
-      const isActiveByDate = expiryRaw instanceof Date && expiryRaw >= today;
-      const isActiveByYear = expiryYear >= 2025;
+      today.setHours(0,0,0,0);
+      
+      const isActive = (expiryRaw instanceof Date && expiryRaw >= today) || (expiryYear >= 2026);
+
+      const baseId = `socio_${String(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_')}_${ra ? String(ra).replace(/[^a-zA-Z0-9]/g, '') : Math.random().toString(36).substr(2, 5)}`.substr(0, 90);
+      
+      // Uniqueness Control
+      let finalId = baseId;
+      const count = seenIds.get(baseId) || 0;
+      if (count > 0) {
+        finalId = `${baseId}_${count}`;
+      }
+      seenIds.set(baseId, count + 1);
 
       return {
-        id: `socio_${String(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_')}_${ra ? String(ra).replace(/[^a-zA-Z0-9]/g, '') : Math.random().toString(36).substr(2, 5)}`.substr(0, 100),
+        id: finalId,
         name: String(name),
-        ra: ra ? String(ra) : undefined,
-        rg: rg ? String(rg) : undefined,
-        cpf: cpf ? String(cpf) : undefined,
-        phone: phone ? String(phone) : undefined,
-        status: (isActiveByDate || isActiveByYear) ? 'Ativo' : 'Inativo',
+        ra: ra ? String(ra) : '',
+        rg: rg ? String(rg) : '',
+        cpf: cpf ? String(cpf) : '',
+        phone: phone ? String(phone) : '',
+        status: isActive ? 'Ativo' : 'Inativo',
         expiryDate: expiryFormatted,
-        plan: plan ? String(plan) : undefined,
+        plan: plan ? String(plan) : 'Padrão',
         expiryYear,
-        isValid: isActiveByDate || isActiveByYear
+        isValid: true // Keep all members for history
       };
     }).filter(Boolean) as any[];
 
-    const filtered = processed.filter(s => s.isValid);
+    // No filtered step, we want the whole base for management
+    const filtered = processed;
     
     setImportPreview(filtered);
     setImportStatus({ 
@@ -140,8 +154,11 @@ export const SociosTab: React.FC = () => {
       setImportPreview([]);
       setImportStatus({ success: true, message: 'Lista de sócios atualizada com sucesso!' });
       setTimeout(() => setImportStatus(null), 5000);
-    } catch (error) {
-      setImportStatus({ success: false, message: 'Falha ao salvar no banco de dados.' });
+    } catch (error: any) {
+      setImportStatus({ 
+        success: false, 
+        message: 'Falha ao salvar no banco de dados. ' + (error?.message || '') 
+      });
     }
   };
 
@@ -159,6 +176,26 @@ export const SociosTab: React.FC = () => {
     );
   };
 
+  const isSocioActive = (s: Socio) => {
+    if (!s.expiryDate) return false;
+    // Assuming format DD/MM/YYYY
+    const parts = s.expiryDate.split('/');
+    if (parts.length !== 3) return false;
+    
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // JS Months 0-11
+    const year = parseInt(parts[2], 10);
+    
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return false;
+    
+    const expiry = new Date(year, month, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    expiry.setHours(0, 0, 0, 0);
+    
+    return expiry >= today;
+  };
+
   const filteredSocios = socios.filter(s => {
     const matchesSearch = 
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -170,12 +207,16 @@ export const SociosTab: React.FC = () => {
     if (activeFilters.length === 0) return true;
     
     return activeFilters.some(filter => {
-      if (filter === 'Ativo') return s.status === 'Ativo';
+      if (filter === 'Ativo') return isSocioActive(s);
       if (filter === '2026') return (s.expiryYear ?? 0) === 2026;
       if (filter === '2025') return (s.expiryYear ?? 0) === 2025;
       return false;
     });
   });
+
+  const activeCount = socios.filter(isSocioActive).length;
+  const count2026 = socios.filter(s => (s.expiryYear ?? 0) >= 2026).length;
+  const count2025 = socios.filter(s => (s.expiryYear ?? 0) === 2025).length;
 
   return (
     <div className="space-y-10 animate-fade-in">
@@ -287,7 +328,7 @@ export const SociosTab: React.FC = () => {
                      </div>
                      <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tight">Ativos Hoje</span>
                   </div>
-                  <span className="text-xl font-black text-zinc-900 tabular-nums">{socios.filter(s => s.status === 'Ativo').length}</span>
+                  <span className="text-xl font-black text-zinc-900 tabular-nums">{activeCount}</span>
                </div>
 
                <div className="p-5 bg-zinc-50 rounded-[1.8rem] flex items-center justify-between">
@@ -297,7 +338,7 @@ export const SociosTab: React.FC = () => {
                      </div>
                      <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tight">Validade 2026+</span>
                   </div>
-                  <span className="text-xl font-black text-zinc-900 tabular-nums">{socios.filter(s => (s.expiryYear ?? 0) >= 2026).length}</span>
+                  <span className="text-xl font-black text-zinc-900 tabular-nums">{count2026}</span>
                </div>
 
                <div className="p-5 bg-zinc-50 rounded-[1.8rem] flex items-center justify-between">
@@ -307,7 +348,7 @@ export const SociosTab: React.FC = () => {
                      </div>
                      <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tight">Em 2025</span>
                   </div>
-                  <span className="text-xl font-black text-zinc-900 tabular-nums">{socios.filter(s => (s.expiryYear ?? 0) === 2025).length}</span>
+                  <span className="text-xl font-black text-zinc-900 tabular-nums">{count2025}</span>
                </div>
             </div>
           </div>
@@ -390,10 +431,10 @@ export const SociosTab: React.FC = () => {
                       </td>
                       <td className="px-8 py-5">
                         <div className="flex items-center gap-2">
-                           <div className={cn("w-1.5 h-1.5 rounded-full shadow-sm", s.status === 'Ativo' ? "bg-green-500" : "bg-amber-500")} />
+                           <div className={cn("w-1.5 h-1.5 rounded-full shadow-sm", isSocioActive(s) ? "bg-green-500" : "bg-amber-500")} />
                            <span className={cn(
                              "text-[10px] font-black uppercase tracking-widest",
-                             s.status === 'Ativo' ? "text-green-600" : "text-amber-600"
+                             isSocioActive(s) ? "text-green-600" : "text-amber-600"
                            )}>
                              {s.expiryDate || '---'}
                            </span>

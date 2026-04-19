@@ -42,9 +42,22 @@ export const DashboardTab: React.FC = () => {
   // Stats Calculations
   const activeCompetition = db.competitions.find(c => c.isActive);
   const totalSocios = db.socios.length;
+
   const activeSocios = db.socios.filter(s => {
-    const endPlan = new Date(s.expiryDate || '');
-    return endPlan >= new Date();
+    if (!s.expiryDate) return false;
+    const parts = s.expiryDate.split('/');
+    if (parts.length !== 3) return false;
+    
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    
+    const expiry = new Date(year, month, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    expiry.setHours(0, 0, 0, 0);
+    
+    return expiry >= today;
   }).length;
   const lowStock = db.products.filter(p => p.quantity < 5).length;
 

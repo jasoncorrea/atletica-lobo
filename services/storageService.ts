@@ -194,43 +194,52 @@ export const getDb = (): DatabaseSchema => {
 };
 
 export const saveDb = async (dbUpdate: DatabaseSchema) => {
-  // In this refactored version, we push individual changes to Firestore.
-  // However, many parts of the existing UI call saveDb(fullDb).
-  // We'll compare and sync to avoid unnecessary writes.
-  
-  // For simplicity and immediate fix of the user's issue, 
-  // we will implement specific save methods later, 
-  // but for now, we'll try to batch update what's new.
-  
-  // NOTE: In a real firestore app, you'd call addDoc/setDoc individually.
-  // We'll keep the synchronous interface but async push to cloud.
-  
   try {
-    const batch = writeBatch(db);
-    
-    // We'll just trust the UI passed the whole DB and we sync collections.
-    // This is intensive but ensures sync for this migration.
-    
-    // Helper to sync collection
-    const syncCollection = (name: keyof DatabaseSchema, data: any[]) => {
-      data.forEach(item => {
-        if (item.id) {
-          batch.set(doc(db, name as string, item.id), item);
+    // Helper to clean undefined values recursively (Firestore fails on undefined)
+    const cleanObject = (obj: any): any => {
+      const newObj: any = {};
+      Object.keys(obj).forEach(key => {
+        if (obj[key] === undefined) return;
+        if (obj[key] !== null && typeof obj[key] === 'object' && !Array.isArray(obj[key])) {
+          newObj[key] = cleanObject(obj[key]);
+        } else if (Array.isArray(obj[key])) {
+          newObj[key] = obj[key].map((item: any) => 
+            (item !== null && typeof item === 'object') ? cleanObject(item) : item
+          );
+        } else {
+          newObj[key] = obj[key];
         }
       });
+      return newObj;
     };
 
-    (Object.keys(dbUpdate) as Array<keyof DatabaseSchema>).forEach(key => {
-      if (Array.isArray(dbUpdate[key])) {
-        syncCollection(key, dbUpdate[key] as any[]);
+    const cleanedDb = cleanObject(dbUpdate);
+    const operations: { ref: any, data: any }[] = [];
+
+    // Map all collections to operations
+    (Object.keys(cleanedDb) as Array<keyof DatabaseSchema>).forEach(key => {
+      if (Array.isArray(cleanedDb[key])) {
+        (cleanedDb[key] as any[]).forEach(item => {
+          if (item.id) {
+            operations.push({ ref: doc(db, key as string, item.id), data: item });
+          }
+        });
       } else if (key === 'scoreRules') {
-        Object.entries(dbUpdate.scoreRules).forEach(([modId, rule]) => {
-          batch.set(doc(db, 'scoreRules', modId), { id: modId, rule });
+        Object.entries(cleanedDb.scoreRules).forEach(([modId, rule]) => {
+          operations.push({ ref: doc(db, 'scoreRules', modId), data: { id: modId, rule } });
         });
       }
     });
 
-    await batch.commit();
+    // Execute in batches of 400 (Stay safe below 500 limit)
+    const BATCH_SIZE = 400;
+    for (let i = 0; i < operations.length; i += BATCH_SIZE) {
+      const batch = writeBatch(db);
+      const chunk = operations.slice(i, i + BATCH_SIZE);
+      chunk.forEach(op => batch.set(op.ref, op.data));
+      await batch.commit();
+    }
+
     localStorage.setItem(DB_KEY, JSON.stringify(dbUpdate));
     window.dispatchEvent(new Event('storage'));
   } catch (err) {
