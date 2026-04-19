@@ -99,6 +99,21 @@ export interface BirthdayMember {
   birthDate: string; // ISO format YYYY-MM-DD
 }
 
+export interface Socio {
+  id: string;
+  name: string;
+  status: string;
+  expiryDate?: string;
+  email?: string;
+  phone?: string;
+  plan?: string;
+  document?: string;
+  ra?: string;
+  cpf?: string;
+  rg?: string;
+  expiryYear?: number;
+}
+
 export interface ShareMember {
   id: string;
   name: string;

@@ -13,6 +13,7 @@ import { FinanceTab } from './tabs/FinanceTab';
 import { InventoryTab } from './tabs/InventoryTab';
 import { BirthdaysTab } from './tabs/BirthdaysTab';
 import { MarketingTab } from './tabs/MarketingTab';
+import { SociosTab } from './tabs/SociosTab';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Trophy, 
@@ -26,7 +27,8 @@ import {
   LayoutDashboard,
   ShieldCheck,
   Cake,
-  Share2
+  Share2,
+  UserCheck
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -60,6 +62,7 @@ export const AdminDashboard: React.FC = () => {
     { id: 'results', label: 'Resultados', icon: CheckSquare },
     { id: 'penalties', label: 'Penalidades', icon: AlertTriangle },
     { id: 'birthdays', label: 'Aniversariantes', icon: Cake },
+    { id: 'socios', label: 'Sócios', icon: UserCheck },
     { id: 'marketing', label: 'Marketing', icon: Share2 },
     { id: 'settings', label: 'Configurações', icon: Settings }
   ];
@@ -154,6 +157,7 @@ export const AdminDashboard: React.FC = () => {
             {activeTab === 'competitions' && <CompetitionsTab onUpdate={refresh} />}
             {activeTab === 'athletics' && <AthleticsTab />}
             {activeTab === 'birthdays' && <BirthdaysTab />}
+            {activeTab === 'socios' && <SociosTab />}
             {activeTab === 'marketing' && <MarketingTab />}
             {activeTab === 'settings' && <SettingsTab />}
             {activeTab === 'finance' && role === 'SUPER_ADMIN' && <FinanceTab />}

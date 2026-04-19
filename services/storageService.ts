@@ -3,7 +3,7 @@ import {
   Competition, Athletic, Modality, Result, Penalty, 
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry,
   Transaction, FinanceCategory, Product, BirthdayMember,
-  ShareMember, SharePost, ShareRecord
+  ShareMember, SharePost, ShareRecord, Socio
 } from '../types';
 import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES, DB_KEY, APP_CONFIG_KEY } from '../constants';
 import { initializeApp } from 'firebase/app';
@@ -86,6 +86,7 @@ interface DatabaseSchema {
   shareMembers: ShareMember[];
   sharePosts: SharePost[];
   shareRecords: ShareRecord[];
+  socios: Socio[];
 }
 
 const initialDb: DatabaseSchema = {
@@ -101,7 +102,8 @@ const initialDb: DatabaseSchema = {
   birthdays: [],
   shareMembers: [],
   sharePosts: [],
-  shareRecords: []
+  shareRecords: [],
+  socios: []
 };
 
 // State management
@@ -116,7 +118,7 @@ let currentConfig: AppConfig = {
 const publicCollections = [
   'competitions', 'athletics', 'modalities', 'results', 
   'penalties', 'products', 'birthdays', 'scoreRules',
-  'shareMembers', 'sharePosts', 'shareRecords'
+  'shareMembers', 'sharePosts', 'shareRecords', 'socios'
 ];
 
 const restrictedCollections = [

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { getDb, calculateLeaderboard, saveDb, deleteItem } from '../services/storageService';
-import { Competition, LeaderboardEntry, BirthdayMember, ShareMember, SharePost, ShareRecord } from '../types';
+import { Competition, LeaderboardEntry, BirthdayMember, ShareMember, SharePost, ShareRecord, Socio } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Medal, AlertCircle, ChevronDown, Award, Cake, Calendar, Star, Users, Share2, CheckCircle2, Circle, BarChart2 } from 'lucide-react';
+import { Trophy, Medal, AlertCircle, ChevronDown, Award, Cake, Calendar, Star, Users, Share2, CheckCircle2, Circle, BarChart2, UserCheck, Search } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getAuth } from 'firebase/auth';
 
@@ -14,7 +14,11 @@ export const PublicDashboard: React.FC = () => {
   const [shareMembers, setShareMembers] = useState<ShareMember[]>([]);
   const [sharePosts, setSharePosts] = useState<SharePost[]>([]);
   const [shareRecords, setShareRecords] = useState<ShareRecord[]>([]);
-  const [activeTab, setActiveTab] = useState<'leaderboard' | 'birthdays' | 'marketing'>('leaderboard');
+  const [socios, setSocios] = useState<Socio[]>([]);
+  const [activeTab, setActiveTab] = useState<'leaderboard' | 'birthdays' | 'marketing' | 'socios'>('leaderboard');
+  const [sociosSearch, setSociosSearch] = useState('');
+  const [activeFilters, setActiveFilters] = useState<string[]>(['Ativo', '2026']);
+  const [selectedSocio, setSelectedSocio] = useState<Socio | null>(null);
   const auth = getAuth();
   const isAdmin = !!auth.currentUser;
 
@@ -27,6 +31,7 @@ export const PublicDashboard: React.FC = () => {
       setShareMembers(db.shareMembers || []);
       setSharePosts(db.sharePosts || []);
       setShareRecords(db.shareRecords || []);
+      setSocios(db.socios || []);
       
       if (comps.length > 0 && !selectedCompId) {
         const active = comps.find(c => c.isActive) || comps[0];
@@ -52,6 +57,14 @@ export const PublicDashboard: React.FC = () => {
       db.shareRecords = [...(db.shareRecords || []), newRecord];
       await saveDb(db);
     }
+  };
+
+  const toggleFilter = (filter: string) => {
+    setActiveFilters(prev => 
+      prev.includes(filter) 
+        ? prev.filter(f => f !== filter) 
+        : [...prev, filter]
+    );
   };
 
   useEffect(() => {
@@ -165,6 +178,19 @@ export const PublicDashboard: React.FC = () => {
           )}
           <Share2 className="w-4 h-4 relative z-10" />
           <span className="relative z-10">Marketing</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('socios')}
+          className={cn(
+            "relative px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all",
+            activeTab === 'socios' ? "text-white" : "text-zinc-400 hover:text-zinc-600"
+          )}
+        >
+          {activeTab === 'socios' && (
+            <motion.div layoutId="tab-bg" className="absolute inset-0 bg-zinc-900 rounded-xl shadow-lg" />
+          )}
+          <UserCheck className="w-4 h-4 relative z-10" />
+          <span className="relative z-10">Sócios</span>
         </button>
       </nav>
 
@@ -318,7 +344,7 @@ export const PublicDashboard: React.FC = () => {
                 </div>
               )}
             </div>
-          ) : (
+          ) : activeTab === 'marketing' ? (
             <div className="bg-white rounded-[2rem] shadow-xl shadow-zinc-200/50 border border-zinc-100 overflow-hidden p-6 md:p-8">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
@@ -449,8 +475,180 @@ export const PublicDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-4 w-full">
+                  <div>
+                    <h3 className="text-2xl font-black text-zinc-900 tracking-tight">Quadro de Sócios Ativos</h3>
+                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Conheça os associados oficiais da Atlética Lobo</p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mr-2">Filtrar:</span>
+                    {['Ativo', '2026', '2025'].map(filter => (
+                      <button
+                        key={filter}
+                        onClick={() => toggleFilter(filter)}
+                        className={cn(
+                          "px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all",
+                          activeFilters.includes(filter)
+                            ? "bg-lobo-primary border-lobo-primary text-white shadow-md shadow-lobo-primary/20"
+                            : "bg-white border-zinc-200 text-zinc-400 hover:border-zinc-300 shadow-sm"
+                        )}
+                      >
+                        {filter}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="relative w-full md:w-80">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300" />
+                  <input 
+                    className="w-full bg-white border border-zinc-200 rounded-2xl pl-11 pr-4 py-3.5 text-xs font-bold focus:ring-2 focus:ring-lobo-primary outline-none transition-all shadow-sm"
+                    placeholder="Buscar associado ou plano..."
+                    value={sociosSearch}
+                    onChange={e => setSociosSearch(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {socios
+                  .filter(s => {
+                    const matchesSearch = s.name.toLowerCase().includes(sociosSearch.toLowerCase()) || s.plan?.toLowerCase().includes(sociosSearch.toLowerCase());
+                    if (!matchesSearch) return false;
+                    if (activeFilters.length === 0) return true;
+                    return activeFilters.some(filter => {
+                      if (filter === 'Ativo') return s.status === 'Ativo';
+                      if (filter === '2026') return s.expiryYear === 2026;
+                      if (filter === '2025') return s.expiryYear === 2025;
+                      return false;
+                    });
+                  })
+                  .map((s, idx) => (
+                  <motion.div
+                    key={s.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.02 }}
+                    className="bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm flex items-center justify-between group hover:border-lobo-primary/30 hover:shadow-md transition-all cursor-pointer"
+                    onClick={() => setSelectedSocio(s)}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-2xl bg-orange-50 flex items-center justify-center text-lobo-primary group-hover:bg-lobo-primary group-hover:text-white transition-colors">
+                        <Users className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-zinc-800 tracking-tight leading-tight group-hover:text-lobo-primary transition-colors">{s.name}</h4>
+                        <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">{s.plan}</p>
+                      </div>
+                    </div>
+                    {s.status === 'Ativo' && (
+                      <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+                    )}
+                  </motion.div>
+                ))}
+                
+                {socios.length === 0 && (
+                  <div className="col-span-full py-20 bg-zinc-50 rounded-3xl border-2 border-dashed border-zinc-200 flex flex-col items-center justify-center text-zinc-400">
+                    <UserCheck className="w-12 h-12 mb-4 opacity-10" />
+                    <p className="text-sm font-bold uppercase tracking-widest">Nenhum sócio ativo no momento.</p>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </motion.div>
+      </AnimatePresence>
+
+      {/* Public Socio Detail Modal */}
+      <AnimatePresence>
+        {selectedSocio && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedSocio(null)}
+              className="absolute inset-0 bg-zinc-900/60 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl overflow-hidden"
+            >
+              <div className="bg-lobo-primary p-8 text-white relative overflow-hidden">
+                {/* Decorative element */}
+                <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
+                
+                <div className="flex justify-between items-start mb-6">
+                  <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md border border-white/20">
+                    <UserCheck className="w-6 h-6" />
+                  </div>
+                  <button 
+                    onClick={() => setSelectedSocio(null)}
+                    className="p-2 hover:bg-white/10 rounded-xl transition-all"
+                  >
+                    <Award className="w-5 h-5 rotate-45" />
+                  </button>
+                </div>
+                
+                <h3 className="text-2xl font-black tracking-tight leading-tight mb-1">{selectedSocio.name}</h3>
+                <div className="inline-flex items-center gap-2 px-2 py-0.5 bg-white/20 rounded-lg text-[9px] font-black uppercase tracking-widest backdrop-blur-sm border border-white/10">
+                  {selectedSocio.plan}
+                </div>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Registro (RG)</span>
+                    <p className="font-black text-zinc-900 tabular-nums text-sm truncate">{selectedSocio.rg || '---'}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">CPF</span>
+                    <p className="font-black text-zinc-900 tabular-nums text-sm truncate">{selectedSocio.cpf || '---'}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">RA / Matrícula</span>
+                    <p className="font-black text-zinc-900 tabular-nums text-sm truncate">{selectedSocio.ra || '---'}</p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Status</span>
+                    <div className={cn(
+                      "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider",
+                      selectedSocio.status === 'Ativo' ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                    )}>
+                      <div className={cn("w-1.5 h-1.5 rounded-full", selectedSocio.status === 'Ativo' ? "bg-green-500" : "bg-red-500")} />
+                      {selectedSocio.status}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 pt-4 border-t border-zinc-100">
+                  <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Associação válida até</span>
+                  <p className="text-zinc-600 font-bold flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-lobo-primary" />
+                    {selectedSocio.expiryDate}
+                  </p>
+                </div>
+
+                <button 
+                  onClick={() => setSelectedSocio(null)}
+                  className="w-full bg-zinc-900 text-white py-4 rounded-2xl font-black text-sm tracking-tight hover:bg-lobo-secondary transition-all shadow-lg active:scale-95"
+                >
+                  Confirmar Vizualização
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
     </div>
   );
