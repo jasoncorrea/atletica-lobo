@@ -41,17 +41,17 @@ export const DashboardTab: React.FC = () => {
 
   // Stats Calculations
   const activeCompetition = db.competitions.find(c => c.isActive);
-  const totalFinance = db.transactions.reduce((acc, t) => t.type === 'INCOME' ? acc + t.value : acc - t.value, 0);
+  const totalFinance = db.transactions.reduce((acc, t) => t.type === 'income' ? acc + t.amount : acc - t.amount, 0);
   const totalSocios = db.socios.length;
   const activeSocios = db.socios.filter(s => {
-    const endPlan = new Date(s.fimPlano);
+    const endPlan = new Date(s.expiryDate || '');
     return endPlan >= new Date();
   }).length;
   const lowStock = db.products.filter(p => p.quantity < 5).length;
 
   const financeData = db.transactions.slice(-7).map(t => ({
     name: new Date(t.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-    value: t.value * (t.type === 'INCOME' ? 1 : -1)
+    value: t.amount * (t.type === 'income' ? 1 : -1)
   }));
 
   const sociosData = [

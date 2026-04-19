@@ -171,8 +171,8 @@ export const SociosTab: React.FC = () => {
     
     return activeFilters.some(filter => {
       if (filter === 'Ativo') return s.status === 'Ativo';
-      if (filter === '2026') return s.expiryYear === 2026;
-      if (filter === '2025') return s.expiryYear === 2025;
+      if (filter === '2026') return (s.expiryYear ?? 0) === 2026;
+      if (filter === '2025') return (s.expiryYear ?? 0) === 2025;
       return false;
     });
   });
@@ -297,7 +297,7 @@ export const SociosTab: React.FC = () => {
                      </div>
                      <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tight">Validade 2026+</span>
                   </div>
-                  <span className="text-xl font-black text-zinc-900 tabular-nums">{socios.filter(s => s.expiryYear >= 2026).length}</span>
+                  <span className="text-xl font-black text-zinc-900 tabular-nums">{socios.filter(s => (s.expiryYear ?? 0) >= 2026).length}</span>
                </div>
 
                <div className="p-5 bg-zinc-50 rounded-[1.8rem] flex items-center justify-between">
@@ -307,7 +307,7 @@ export const SociosTab: React.FC = () => {
                      </div>
                      <span className="text-[10px] font-black text-zinc-900 uppercase tracking-tight">Em 2025</span>
                   </div>
-                  <span className="text-xl font-black text-zinc-900 tabular-nums">{socios.filter(s => s.expiryYear === 2025).length}</span>
+                  <span className="text-xl font-black text-zinc-900 tabular-nums">{socios.filter(s => (s.expiryYear ?? 0) === 2025).length}</span>
                </div>
             </div>
           </div>
