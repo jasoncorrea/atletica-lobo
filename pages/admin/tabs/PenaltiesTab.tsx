@@ -14,7 +14,7 @@ export const PenaltiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
 
   const load = () => {
     const db = getDb();
-    setAths(db.athletics);
+    setAths(db.athletics.filter(a => a.competitionId === comp.id));
     setPens(db.penalties.filter(p => p.competitionId === comp.id));
   };
   useEffect(() => { load(); }, [comp]);

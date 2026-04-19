@@ -89,6 +89,23 @@ export const PublicDashboard: React.FC = () => {
     return dateA.getMonth() - dateB.getMonth() || dateA.getDate() - dateB.getDate();
   });
 
+  const isSocioActive = (s: Socio) => {
+    if (!s.expiryDate) return false;
+    const parts = s.expiryDate.split('/');
+    if (parts.length !== 3) return false;
+    
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    
+    const expiry = new Date(year, month, day);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    expiry.setHours(0, 0, 0, 0);
+    
+    return expiry >= today;
+  };
+
   // Set default tab if leaderboard or birthdays are empty but marketing has data
   useEffect(() => {
     if (activeTab === 'leaderboard' && competitions.length === 0 && shareMembers.length > 0) {
@@ -521,7 +538,7 @@ export const PublicDashboard: React.FC = () => {
                     if (!matchesSearch) return false;
                     if (activeFilters.length === 0) return true;
                     return activeFilters.some(filter => {
-                      if (filter === 'Ativo') return s.status === 'Ativo';
+                      if (filter === 'Ativo') return isSocioActive(s);
                       if (filter === '2026') return s.expiryYear === 2026;
                       if (filter === '2025') return s.expiryYear === 2025;
                       return false;
@@ -545,7 +562,7 @@ export const PublicDashboard: React.FC = () => {
                         <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">{s.plan}</p>
                       </div>
                     </div>
-                    {s.status === 'Ativo' && (
+                    {isSocioActive(s) && (
                       <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
                     )}
                   </motion.div>
@@ -623,10 +640,10 @@ export const PublicDashboard: React.FC = () => {
                     <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest block">Status</span>
                     <div className={cn(
                       "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider",
-                      selectedSocio.status === 'Ativo' ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
+                      isSocioActive(selectedSocio) ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600"
                     )}>
-                      <div className={cn("w-1.5 h-1.5 rounded-full", selectedSocio.status === 'Ativo' ? "bg-green-500" : "bg-red-500")} />
-                      {selectedSocio.status}
+                      <div className={cn("w-1.5 h-1.5 rounded-full", isSocioActive(selectedSocio) ? "bg-green-500" : "bg-red-500")} />
+                      {isSocioActive(selectedSocio) ? 'Ativo' : 'Vencido'}
                     </div>
                   </div>
                 </div>

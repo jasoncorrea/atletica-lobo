@@ -11,6 +11,7 @@ export interface Athletic {
   id: string;
   name: string;
   logoUrl: string | null;
+  competitionId?: string; // Opcional para retrocompatibilidade
 }
 
 export interface Modality {

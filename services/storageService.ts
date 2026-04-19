@@ -303,6 +303,16 @@ export const createCompetition = async (name: string, year: number) => {
       });
     });
 
+    INITIAL_ATHLETICS.forEach(seed => {
+      const athleticId = Math.random().toString(36).substring(2, 9);
+      batch.set(doc(db, 'athletics', athleticId), {
+        id: athleticId,
+        competitionId: id,
+        name: seed.name,
+        logoUrl: seed.logoUrl
+      });
+    });
+
     await batch.commit();
     return newComp;
   } catch (err) {
@@ -315,11 +325,13 @@ export const createCompetition = async (name: string, year: number) => {
 // ... (omitting full repetition of calculated logic as it uses getDb which is now reactive)
 
 export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] => {
-  // Logic remains same as it uses currentDb (already reactive via listeners)
   const db_local = currentDb;
   const athleticsMap: Record<string, LeaderboardEntry> = {};
 
-  db_local.athletics.forEach(a => {
+  // Filter athletics by competitionId
+  const compAthletics = db_local.athletics.filter(a => a.competitionId === competitionId);
+
+  compAthletics.forEach(a => {
     athleticsMap[a.id] = {
       athleticId: a.id,
       name: a.name,

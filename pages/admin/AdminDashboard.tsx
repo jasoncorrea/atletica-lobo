@@ -29,7 +29,8 @@ import {
   ShieldCheck,
   Cake,
   Share2,
-  UserCheck
+  UserCheck,
+  ChevronRight
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -60,25 +61,42 @@ export const AdminDashboard: React.FC = () => {
     setActiveComp(active || null);
   };
 
-  const tabs = [
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['competitions']);
+
+  const navItems = [
     { id: 'dashboard', label: 'Início', icon: LayoutDashboard, color: 'bg-emerald-500' },
-    { id: 'competitions', label: 'Competições', icon: Trophy, color: 'bg-amber-500' },
-    { id: 'athletics', label: 'Atléticas', icon: Users, color: 'bg-blue-500' },
-    { id: 'modalities', label: 'Modalidades', icon: Layers, color: 'bg-purple-500' },
-    { id: 'results', label: 'Resultados', icon: CheckSquare, color: 'bg-green-500' },
-    { id: 'penalties', label: 'Penalidades', icon: AlertTriangle, color: 'bg-red-500' },
-    { id: 'birthdays', label: 'Aniversariantes', icon: Cake, color: 'bg-pink-500' },
+    { 
+      id: 'competitions_group', 
+      label: 'Competições', 
+      icon: Trophy, 
+      color: 'bg-amber-500',
+      children: [
+        { id: 'competitions', label: 'Todas Competições', icon: Trophy, color: 'bg-amber-500' },
+        { id: 'athletics', label: 'Atléticas', icon: Users, color: 'bg-blue-500' },
+        { id: 'modalities', label: 'Modalidades', icon: Layers, color: 'bg-purple-500' },
+        { id: 'results', label: 'Resultados', icon: CheckSquare, color: 'bg-green-500' },
+        { id: 'penalties', label: 'Penalidades', icon: AlertTriangle, color: 'bg-red-500' },
+      ]
+    },
     { id: 'socios', label: 'Sócios', icon: UserCheck, color: 'bg-lobo-secondary' },
+    { id: 'birthdays', label: 'Aniversariantes', icon: Cake, color: 'bg-pink-500' },
+    { id: 'inventory', label: 'Estoque', icon: Package, color: 'bg-orange-500' },
     { id: 'marketing', label: 'Marketing', icon: Share2, color: 'bg-cyan-500' },
     { id: 'settings', label: 'Configurações', icon: Settings, color: 'bg-zinc-500' }
   ];
 
   if (role === 'SUPER_ADMIN') {
-    tabs.splice(tabs.length - 1, 0, { id: 'finance', label: 'Financeiro', icon: DollarSign, color: 'bg-emerald-500' });
+    navItems.splice(navItems.length - 1, 0, { id: 'finance', label: 'Financeiro', icon: DollarSign, color: 'bg-emerald-500' });
   }
 
-  // Estoque agora disponível para DIRETORIA e SUPER_ADMIN
-  tabs.splice(tabs.length - 1, 0, { id: 'inventory', label: 'Estoque', icon: Package, color: 'bg-orange-500' });
+  const toggleMenu = (id: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(id) ? prev.filter(m => m !== id) : [...prev, id]
+    );
+  };
+
+  const allTabs = navItems.flatMap(item => item.children ? [item, ...item.children] : [item]);
+  const activeTabLabel = allTabs.find(t => t.id === activeTab)?.label || 'Painel';
 
   return (
     <div className="flex min-h-screen bg-zinc-50 -m-4 md:-m-8">
@@ -105,42 +123,99 @@ export const AdminDashboard: React.FC = () => {
           <div className="md:px-4 mb-4">
              <p className="hidden md:block text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Dashboard Principal</p>
           </div>
-          {tabs.map(t => {
-            const Icon = t.icon;
-            const isActive = activeTab === t.id;
-            
-            return (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative",
-                  isActive 
-                    ? "bg-white text-lobo-secondary shadow-xl" 
-                    : "text-white/40 hover:text-white hover:bg-white/5"
-                )}
-              >
-                <div className={cn(
-                   "w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300",
-                   //@ts-ignore
-                   isActive ? t.color : "bg-white/5 group-hover:bg-white/10"
-                )}>
-                   <Icon className={cn("w-4 h-4", isActive ? "text-white" : "text-white/40 group-hover:text-white")} />
-                </div>
-                <span className="hidden md:block text-xs font-black tracking-tight uppercase">{t.label}</span>
-                
-                {isActive && (
-                   <motion.div 
-                    layoutId="sidebarActive"
-                    className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-lobo-primary rounded-l-full" 
-                   />
-                )}
+          
+          {navItems.map(item => {
+            const Icon = item.icon;
+            const hasChildren = !!item.children;
+            const isExpanded = expandedMenus.includes(item.id);
+            const isParentActive = hasChildren && item.children?.some(c => c.id === activeTab);
+            const isActive = activeTab === item.id || isParentActive;
 
-                {/* Tooltip for mobile */}
-                <span className="md:hidden absolute left-full ml-4 px-2 py-1 bg-lobo-secondary text-white text-[10px] rounded opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                  {t.label}
-                </span>
-              </button>
+            return (
+              <div key={item.id} className="space-y-1">
+                <button
+                  onClick={() => {
+                    if (hasChildren) {
+                      toggleMenu(item.id);
+                    } else {
+                      setActiveTab(item.id);
+                    }
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative",
+                    isActive && !hasChildren
+                      ? "bg-white text-lobo-secondary shadow-xl" 
+                      : (isParentActive ? "bg-white/10 text-white" : "text-white/40 hover:text-white hover:bg-white/5")
+                  )}
+                >
+                  <div className={cn(
+                     "w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300",
+                     //@ts-ignore
+                     (isActive && !hasChildren) ? item.color : "bg-white/5 group-hover:bg-white/10"
+                  )}>
+                     <Icon className={cn("w-4 h-4", (isActive && !hasChildren) ? "text-white" : "text-white/40 group-hover:text-white")} />
+                  </div>
+                  <span className="hidden md:block text-xs font-black tracking-tight uppercase">{item.label}</span>
+                  
+                  {isActive && !hasChildren && (
+                     <motion.div 
+                      layoutId="sidebarActive"
+                      className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-lobo-primary rounded-l-full" 
+                     />
+                  )}
+
+                  {hasChildren && (
+                    <motion.div
+                      animate={{ rotate: isExpanded ? 90 : 0 }}
+                      className="hidden md:block ml-auto opacity-20 group-hover:opacity-100 transition-opacity"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </motion.div>
+                  )}
+                </button>
+
+                {hasChildren && isExpanded && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="md:pl-6 space-y-1"
+                  >
+                    {item.children?.map(sub => {
+                      const SubIcon = sub.icon;
+                      const isSubActive = activeTab === sub.id;
+
+                      return (
+                        <button
+                          key={sub.id}
+                          onClick={() => setActiveTab(sub.id)}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group relative",
+                            isSubActive 
+                              ? "bg-white text-lobo-secondary shadow-lg" 
+                              : "text-white/30 hover:text-white hover:bg-white/5"
+                          )}
+                        >
+                          <div className={cn(
+                             "w-6 h-6 rounded-lg flex items-center justify-center transition-all",
+                             //@ts-ignore
+                             isSubActive ? sub.color : "bg-white/5"
+                          )}>
+                             <SubIcon className={cn("w-3 h-3", isSubActive ? "text-white" : "text-white/40")} />
+                          </div>
+                          <span className="hidden md:block text-[10px] font-black tracking-tight uppercase">{sub.label}</span>
+                          
+                          {isSubActive && (
+                            <motion.div 
+                             layoutId="sidebarActiveSub"
+                             className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-lobo-primary rounded-l-full" 
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </motion.div>
+                )}
+              </div>
             );
           })}
         </nav>
@@ -165,7 +240,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="flex items-start gap-6 pt-20">
             <div className="flex flex-col">
                <h2 className="text-2xl font-black text-lobo-secondary tracking-tighter uppercase leading-none">
-                 {tabs.find(t => t.id === activeTab)?.label}
+                 {activeTabLabel}
                </h2>
                <div className="flex items-center gap-2 mt-2">
                   <span className="text-[10px] font-black text-lobo-secondary uppercase tracking-widest">Painel Administrativo</span>
@@ -208,9 +283,9 @@ export const AdminDashboard: React.FC = () => {
               transition={{ duration: 0.3, ease: "easeOut" }}
               className="max-w-[1600px] mx-auto"
             >
-              {activeTab === 'dashboard' && <DashboardTab />}
+              {activeTab === 'dashboard' && <DashboardTab activeComp={activeComp} />}
               {activeTab === 'competitions' && <CompetitionsTab onUpdate={refresh} />}
-              {activeTab === 'athletics' && <AthleticsTab />}
+              {activeTab === 'athletics' && activeComp && <AthleticsTab comp={activeComp} />}
               {activeTab === 'birthdays' && <BirthdaysTab />}
               {activeTab === 'socios' && <SociosTab />}
               {activeTab === 'marketing' && <MarketingTab />}
@@ -218,7 +293,7 @@ export const AdminDashboard: React.FC = () => {
               {activeTab === 'finance' && role === 'SUPER_ADMIN' && <FinanceTab />}
               {activeTab === 'inventory' && <InventoryTab />}
               
-              {(!activeComp && ['modalities', 'results', 'penalties'].includes(activeTab)) ? (
+              {(!activeComp && ['modalities', 'results', 'penalties', 'athletics'].includes(activeTab)) ? (
                 <div className="bg-white rounded-[2.5rem] border border-zinc-100 shadow-sm p-20 text-center flex flex-col items-center">
                   <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-amber-500 mb-6 border border-amber-100">
                     <AlertTriangle className="w-10 h-10" />

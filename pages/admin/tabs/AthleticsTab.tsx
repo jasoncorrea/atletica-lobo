@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { getDb, saveDb, handleImageUpload } from '../../../services/storageService';
-import { Athletic } from '../../../types';
+import { Athletic, Competition } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Edit2, Trash2, X, Camera, Shield } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
-export const AthleticsTab: React.FC = () => {
+interface Props {
+  comp: Competition;
+}
+
+export const AthleticsTab: React.FC<Props> = ({ comp }) => {
   const [list, setList] = useState<Athletic[]>([]);
   const [name, setName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState<string | null>(null);
   
-  const load = () => setList(getDb().athletics);
-  useEffect(() => { load(); }, []);
+  const load = () => {
+    const athletics = getDb().athletics.filter(a => a.competitionId === comp.id);
+    setList(athletics);
+  };
+
+  useEffect(() => { load(); }, [comp.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,15 +33,18 @@ export const AthleticsTab: React.FC = () => {
       if (index !== -1) {
         db.athletics[index].name = name;
         saveDb(db);
-        window.dispatchEvent(new Event('storage'));
       }
     } else {
-      db.athletics.push({ id: Math.random().toString(36).substr(2, 9), name, logoUrl: null });
+      db.athletics.push({ 
+        id: Math.random().toString(36).substr(2, 9), 
+        name, 
+        logoUrl: null,
+        competitionId: comp.id
+      });
       saveDb(db);
-      window.dispatchEvent(new Event('storage'));
     }
-
-    load(); 
+    
+    setTimeout(load, 100);
     resetForm();
   };
 

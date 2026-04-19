@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getDb } from '../../../services/storageService';
+import { Competition } from '../../../types';
 import { 
   BarChart, 
   Bar, 
@@ -25,12 +26,17 @@ import {
   LayoutGrid,
   Activity,
   UserCheck,
-  DollarSign
+  DollarSign,
+  Flag
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../../../lib/utils';
 
-export const DashboardTab: React.FC = () => {
+interface Props {
+  activeComp?: Competition | null;
+}
+
+export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
   const [db, setDb] = useState(getDb());
 
   useEffect(() => {
@@ -40,8 +46,11 @@ export const DashboardTab: React.FC = () => {
   }, []);
 
   // Stats Calculations
-  const activeCompetition = db.competitions.find(c => c.isActive);
+  const displayComp = activeComp || db.competitions.find(c => c.isActive);
   const totalSocios = db.socios.length;
+  
+  const compAthletics = displayComp ? db.athletics.filter(a => a.competitionId === displayComp.id).length : 0;
+  const compModalities = displayComp ? db.modalities.filter(m => m.competitionId === displayComp.id).length : 0;
 
   const activeSocios = db.socios.filter(s => {
     if (!s.expiryDate) return false;
@@ -78,12 +87,12 @@ export const DashboardTab: React.FC = () => {
           <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest leading-none">Inteligência Operacional Atlética Lobo</p>
         </div>
         <div className="flex items-center gap-4">
-           {activeCompetition && (
+           {displayComp && (
              <div className="bg-lobo-primary px-6 py-3 rounded-2xl shadow-xl shadow-lobo-primary/20 flex items-center gap-3">
                 <Trophy className="w-5 h-5 text-zinc-900" />
                 <div>
-                   <p className="text-[9px] font-black text-zinc-900/40 uppercase tracking-widest leading-none">Comp. Ativa</p>
-                   <p className="text-xs font-black text-zinc-900 leading-none mt-1 uppercase">{activeCompetition.name}</p>
+                   <p className="text-[9px] font-black text-zinc-900/40 uppercase tracking-widest leading-none">Comp. em Foco</p>
+                   <p className="text-xs font-black text-zinc-900 leading-none mt-1 uppercase">{displayComp.name}</p>
                 </div>
              </div>
            )}

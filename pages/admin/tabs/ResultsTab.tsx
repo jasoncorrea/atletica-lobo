@@ -59,7 +59,7 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   const loadData = () => {
     const db = getDb();
     setMods(db.modalities.filter(m => m.competitionId === comp.id));
-    setAths(db.athletics);
+    setAths(db.athletics.filter(a => a.competitionId === comp.id));
     setResultsList(db.results.filter(r => r.competitionId === comp.id));
   };
 
