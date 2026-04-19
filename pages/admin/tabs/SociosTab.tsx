@@ -102,13 +102,13 @@ export const SociosTab: React.FC = () => {
       const isActiveByYear = expiryYear >= 2025;
 
       return {
-        id: Math.random().toString(36).substr(2, 9),
+        id: `socio_${name}_${ra || Math.random().toString(36).substr(2, 5)}`.replace(/\s+/g, '_'),
         name: String(name),
         ra: ra ? String(ra) : undefined,
         rg: rg ? String(rg) : undefined,
         cpf: cpf ? String(cpf) : undefined,
         phone: phone ? String(phone) : undefined,
-        status: isActiveByDate ? 'Ativo' : 'Inativo',
+        status: (isActiveByDate || isActiveByYear) ? 'Ativo' : 'Inativo',
         expiryDate: expiryFormatted,
         plan: plan ? String(plan) : undefined,
         expiryYear,
@@ -130,26 +130,34 @@ export const SociosTab: React.FC = () => {
   const confirmImport = async () => {
     if (importPreview.length === 0) return;
 
-    const db = getDb();
-    const newSocios: Socio[] = importPreview.map(p => ({
-      id: p.id,
-      name: p.name,
-      status: p.status,
-      expiryDate: p.expiryDate,
-      plan: p.plan,
-      ra: p.ra,
-      rg: p.rg,
-      cpf: p.cpf,
-      phone: p.phone,
-      expiryYear: p.expiryYear
-    }));
+    try {
+      const db = getDb();
+      const newSocios: Socio[] = importPreview.map(p => ({
+        id: p.id,
+        name: p.name,
+        status: p.status,
+        expiryDate: p.expiryDate,
+        plan: p.plan,
+        ra: p.ra,
+        rg: p.rg,
+        cpf: p.cpf,
+        phone: p.phone,
+        expiryYear: p.expiryYear
+      }));
 
-    db.socios = newSocios;
-    await saveDb(db);
-    
-    setImportPreview([]);
-    setImportStatus({ success: true, message: 'Lista de sócios atualizada com sucesso!' });
-    setTimeout(() => setImportStatus(null), 5000);
+      db.socios = newSocios;
+      await saveDb(db);
+      
+      // Force local update
+      load();
+      
+      setImportPreview([]);
+      setImportStatus({ success: true, message: 'Lista de sócios atualizada com sucesso!' });
+      setTimeout(() => setImportStatus(null), 5000);
+    } catch (error) {
+      console.error('Erro na importação:', error);
+      setImportStatus({ success: false, message: 'Falha ao salvar no banco de dados. Tente novamente.' });
+    }
   };
 
   const clearSocios = async () => {
@@ -157,6 +165,7 @@ export const SociosTab: React.FC = () => {
     const db = getDb();
     db.socios = [];
     await saveDb(db);
+    load();
   };
 
   const toggleFilter = (filter: string) => {

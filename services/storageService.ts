@@ -232,6 +232,7 @@ export const saveDb = async (dbUpdate: DatabaseSchema) => {
 
     await batch.commit();
     localStorage.setItem(DB_KEY, JSON.stringify(dbUpdate));
+    window.dispatchEvent(new Event('storage'));
   } catch (err) {
     handleFirestoreError(err, 'write');
   }
