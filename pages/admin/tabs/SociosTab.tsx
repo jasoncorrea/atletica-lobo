@@ -102,7 +102,7 @@ export const SociosTab: React.FC = () => {
       const isActiveByYear = expiryYear >= 2025;
 
       return {
-        id: `socio_${name}_${ra || Math.random().toString(36).substr(2, 5)}`.replace(/\s+/g, '_'),
+        id: `socio_${String(name).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_')}_${ra ? String(ra).replace(/[^a-zA-Z0-9]/g, '') : Math.random().toString(36).substr(2, 5)}`.substr(0, 100),
         name: String(name),
         ra: ra ? String(ra) : undefined,
         rg: rg ? String(rg) : undefined,

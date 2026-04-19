@@ -87,5 +87,25 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow write: if isSignedIn();
     }
+
+    match /socios/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /shareMembers/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /sharePosts/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /shareRecords/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
   }
 }

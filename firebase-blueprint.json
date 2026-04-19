@@ -125,6 +125,58 @@
       "properties": {
         "rule": { "type": "array" }
       }
+    },
+    "socio": {
+      "title": "Socio",
+      "description": "Information about an athletics associate",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "type": "string" },
+        "expiryDate": { "type": "string" },
+        "plan": { "type": "string" },
+        "ra": { "type": "string" },
+        "rg": { "type": "string" },
+        "cpf": { "type": "string" },
+        "phone": { "type": "string" },
+        "expiryYear": { "type": "integer" }
+      },
+      "required": ["id", "name", "status"]
+    },
+    "shareMember": {
+      "title": "ShareMember",
+      "description": "Member involved in social media sharing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "sharePost": {
+      "title": "SharePost",
+      "description": "Post to be shared for marketing",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "link": { "type": "string" },
+        "date": { "type": "integer" }
+      },
+      "required": ["id", "title", "date"]
+    },
+    "shareRecord": {
+      "title": "ShareRecord",
+      "description": "Log of a post shared by a member",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "memberId": { "type": "string" },
+        "postId": { "type": "string" },
+        "shared": { "type": "boolean" }
+      },
+      "required": ["id", "memberId", "postId", "shared"]
     }
   },
   "firestore": {
@@ -163,6 +215,22 @@
     "/birthdays/{memberId}": {
       "schema": "birthday",
       "description": "Board member birthdays"
+    },
+    "/socios/{socioId}": {
+      "schema": "socio",
+      "description": "Athletics associates"
+    },
+    "/shareMembers/{memberId}": {
+      "schema": "shareMember",
+      "description": "Marketing sharing members"
+    },
+    "/sharePosts/{postId}": {
+      "schema": "sharePost",
+      "description": "Marketing posts to share"
+    },
+    "/shareRecords/{recordId}": {
+      "schema": "shareRecord",
+      "description": "Marketing share logs"
     },
     "/scoreRules/{ruleId}": {
       "schema": "scoreRule",
