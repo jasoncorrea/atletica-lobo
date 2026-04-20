@@ -94,7 +94,7 @@ service cloud.firestore {
     }
 
     match /socios/{id} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isSignedIn();
     }
 

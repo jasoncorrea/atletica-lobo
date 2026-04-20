@@ -84,7 +84,13 @@ async function testConnection() {
       return;
     }
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
+      console.warn("Firebase: Conexão offline ou bloqueada (pode ser o ID do banco de dados).");
+    } else {
+      console.warn("Firebase Connection Error:", {
+        code: error.code,
+        message: error.message,
+        databaseId: firebaseConfig.firestoreDatabaseId
+      });
     }
   }
 }
@@ -99,21 +105,6 @@ if (typeof window !== 'undefined') {
 }
 
 export const handleFirestoreError = (error: any, op: string, path: string | null = null) => {
-  const isQuotaError = error.code === 'resource-exhausted' || error.message?.includes('quota');
-  
-  if (isQuotaError) {
-    const info: FirestoreErrorInfo = {
-      error: 'CRÍTICO: Cota de Leitura bloqueada pelo Google Cloud. Mesmo no Blaze, desative limites diários (Usage Caps) em: Console Google Cloud > APIs & Services > Cloud Firestore > Quotas. O limite "Free daily read units" pode ter uma trava manual.',
-      operationType: op as any,
-      path,
-      authInfo: getAuthInfo()
-    };
-    console.error("Cota do Firebase excedida:", info.error);
-    // Disparar evento para o UI alertar o usuário
-    window.dispatchEvent(new CustomEvent('lobo-quota-exceeded', { detail: info }));
-    return;
-  }
-
   if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
     const info: FirestoreErrorInfo = {
       error: error.message || 'Sem permissão para esta operação.',
@@ -121,7 +112,24 @@ export const handleFirestoreError = (error: any, op: string, path: string | null
       path,
       authInfo: getAuthInfo()
     };
+    // Don't throw for read operations to avoid crashing UI
+    if (op === 'list' || op === 'get') {
+      console.warn("Acesso negado (Firestore):", path || op);
+      return;
+    }
     throw new Error(safeStringify(info));
+  }
+  
+  const isQuotaError = error.code === 'resource-exhausted' || error.message?.includes('quota');
+  if (isQuotaError) {
+    const info: FirestoreErrorInfo = {
+      error: 'Cota de Leitura excedida no Firebase.',
+      operationType: op as any,
+      path,
+      authInfo: getAuthInfo()
+    };
+    window.dispatchEvent(new CustomEvent('lobo-quota-exceeded', { detail: info }));
+    return;
   }
   throw error;
 };
@@ -188,12 +196,12 @@ let currentConfig: AppConfig = {
 // Syncing Firestore collections to Local State
 const publicCollections = [
   'competitions', 'athletics', 'modalities', 'results', 
-  'penalties', 'products', 'birthdays', 'scoreRules'
+  'penalties', 'products', 'birthdays', 'scoreRules',
+  'socios', 'shareMembers', 'sharePosts', 'shareRecords'
 ];
 
 const restrictedCollections = [
-  'transactions', 'financeCategories', 'managementEvents',
-  'socios', 'shareMembers', 'sharePosts', 'shareRecords'
+  'transactions', 'financeCategories', 'managementEvents'
 ];
 
 const activeListeners: Record<string, () => void> = {};
@@ -435,8 +443,13 @@ export const refreshAuth = async () => {
   if (!auth.currentUser) {
     try {
       await signInAnonymously(auth);
-    } catch (err) {
-      console.error("Error refreshing auth:", err);
+    } catch (err: any) {
+      if (err.code === 'auth/admin-restricted-operation') {
+        // Silently ignore if anonymous auth is not enabled, 
+        // as public listeners work without it anyway.
+        return;
+      }
+      console.warn("Firebase Auth (Auto):", err.code || err.message);
     }
   }
 };

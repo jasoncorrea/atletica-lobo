@@ -33,9 +33,11 @@ export const PublicDashboard: React.FC = () => {
       setShareRecords(db.shareRecords || []);
       setSocios(db.socios || []);
       
-      if (comps.length > 0 && !selectedCompId) {
+      if (comps.length > 0) {
         const active = comps.find(c => c.isActive) || comps[0];
-        setSelectedCompId(active.id);
+        const newSelectedId = selectedCompId || active.id;
+        if (!selectedCompId) setSelectedCompId(active.id);
+        setLeaderboard(calculateLeaderboard(newSelectedId));
       }
     };
     load();

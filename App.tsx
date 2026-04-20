@@ -4,10 +4,14 @@ import { Layout } from './components/Layout';
 import { PublicDashboard } from './pages/PublicDashboard';
 import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
-import { getConfig } from './services/storageService';
+import { getConfig, refreshAuth } from './services/storageService';
 
 const App: React.FC = () => {
   const [config, setConfig] = useState(getConfig());
+
+  useEffect(() => {
+    refreshAuth();
+  }, []);
 
   const createCircularIcon = (url: string): Promise<string> => {
     return new Promise((resolve) => {
