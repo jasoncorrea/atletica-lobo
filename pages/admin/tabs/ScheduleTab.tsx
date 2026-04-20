@@ -117,6 +117,107 @@ export const ScheduleTab: React.FC = () => {
     e.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Calcula os meses para exibir (hoje até o último evento)
+  const getMonthsToDisplay = () => {
+    const today = new Date();
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    // Encontra a data mais distante nos eventos
+    let maxDate = new Date(today.getFullYear(), today.getMonth() + 2, 1); // Padrão 3 meses
+    
+    events.forEach(e => {
+      const eventDate = new Date(e.date);
+      if (eventDate > maxDate) {
+        maxDate = eventDate;
+      }
+    });
+
+    const months = [];
+    let current = new Date(start);
+    
+    while (current <= maxDate || months.length < 1) {
+      months.push(new Date(current));
+      current.setMonth(current.getMonth() + 1);
+      // Limite de segurança para 2 anos
+      if (months.length > 24) break;
+    }
+    
+    return months;
+  };
+
+  const monthsToDisplay = getMonthsToDisplay();
+
+  const MonthCard: React.FC<{ date: Date }> = ({ date: monthDate }) => {
+    const year = monthDate.getFullYear();
+    const month = monthDate.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const firstDay = new Date(year, month, 1).getDay();
+    const monthName = monthDate.toLocaleString('pt-BR', { month: 'long' });
+
+    return (
+      <div className="bg-white border border-zinc-100 rounded-3xl shadow-sm overflow-hidden flex flex-col">
+        <div className="p-4 bg-zinc-50/50 border-b border-zinc-100 flex items-center justify-between">
+          <span className="text-[10px] font-black text-zinc-900 uppercase tracking-widest">{monthName} {year}</span>
+        </div>
+        
+        <div className="grid grid-cols-7 bg-zinc-50/20 border-b border-zinc-50">
+          {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(d => (
+            <div key={d} className="py-2 text-center text-[8px] font-black text-zinc-300 uppercase">{d}</div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-7 flex-grow">
+          {Array.from({ length: firstDay }).map((_, i) => (
+            <div key={`empty-${i}`} className="aspect-square bg-zinc-50/10 border-r border-b border-zinc-50/50" />
+          ))}
+          
+          {Array.from({ length: daysInMonth }).map((_, i) => {
+            const day = i + 1;
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const dayEvents = events.filter(e => e.date === dateStr);
+            const isToday = new Date().toISOString().split('T')[0] === dateStr;
+
+            return (
+              <div key={day} className={cn(
+                "aspect-square border-r border-b border-zinc-50 p-1 flex flex-col items-center justify-center relative group hover:bg-zinc-50 transition-colors",
+                isToday && "bg-indigo-50/50"
+              )}>
+                <span className={cn(
+                  "text-[9px] font-black",
+                  isToday ? "text-indigo-600" : "text-zinc-500"
+                )}>{day}</span>
+                
+                <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center max-w-full px-0.5">
+                  {dayEvents.map(e => {
+                    const typeMeta = EVENT_TYPES.find(t => t.type === e.type);
+                    return (
+                      <div 
+                        key={e.id}
+                        className={cn("w-1 h-1 rounded-full", typeMeta?.bg || 'bg-zinc-500')}
+                        title={`${e.title}: ${e.description || ''}`}
+                      />
+                    );
+                  })}
+                </div>
+
+                {/* Tooltip on hover (desktop only) */}
+                {dayEvents.length > 0 && (
+                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 bg-zinc-900 text-white p-2 rounded-lg text-[8px] opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-20 w-32 mb-1 shadow-xl">
+                      {dayEvents.map(e => (
+                        <div key={e.id} className="mb-1 last:mb-0">
+                          <span className="font-black block uppercase tracking-tighter">{e.title}</span>
+                        </div>
+                      ))}
+                   </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8 animate-fade-in pb-20">
       {/* Header */}
@@ -152,95 +253,12 @@ export const ScheduleTab: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        {/* Calendar Grid */}
-        <div className="xl:col-span-8 space-y-6">
-          <div className="bg-white border border-zinc-200 rounded-[2.5rem] shadow-sm overflow-hidden">
-            <div className="p-8 border-b border-zinc-100 flex items-center justify-between bg-zinc-50/50">
-              <div>
-                <h3 className="text-2xl font-black text-zinc-900 tracking-tight uppercase leading-none">{monthName}</h3>
-                <p className="text-xs font-bold text-zinc-400 mt-1 uppercase tracking-widest">{year}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => changeMonth(-1)}
-                  className="w-10 h-10 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-400 hover:text-zinc-900 hover:border-zinc-900 transition-all"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button 
-                  onClick={() => setCurrentDate(new Date())}
-                  className="px-4 py-2 rounded-xl bg-white border border-zinc-200 text-[10px] font-black uppercase tracking-widest hover:bg-zinc-900 hover:text-white transition-all shadow-sm"
-                >
-                  Hoje
-                </button>
-                <button 
-                  onClick={() => changeMonth(1)}
-                  className="w-10 h-10 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-400 hover:text-zinc-900 hover:border-zinc-900 transition-all"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-7 border-b border-zinc-100 bg-zinc-50/30">
-              {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-                <div key={day} className="py-4 text-center text-[10px] font-black text-zinc-400 uppercase tracking-widest">{day}</div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-7">
-              {/* Empty spaces for the first week */}
-              {Array.from({ length: firstDay }).map((_, i) => (
-                <div key={`empty-${i}`} className="min-h-[120px] bg-zinc-50/20 border-r border-b border-zinc-100/50" />
-              ))}
-              
-              {/* Days of the month */}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day = i + 1;
-                const dateStr = `${year}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const dayEvents = events.filter(e => e.date === dateStr);
-                const isToday = new Date().toISOString().split('T')[0] === dateStr;
-
-                return (
-                  <div key={day} className={cn(
-                    "min-h-[120px] p-3 border-r border-b border-zinc-100 group hover:bg-zinc-50/50 transition-colors relative",
-                    isToday && "bg-indigo-50/30"
-                  )}>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className={cn(
-                        "text-xs font-black tabular-nums",
-                        isToday ? "text-indigo-600 bg-indigo-100 w-6 h-6 rounded-lg flex items-center justify-center" : "text-zinc-400"
-                      )}>{day}</span>
-                      {dayEvents.length > 0 && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-                      )}
-                    </div>
-                    <div className="space-y-1 overflow-y-auto max-h-[80px] custom-scrollbar pr-1">
-                      {dayEvents.map(e => {
-                        const typeMeta = EVENT_TYPES.find(t => t.type === e.type);
-                        return (
-                          <div 
-                            key={e.id}
-                            className={cn(
-                              "px-2 py-1 rounded-md text-[8px] font-black uppercase tracking-tighter truncate text-white shadow-sm",
-                              typeMeta?.bg || 'bg-zinc-500'
-                            )}
-                            title={e.title}
-                          >
-                            {e.title}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* Empty spaces at the end */}
-              {Array.from({ length: (7 - (firstDay + daysInMonth) % 7) % 7 }).map((_, i) => (
-                <div key={`empty-end-${i}`} className="min-h-[120px] bg-zinc-50/20 border-r border-b border-zinc-100/50" />
-              ))}
-            </div>
+        {/* Multi-Month Calendar View */}
+        <div className="xl:col-span-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {monthsToDisplay.map((monthDate, idx) => (
+              <MonthCard key={idx} date={monthDate} />
+            ))}
           </div>
         </div>
 
