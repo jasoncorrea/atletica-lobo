@@ -48,6 +48,16 @@ let isFirebaseReady = false;
 let quotaErrorInterval: any = null;
 let lastQuotaCheckTime = 0;
 
+export type ConnectionStatus = 'connecting' | 'online' | 'offline' | 'error';
+let connectionStatus: ConnectionStatus = 'connecting';
+
+const setConnectionStatus = (s: ConnectionStatus) => {
+  connectionStatus = s;
+  window.dispatchEvent(new CustomEvent('lobo-connection-changed', { detail: s }));
+};
+
+export const getConnectionStatus = () => connectionStatus;
+
 // Test connection
 async function testConnection() {
   const now = Date.now();
@@ -59,6 +69,7 @@ async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
     console.log("Firebase connection established.");
+    setConnectionStatus('online');
     
     if (quotaErrorInterval) {
       clearInterval(quotaErrorInterval);
@@ -76,8 +87,10 @@ async function testConnection() {
     });
     
   } catch (error: any) {
+    setConnectionStatus('error');
     const isQuota = error.code === 'resource-exhausted' || error.message?.includes('quota');
     if (isQuota) {
+      setConnectionStatus('offline');
       if (!quotaErrorInterval) {
         quotaErrorInterval = setInterval(testConnection, 60000); // Check every 1m
       }
@@ -197,11 +210,12 @@ let currentConfig: AppConfig = {
 const publicCollections = [
   'competitions', 'athletics', 'modalities', 'results', 
   'penalties', 'products', 'birthdays', 'scoreRules',
-  'socios', 'shareMembers', 'sharePosts', 'shareRecords'
+  'socios', 'shareMembers', 'sharePosts', 'shareRecords',
+  'managementEvents'
 ];
 
 const restrictedCollections = [
-  'transactions', 'financeCategories', 'managementEvents'
+  'transactions', 'financeCategories'
 ];
 
 const activeListeners: Record<string, () => void> = {};

@@ -114,7 +114,7 @@ service cloud.firestore {
     }
 
     match /managementEvents/{id} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isSignedIn();
     }
   }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getDb, calculateLeaderboard, updateItem, deleteItem } from '../services/storageService';
-import { Competition, LeaderboardEntry, BirthdayMember, ShareMember, SharePost, ShareRecord, Socio } from '../types';
+import { Competition, LeaderboardEntry, BirthdayMember, ShareMember, SharePost, ShareRecord, Socio, ManagementEvent } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Medal, AlertCircle, ChevronDown, Award, Cake, Calendar, Star, Users, Share2, CheckCircle2, Circle, BarChart2, UserCheck, Search } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -15,7 +15,8 @@ export const PublicDashboard: React.FC = () => {
   const [sharePosts, setSharePosts] = useState<SharePost[]>([]);
   const [shareRecords, setShareRecords] = useState<ShareRecord[]>([]);
   const [socios, setSocios] = useState<Socio[]>([]);
-  const [activeTab, setActiveTab] = useState<'leaderboard' | 'birthdays' | 'marketing' | 'socios'>('leaderboard');
+  const [managementEvents, setManagementEvents] = useState<ManagementEvent[]>([]);
+  const [activeTab, setActiveTab] = useState<'leaderboard' | 'birthdays' | 'marketing' | 'socios' | 'schedule'>('leaderboard');
   const [sociosSearch, setSociosSearch] = useState('');
   const [activeFilters, setActiveFilters] = useState<string[]>(['Ativo', '2026']);
   const [selectedSocio, setSelectedSocio] = useState<Socio | null>(null);
@@ -32,6 +33,7 @@ export const PublicDashboard: React.FC = () => {
       setSharePosts(db.sharePosts || []);
       setShareRecords(db.shareRecords || []);
       setSocios(db.socios || []);
+      setManagementEvents(db.managementEvents || []);
       
       if (comps.length > 0) {
         const active = comps.find(c => c.isActive) || comps[0];
@@ -122,6 +124,145 @@ export const PublicDashboard: React.FC = () => {
     );
   }
 
+  const renderSchedule = () => {
+    // Lógica de Calendários
+    const startMonth = new Date();
+    startMonth.setDate(1);
+    
+    // Encontrar o último evento para saber até onde mostrar
+    let endMonth = new Date();
+    if (managementEvents.length > 0) {
+      const eventDates = managementEvents.map(e => new Date(e.date + 'T12:00:00'));
+      const maxDate = new Date(Math.max(...eventDates.map(d => d.getTime())));
+      if (maxDate > endMonth) {
+        endMonth = new Date(maxDate);
+      }
+    }
+    // No mínimo mostrar 2 meses
+    const monthsToShow = [];
+    let currentMonth = new Date(startMonth);
+    
+    while (currentMonth <= endMonth || monthsToShow.length < 2) {
+      monthsToShow.push(new Date(currentMonth));
+      currentMonth.setMonth(currentMonth.getMonth() + 1);
+    }
+
+    const renderCalendar = (monthDate: Date) => {
+      const year = monthDate.getFullYear();
+      const month = monthDate.getMonth();
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      
+      const days = [];
+      for (let i = 0; i < firstDay; i++) days.push(null);
+      for (let i = 1; i <= daysInMonth; i++) days.push(i);
+
+      const monthEvents = managementEvents.filter(e => {
+        const d = new Date(e.date + 'T12:00:00');
+        return d.getFullYear() === year && d.getMonth() === month;
+      });
+
+      return (
+        <div className="bg-white rounded-[2rem] border border-zinc-100 shadow-sm overflow-hidden flex flex-col h-full">
+          <div className="bg-zinc-900 p-6 flex items-center justify-between">
+            <h3 className="text-white font-black uppercase tracking-widest text-xs">
+              {monthDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            </h3>
+            <Calendar className="w-4 h-4 text-lobo-primary" />
+          </div>
+          
+          <div className="p-4 grid grid-cols-7 border-b border-zinc-50">
+            {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map(d => (
+              <div key={d} className="text-center text-[10px] font-black text-zinc-400 py-2">{d}</div>
+            ))}
+          </div>
+          
+          <div className="flex-grow grid grid-cols-7">
+            {days.map((day, i) => {
+              if (!day) return <div key={`empty-${i}`} className="h-16 border-r border-b border-zinc-50 last:border-r-0" />;
+              
+              const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              const dayEvents = monthEvents.filter(e => e.date === dayStr);
+              const isToday = new Date().toISOString().split('T')[0] === dayStr;
+
+              return (
+                <div key={day} className={cn(
+                  "h-16 border-r border-b border-zinc-50 p-1 relative group overflow-hidden last:border-r-0",
+                  isToday && "bg-orange-50/50"
+                )}>
+                  <span className={cn(
+                    "text-[10px] font-black tabular-nums transition-colors z-10 relative",
+                    isToday ? "text-lobo-primary" : "text-zinc-600"
+                  )}>
+                    {day}
+                  </span>
+                  
+                  <div className="mt-1 flex flex-wrap gap-0.5 relative z-10">
+                    {dayEvents.map(e => (
+                      <div 
+                        key={e.id}
+                        className={cn(
+                          "w-1.5 h-1.5 rounded-full",
+                          e.isImportant ? "bg-lobo-primary shadow-[0_0_5px_rgba(227,135,2,0.5)]" : "bg-zinc-300"
+                        )}
+                        title={`${e.title} ${e.time ? `- ${e.time}` : ''}`}
+                      />
+                    ))}
+                  </div>
+
+                  {dayEvents.length > 0 && (
+                     <div className="absolute inset-0 bg-zinc-900/90 p-2 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-center overflow-y-auto custom-scrollbar pointer-events-none">
+                        {dayEvents.map(e => (
+                          <div key={e.id} className="mb-2 last:mb-0">
+                            <p className={cn("text-[8px] font-black uppercase leading-tight", e.isImportant ? "text-lobo-primary" : "text-white")}>
+                              {e.title}
+                            </p>
+                            {e.time && <p className="text-[7px] text-white/50 font-bold">{e.time}</p>}
+                          </div>
+                        ))}
+                     </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-zinc-900 p-8 rounded-[2.5rem] relative overflow-hidden">
+           <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
+             <Calendar className="w-32 h-32 rotate-12 text-white" />
+           </div>
+           <div className="relative z-10">
+             <h3 className="text-2xl font-black text-white tracking-tight uppercase italic">Planejamento Lobo</h3>
+             <p className="text-[10px] font-bold text-lobo-primary uppercase tracking-[0.2em] mt-2 leading-none">Cronograma oficial de eventos e reuniões</p>
+           </div>
+           <div className="relative z-10 flex gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-lobo-primary" />
+                <span className="text-[8px] font-black text-white uppercase tracking-widest">Destaque</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-zinc-300" />
+                <span className="text-[8px] font-black text-white uppercase tracking-widest">Geral</span>
+              </div>
+           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {monthsToShow.map((m, i) => (
+            <div key={i}>
+              {renderCalendar(m)}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8 pb-20">
       {/* Header Section */}
@@ -208,6 +349,19 @@ export const PublicDashboard: React.FC = () => {
           )}
           <UserCheck className="w-4 h-4 relative z-10" />
           <span className="relative z-10">Sócios</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('schedule')}
+          className={cn(
+            "relative px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all",
+            activeTab === 'schedule' ? "text-white" : "text-zinc-400 hover:text-zinc-600"
+          )}
+        >
+          {activeTab === 'schedule' && (
+            <motion.div layoutId="tab-bg" className="absolute inset-0 bg-zinc-900 rounded-xl shadow-lg" />
+          )}
+          <Calendar className="w-4 h-4 relative z-10" />
+          <span className="relative z-10">Cronograma</span>
         </button>
       </nav>
 
@@ -492,7 +646,7 @@ export const PublicDashboard: React.FC = () => {
                 </div>
               </div>
             </div>
-          ) : (
+          ) : activeTab === 'schedule' ? renderSchedule() : (
             <div className="space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-4 w-full">
