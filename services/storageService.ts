@@ -49,24 +49,27 @@ async function testConnection() {
 testConnection();
 
 export const handleFirestoreError = (error: any, op: string, path: string | null = null) => {
+  console.error(`Firestore Error [${op}] at ${path}:`, error);
+  
+  const user = auth.currentUser;
+  const info: FirestoreErrorInfo = {
+    error: error.message || 'Unknown Firestore Error',
+    operationType: op as any,
+    path,
+    authInfo: {
+      userId: user?.uid || 'anonymous',
+      email: user?.email || '',
+      emailVerified: user?.emailVerified || false,
+      isAnonymous: user?.isAnonymous || true,
+      providerInfo: user?.providerData.map(p => ({
+        providerId: p.providerId,
+        displayName: p.displayName || '',
+        email: p.email || ''
+      })) || []
+    }
+  };
+
   if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
-    const user = auth.currentUser;
-    const info: FirestoreErrorInfo = {
-      error: error.message || 'Unknown Firestore Error',
-      operationType: op as any,
-      path,
-      authInfo: {
-        userId: user?.uid || 'anonymous',
-        email: user?.email || '',
-        emailVerified: user?.emailVerified || false,
-        isAnonymous: user?.isAnonymous || true,
-        providerInfo: user?.providerData.map(p => ({
-          providerId: p.providerId,
-          displayName: p.displayName || '',
-          email: p.email || ''
-        })) || []
-      }
-    };
     throw new Error(safeStringify(info));
   }
   throw error;
@@ -138,11 +141,11 @@ let currentConfig: AppConfig = {
 const publicCollections = [
   'competitions', 'athletics', 'modalities', 'results', 
   'penalties', 'products', 'birthdays', 'scoreRules',
-  'shareMembers', 'sharePosts', 'shareRecords', 'socios'
+  'shareMembers', 'sharePosts', 'shareRecords'
 ];
 
 const restrictedCollections = [
-  'transactions', 'financeCategories', 'managementEvents'
+  'transactions', 'financeCategories', 'managementEvents', 'socios'
 ];
 
 const activeListeners: Record<string, () => void> = {};
@@ -251,18 +254,26 @@ export const getDb = (): DatabaseSchema => {
 
 export const saveDb = async (dbUpdate: DatabaseSchema) => {
   try {
-    // Primeiro salva LOCALMENTE para garantir que o usuário não perca os dados
+    // 1. Persistência Local Imediata (Crucial para No-Loss)
     localStorage.setItem(DB_KEY, safeStringify(dbUpdate));
     currentDb = { ...dbUpdate };
     window.dispatchEvent(new Event('storage'));
 
-    // Verifica se temos Auth para salvar no Cloud
-    if (!auth.currentUser) {
-      console.warn("Firestore: Usuário não autenticado. Salvando apenas localmente.");
-      // Se estamos no dashboard, tentamos reautenticar para a próxima vez
-      if (localStorage.getItem('lobo_auth') === 'true') {
-        signInAnonymously(auth).catch(console.error);
+    // 2. Garantia de Autenticação antes do Cloud Sync
+    if (!auth.currentUser && localStorage.getItem('lobo_auth') === 'true') {
+      try {
+        console.log("Firestore: Aguardando reautenticação silenciosa...");
+        await signInAnonymously(auth);
+      } catch (authErr: any) {
+        console.error("Firestore: Falha na reautenticação silenciosa:", authErr);
+        if (authErr.code === 'auth/operation-not-allowed') {
+          alert("CRÍTICO: O 'Anonymous Sign-in' não está ativado no seu Console do Firebase. A sincronização entre dispositivos não funcionará até que você ative esta opção em Authentication > Sign-in Method.");
+        }
       }
+    }
+
+    if (!auth.currentUser) {
+      console.warn("Firestore: Sync abortado (Sem usuário autenticado).");
       return; 
     }
 
