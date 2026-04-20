@@ -23,6 +23,7 @@ const EVENT_TYPES: { type: ManagementEventType, label: string, color: string, bg
   { type: 'reuniao', label: 'Reunião', color: 'text-blue-500', bg: 'bg-blue-500' },
   { type: 'evento', label: 'Evento', color: 'text-purple-500', bg: 'bg-purple-500' },
   { type: 'competicao', label: 'Competição', color: 'text-amber-500', bg: 'bg-amber-500' },
+  { type: 'post', label: 'Publicação/Post', color: 'text-cyan-500', bg: 'bg-cyan-500' },
   { type: 'prazo', label: 'Prazo/Entrega', color: 'text-red-500', bg: 'bg-red-500' },
   { type: 'outro', label: 'Outro', color: 'text-zinc-500', bg: 'bg-zinc-500' },
 ];

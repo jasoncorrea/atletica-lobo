@@ -134,7 +134,7 @@ export interface ShareRecord {
   shared: boolean;
 }
 
-export type ManagementEventType = 'reuniao' | 'evento' | 'competicao' | 'prazo' | 'outro';
+export type ManagementEventType = 'reuniao' | 'evento' | 'competicao' | 'prazo' | 'post' | 'outro';
 
 export interface ManagementEvent {
   id: string;
