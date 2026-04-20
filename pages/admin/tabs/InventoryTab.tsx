@@ -43,8 +43,8 @@ export const InventoryTab: React.FC = () => {
 
   useEffect(() => {
     load();
-    window.addEventListener('storage', load);
-    return () => window.removeEventListener('storage', load);
+    window.addEventListener('lobo-db-sync', load);
+    return () => window.removeEventListener('lobo-db-sync', load);
   }, []);
 
   const resetForm = () => {
@@ -101,7 +101,6 @@ export const InventoryTab: React.FC = () => {
     }
 
     saveDb(db);
-    window.dispatchEvent(new Event('storage'));
     resetForm();
     setSubTab('list');
     load();

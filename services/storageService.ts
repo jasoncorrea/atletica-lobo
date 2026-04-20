@@ -28,6 +28,8 @@ export interface FirestoreErrorInfo {
   }
 }
 
+const DB_SYNC_EVENT = 'lobo-db-sync';
+
 // Initializing Firebase
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
@@ -176,7 +178,6 @@ const startListener = (colName: string) => {
       const data = snapshot.docs.map(d => d.data());
       
       // Lógica de "Merge" inteligente para evitar perda de dados local se o cloud estiver vazio
-      // (Especialmente útil se o Firebase estiver recém-criado)
       if (data.length === 0 && (currentDb as any)[colName]?.length > 0) {
         console.log(`Firestore: Recebido [] para ${colName}, mas mantendo dados locais.`);
         return;
@@ -191,7 +192,7 @@ const startListener = (colName: string) => {
     } else {
       (currentDb as any)[colName] = data;
     }
-    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event(DB_SYNC_EVENT));
   }, (err) => {
     if (!err.message?.includes('insufficient permissions')) {
       console.error(`Error syncing ${colName}:`, err);
@@ -201,21 +202,29 @@ const startListener = (colName: string) => {
   activeListeners[colName] = unsub;
 };
 
+export const refreshAuth = async () => {
+  if (localStorage.getItem('lobo_auth') === 'true' && !auth.currentUser) {
+    try {
+      console.log("Firestore: Forçando reautenticação para sincronizar dados restritos...");
+      await signInAnonymously(auth);
+    } catch (err) {
+      console.error("Firestore: Falha ao autenticar para sincronização:", err);
+    }
+  }
+};
+
 // Start public listeners immediately
 publicCollections.forEach(startListener);
 
 // Manage restricted listeners based on Auth state
 onAuthStateChanged(auth, async (user) => {
   if (user) {
+    console.log("Firestore: Usuário autenticado. Iniciando listeners restritos.");
     restrictedCollections.forEach(startListener);
   } else {
     // If not signed in to Firebase but logged in to the dashboard, try re-auth
     if (localStorage.getItem('lobo_auth') === 'true') {
-      try {
-        await signInAnonymously(auth);
-      } catch (err) {
-        console.error("Firebase auto-reauth failed:", err);
-      }
+      refreshAuth();
     }
 
     restrictedCollections.forEach(colName => {
@@ -231,7 +240,7 @@ onAuthStateChanged(auth, async (user) => {
 onSnapshot(doc(db, 'config', 'global'), (snapshot) => {
   if (snapshot.exists()) {
     currentConfig = snapshot.data() as AppConfig;
-    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event(DB_SYNC_EVENT));
   }
 }, (err) => console.error("Error syncing config:", err));
 
@@ -257,19 +266,12 @@ export const saveDb = async (dbUpdate: DatabaseSchema) => {
     // 1. Persistência Local Imediata (Crucial para No-Loss)
     localStorage.setItem(DB_KEY, safeStringify(dbUpdate));
     currentDb = { ...dbUpdate };
-    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event(DB_SYNC_EVENT));
 
     // 2. Garantia de Autenticação antes do Cloud Sync
     if (!auth.currentUser && localStorage.getItem('lobo_auth') === 'true') {
-      try {
-        console.log("Firestore: Aguardando reautenticação silenciosa...");
-        await signInAnonymously(auth);
-      } catch (authErr: any) {
-        console.error("Firestore: Falha na reautenticação silenciosa:", authErr);
-        if (authErr.code === 'auth/operation-not-allowed') {
-          alert("CRÍTICO: O 'Anonymous Sign-in' não está ativado no seu Console do Firebase. A sincronização entre dispositivos não funcionará até que você ative esta opção em Authentication > Sign-in Method.");
-        }
-      }
+      console.log("Firestore: Tentando reautenticação expressa para upload...");
+      await refreshAuth();
     }
 
     if (!auth.currentUser) {
@@ -320,6 +322,7 @@ export const saveDb = async (dbUpdate: DatabaseSchema) => {
       chunk.forEach(op => batch.set(op.ref, op.data));
       await batch.commit();
     }
+    console.log(`Firestore: Sincronização de ${operations.length} itens concluída com sucesso.`);
   } catch (err) {
     handleFirestoreError(err, 'write');
   }
@@ -333,6 +336,7 @@ export const saveConfig = async (config: AppConfig) => {
   try {
     await setDoc(doc(db, 'config', 'global'), config);
     localStorage.setItem(APP_CONFIG_KEY, safeStringify(config));
+    window.dispatchEvent(new Event(DB_SYNC_EVENT));
   } catch (err) {
     handleFirestoreError(err, 'write', 'config/global');
   }
@@ -343,7 +347,13 @@ export const isOnline = () => true; // Always online with managed Firebase
 export const deleteItem = async (collectionName: keyof DatabaseSchema, id: string) => {
   try {
     await deleteDoc(doc(db, collectionName as string, id));
-    window.dispatchEvent(new Event('storage'));
+    
+    // Remove localmente também para ser instantâneo
+    if (Array.isArray((currentDb as any)[collectionName])) {
+      (currentDb as any)[collectionName] = (currentDb as any)[collectionName].filter((item: any) => item.id !== id);
+    }
+
+    window.dispatchEvent(new Event(DB_SYNC_EVENT));
   } catch (err) {
     handleFirestoreError(err, 'delete', `${collectionName}/${id}`);
     throw err;

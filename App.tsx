@@ -34,7 +34,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const updateConfig = () => setConfig(getConfig());
-    window.addEventListener('storage', updateConfig);
+    window.addEventListener('lobo-db-sync', updateConfig);
     
     // Favicon Sync
     if (config.logoUrl) {
@@ -49,7 +49,7 @@ const App: React.FC = () => {
       });
     }
 
-    return () => window.removeEventListener('storage', updateConfig);
+    return () => window.removeEventListener('lobo-db-sync', updateConfig);
   }, [config.logoUrl]);
 
   return (

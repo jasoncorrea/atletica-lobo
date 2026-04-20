@@ -48,8 +48,8 @@ export const ScheduleTab: React.FC = () => {
 
   useEffect(() => {
     load();
-    window.addEventListener('storage', load);
-    return () => window.removeEventListener('storage', load);
+    window.addEventListener('lobo-db-sync', load);
+    return () => window.removeEventListener('lobo-db-sync', load);
   }, []);
 
   const handleAdd = async (e: React.FormEvent) => {

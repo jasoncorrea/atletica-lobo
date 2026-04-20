@@ -18,8 +18,8 @@ export const BirthdaysTab: React.FC = () => {
 
   useEffect(() => {
     load();
-    window.addEventListener('storage', load);
-    return () => window.removeEventListener('storage', load);
+    window.addEventListener('lobo-db-sync', load);
+    return () => window.removeEventListener('lobo-db-sync', load);
   }, []);
 
   const handleAdd = (e: React.FormEvent) => {
@@ -36,7 +36,6 @@ export const BirthdaysTab: React.FC = () => {
 
     db.birthdays = [...(db.birthdays || []), newMember];
     saveDb(db);
-    window.dispatchEvent(new Event('storage'));
     
     setName('');
     setRole('');

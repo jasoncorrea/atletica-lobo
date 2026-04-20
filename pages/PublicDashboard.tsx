@@ -39,8 +39,8 @@ export const PublicDashboard: React.FC = () => {
       }
     };
     load();
-    window.addEventListener('storage', load);
-    return () => window.removeEventListener('storage', load);
+    window.addEventListener('lobo-db-sync', load);
+    return () => window.removeEventListener('lobo-db-sync', load);
   }, [selectedCompId]);
 
   const toggleShare = async (memberId: string, postId: string) => {

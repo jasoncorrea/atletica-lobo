@@ -58,8 +58,8 @@ export const MarketingTab: React.FC = () => {
   useEffect(() => {
     load();
     const handleStorage = () => load();
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener('lobo-db-sync', handleStorage);
+    return () => window.removeEventListener('lobo-db-sync', handleStorage);
   }, []);
 
   // Stats Calculations
@@ -93,7 +93,6 @@ export const MarketingTab: React.FC = () => {
     
     db.shareMembers = [...(db.shareMembers || []), newMember];
     saveDb(db);
-    window.dispatchEvent(new Event('storage'));
     setMemberName('');
   };
 
@@ -111,7 +110,6 @@ export const MarketingTab: React.FC = () => {
     
     db.sharePosts = [...(db.sharePosts || []), newPost];
     saveDb(db);
-    window.dispatchEvent(new Event('storage'));
     setPostTitle('');
     setPostLink('');
   };

@@ -22,8 +22,8 @@ export const AthleticsTab: React.FC<Props> = ({ comp }) => {
 
   useEffect(() => {
     load();
-    window.addEventListener('storage', load);
-    return () => window.removeEventListener('storage', load);
+    window.addEventListener('lobo-db-sync', load);
+    return () => window.removeEventListener('lobo-db-sync', load);
   }, [comp.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -71,7 +71,6 @@ export const AthleticsTab: React.FC<Props> = ({ comp }) => {
       const ath = db.athletics.find(a => a.id === id);
       if (ath) ath.logoUrl = url;
       saveDb(db);
-      window.dispatchEvent(new Event('storage'));
       load();
     } catch { 
       // Ignored

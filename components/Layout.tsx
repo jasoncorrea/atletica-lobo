@@ -15,8 +15,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       setCloudActive(isOnline());
     };
     update();
-    window.addEventListener('storage', update);
-    return () => window.removeEventListener('storage', update);
+    window.addEventListener('lobo-db-sync', update);
+    return () => window.removeEventListener('lobo-db-sync', update);
   }, []);
 
   const isAdmin = location.pathname.startsWith('/admin');
