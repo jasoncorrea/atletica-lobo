@@ -9,8 +9,15 @@ export const QuotaAlert: React.FC = () => {
     const handleQuota = (e: any) => {
       setErrorInfo(e.detail);
     };
+    const handleResolved = () => {
+      setErrorInfo(null);
+    };
     window.addEventListener('lobo-quota-exceeded', handleQuota);
-    return () => window.removeEventListener('lobo-quota-exceeded', handleQuota);
+    window.addEventListener('lobo-quota-resolved', handleResolved);
+    return () => {
+      window.removeEventListener('lobo-quota-exceeded', handleQuota);
+      window.removeEventListener('lobo-quota-resolved', handleResolved);
+    };
   }, []);
 
   if (!errorInfo) return null;

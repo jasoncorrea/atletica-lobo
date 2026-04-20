@@ -51,9 +51,10 @@ async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
     console.log("Firebase connection established.");
+    window.dispatchEvent(new CustomEvent('lobo-quota-resolved'));
   } catch (error: any) {
     if (error.code === 'resource-exhausted' || error.message?.includes('quota')) {
-      // Quiet handled in listeners
+      // Still in quota error
       return;
     }
     if (error instanceof Error && error.message.includes('the client is offline')) {
@@ -68,7 +69,7 @@ export const handleFirestoreError = (error: any, op: string, path: string | null
   
   if (isQuotaError) {
     const info: FirestoreErrorInfo = {
-      error: 'Limite de cota de leitura do Firebase atingido (Spark Plan). O sistema está operando em modo offline limitado e os dados podem estar desatualizados. A cota será resetada automaticamente nas próximas 24h.',
+      error: 'Limite de cota do Firebase atingido. O sistema está operando em modo offline limitado com dados locais. Como você fez o upgrade para o Blaze, este aviso desaparecerá assim que o Firebase processar a alteração (pode levar alguns minutos).',
       operationType: op as any,
       path,
       authInfo: getAuthInfo()
