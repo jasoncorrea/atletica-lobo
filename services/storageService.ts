@@ -8,7 +8,8 @@ import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES,
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, onSnapshot, doc, setDoc, getDoc, 
-  writeBatch, query, deleteDoc, getDocFromServer
+  writeBatch, query, deleteDoc, getDocFromServer,
+  enableIndexedDbPersistence, collectionGroup
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import firebaseConfig from '../firebase-applet-config.json';
@@ -32,6 +33,17 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
+// Enable Offline Persistence
+if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn("Múltiplas abas abertas. Persistência desativada nesta aba.");
+    } else if (err.code === 'unimplemented') {
+      console.warn("Navegador não suporta persistência offline.");
+    }
+  });
+}
+
 let isFirebaseReady = false;
 
 // Test connection
@@ -39,7 +51,11 @@ async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
     console.log("Firebase connection established.");
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'resource-exhausted' || error.message?.includes('quota')) {
+      // Quiet handled in listeners
+      return;
+    }
     if (error instanceof Error && error.message.includes('the client is offline')) {
       console.error("Please check your Firebase configuration.");
     }
@@ -48,27 +64,46 @@ async function testConnection() {
 testConnection();
 
 export const handleFirestoreError = (error: any, op: string, path: string | null = null) => {
-  if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
-    const user = auth.currentUser;
+  const isQuotaError = error.code === 'resource-exhausted' || error.message?.includes('quota');
+  
+  if (isQuotaError) {
     const info: FirestoreErrorInfo = {
-      error: error.message || 'Unknown Firestore Error',
+      error: 'Limite de cota de leitura do Firebase atingido (Spark Plan). O sistema está operando em modo offline limitado e os dados podem estar desatualizados. A cota será resetada automaticamente nas próximas 24h.',
       operationType: op as any,
       path,
-      authInfo: {
-        userId: user?.uid || 'anonymous',
-        email: user?.email || '',
-        emailVerified: user?.emailVerified || false,
-        isAnonymous: user?.isAnonymous || true,
-        providerInfo: user?.providerData.map(p => ({
-          providerId: p.providerId,
-          displayName: p.displayName || '',
-          email: p.email || ''
-        })) || []
-      }
+      authInfo: getAuthInfo()
+    };
+    console.error("Cota do Firebase excedida:", info.error);
+    // Disparar evento para o UI alertar o usuário
+    window.dispatchEvent(new CustomEvent('lobo-quota-exceeded', { detail: info }));
+    return;
+  }
+
+  if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
+    const info: FirestoreErrorInfo = {
+      error: error.message || 'Sem permissão para esta operação.',
+      operationType: op as any,
+      path,
+      authInfo: getAuthInfo()
     };
     throw new Error(safeStringify(info));
   }
   throw error;
+};
+
+const getAuthInfo = () => {
+  const user = auth.currentUser;
+  return {
+    userId: user?.uid || 'anonymous',
+    email: user?.email || '',
+    emailVerified: user?.emailVerified || false,
+    isAnonymous: user?.isAnonymous || true,
+    providerInfo: user?.providerData.map(p => ({
+      providerId: p.providerId,
+      displayName: p.displayName || '',
+      email: p.email || ''
+    })) || []
+  };
 };
 
 export interface DatabaseSchema {
@@ -149,6 +184,10 @@ const startListener = (colName: string) => {
   
   const unsub = onSnapshot(collection(db, colName), (snapshot) => {
     const data = snapshot.docs.map(d => d.data());
+    
+    // Save to local cache as fallback for quota
+    localStorage.setItem(`${DB_KEY}_cache_${colName}`, safeStringify(data));
+
     if (colName === 'scoreRules') {
       const map: any = {};
       data.forEach((item: any) => {
@@ -161,7 +200,27 @@ const startListener = (colName: string) => {
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new Event('lobo-db-sync'));
   }, (err) => {
-    if (!err.message?.includes('insufficient permissions')) {
+    if (err.message?.includes('quota') || err.code === 'resource-exhausted') {
+      console.warn(`Cota excedida ao sincronizar ${colName}. Usando cache local.`);
+      const cached = localStorage.getItem(`${DB_KEY}_cache_${colName}`);
+      if (cached) {
+        try {
+          const data = JSON.parse(cached);
+          if (colName === 'scoreRules') {
+            const map: any = {};
+            data.forEach((item: any) => { if (item.id) map[item.id] = item.rule; });
+            currentDb.scoreRules = map;
+          } else {
+            (currentDb as any)[colName] = data;
+          }
+          window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new Event('lobo-db-sync'));
+        } catch (e) {
+          console.error(`Erro ao carregar cache de ${colName}:`, e);
+        }
+      }
+      handleFirestoreError(err, 'list', colName);
+    } else if (!err.message?.includes('insufficient permissions')) {
       console.error(`Error syncing ${colName}:`, err);
     }
   });
@@ -190,10 +249,27 @@ onAuthStateChanged(auth, (user) => {
 onSnapshot(doc(db, 'config', 'global'), (snapshot) => {
   if (snapshot.exists()) {
     currentConfig = snapshot.data() as AppConfig;
+    localStorage.setItem(APP_CONFIG_KEY, safeStringify(currentConfig));
     window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new Event('lobo-db-sync'));
   }
-}, (err) => console.error("Error syncing config:", err));
+}, (err) => {
+  if (err.message?.includes('quota') || err.code === 'resource-exhausted') {
+    console.warn("Cota excedida ao sincronizar config. Usando cache local.");
+    const cached = localStorage.getItem(APP_CONFIG_KEY);
+    if (cached) {
+      try {
+        currentConfig = JSON.parse(cached);
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new Event('lobo-db-sync'));
+      } catch (e) {
+        console.error("Erro ao carregar cache de config:", e);
+      }
+    }
+  } else {
+    console.error("Error syncing config:", err);
+  }
+});
 
 // Auto-seed athletics if empty in Firestore
 async function seedInitialData() {
@@ -212,14 +288,30 @@ export const getDb = (): DatabaseSchema => {
   return currentDb;
 };
 
+// targeted save to avoid massive writes
+export const updateItem = async (collectionName: keyof DatabaseSchema, item: any) => {
+  if (!item.id) throw new Error("Item must have an ID");
+  try {
+    await setDoc(doc(db, collectionName as string, item.id), item);
+    // Local update to trigger UI immediately if needed
+    if (Array.isArray((currentDb as any)[collectionName])) {
+      const idx = (currentDb as any)[collectionName].findIndex((i: any) => i.id === item.id);
+      if (idx > -1) (currentDb as any)[collectionName][idx] = item;
+      else (currentDb as any)[collectionName].push(item);
+    }
+  } catch (err) {
+    handleFirestoreError(err, 'write', `${collectionName}/${item.id}`);
+  }
+};
+
 export const saveDb = async (dbUpdate: DatabaseSchema) => {
   try {
-    // Helper to clean undefined values recursively (Firestore fails on undefined)
+    // Only save what's necessary if we have targeted updates
+    // For legacy support, we still implement the batch save but with size check
     const cleanObject = (obj: any): any => {
       if (obj === null || typeof obj !== 'object') return obj;
       if (Array.isArray(obj)) return obj.map(cleanObject);
       
-      // If it's a Firestore-like object (with parent/db refs), don't recurse deep
       if (obj.constructor && (obj.constructor.name === 'DocumentReference' || obj.constructor.name === 'Firestore')) {
         return obj.path || '[Complex Object]';
       }
@@ -235,22 +327,29 @@ export const saveDb = async (dbUpdate: DatabaseSchema) => {
     const cleanedDb = cleanObject(dbUpdate);
     const operations: { ref: any, data: any }[] = [];
 
-    // Map all collections to operations
+    // Map all collections - but compare with currentDb to only write changes
     (Object.keys(cleanedDb) as Array<keyof DatabaseSchema>).forEach(key => {
       if (Array.isArray(cleanedDb[key])) {
         (cleanedDb[key] as any[]).forEach(item => {
           if (item.id) {
-            operations.push({ ref: doc(db, key as string, item.id), data: item });
+            const currentItem = (currentDb[key] as any[])?.find((i: any) => i.id === item.id);
+            // Simple stringify comparison to see if write is needed
+            if (!currentItem || JSON.stringify(currentItem) !== JSON.stringify(item)) {
+              operations.push({ ref: doc(db, key as string, item.id), data: item });
+            }
           }
         });
       } else if (key === 'scoreRules') {
         Object.entries(cleanedDb.scoreRules).forEach(([modId, rule]) => {
-          operations.push({ ref: doc(db, 'scoreRules', modId), data: { id: modId, rule } });
+          if (JSON.stringify(currentDb.scoreRules[modId]) !== JSON.stringify(rule)) {
+            operations.push({ ref: doc(db, 'scoreRules', modId), data: { id: modId, rule } });
+          }
         });
       }
     });
 
-    // Execute in batches of 400 (Stay safe below 500 limit)
+    if (operations.length === 0) return;
+
     const BATCH_SIZE = 400;
     for (let i = 0; i < operations.length; i += BATCH_SIZE) {
       const batch = writeBatch(db);

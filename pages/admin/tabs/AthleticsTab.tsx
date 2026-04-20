@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, saveDb, handleImageUpload, deleteItem } from '../../../services/storageService';
+import { getDb, updateItem, handleImageUpload, deleteItem } from '../../../services/storageService';
 import { Athletic, Competition } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Edit2, Trash2, X, Camera, Shield } from 'lucide-react';
@@ -35,17 +35,17 @@ export const AthleticsTab: React.FC<Props> = ({ comp }) => {
     if (editingId) {
       const index = db.athletics.findIndex(a => a.id === editingId);
       if (index !== -1) {
-        db.athletics[index].name = name;
-        saveDb(db);
+        const updatedAthletic = { ...db.athletics[index], name };
+        await updateItem('athletics', updatedAthletic);
       }
     } else {
-      db.athletics.push({ 
+      const newAthletic = { 
         id: Math.random().toString(36).substr(2, 9), 
         name, 
         logoUrl: null,
         competitionId: comp.id
-      });
-      saveDb(db);
+      };
+      await updateItem('athletics', newAthletic);
     }
     
     setTimeout(load, 100);
@@ -69,8 +69,10 @@ export const AthleticsTab: React.FC<Props> = ({ comp }) => {
       const url = await handleImageUpload(file);
       const db = getDb();
       const ath = db.athletics.find(a => a.id === id);
-      if (ath) ath.logoUrl = url;
-      saveDb(db);
+      if (ath) {
+        const updatedAth = { ...ath, logoUrl: url };
+        await updateItem('athletics', updatedAth);
+      }
       load();
     } catch { 
       // Ignored

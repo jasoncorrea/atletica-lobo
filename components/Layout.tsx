@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getConfig, isOnline } from '../services/storageService';
 import { cn } from '../lib/utils';
+import { QuotaAlert } from './QuotaAlert';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState(getConfig());
@@ -54,6 +55,8 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
       )}>
         {children}
       </main>
+
+      <QuotaAlert />
 
       {!isAdmin && (
         <footer className="bg-gray-900 text-gray-500 py-6 text-center text-xs">
