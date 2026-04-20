@@ -30,16 +30,16 @@ import {
   Cake,
   Share2,
   UserCheck,
+  Menu,
+  X as CloseIcon,
   ChevronRight,
   Cloud,
-  ExternalLink,
-  Wallet,
-  Megaphone,
   Gamepad,
   History,
   FolderOpen,
   Camera,
-  Tag
+  Tag,
+  Megaphone
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -50,6 +50,7 @@ export const AdminDashboard: React.FC = () => {
   const [role, setRole] = useState<Role>('DIRETORIA');
   const [config, setConfig] = useState<AppConfig>(getConfig());
   const [showDriveLinks, setShowDriveLinks] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const driveFolders = [
     { name: 'Geral (Minha Unidade)', icon: FolderOpen, color: 'text-zinc-600', bg: 'bg-zinc-100', link: 'https://drive.google.com/drive/folders/1zs49o7pf-xjI4RfhnGpqf4UGXcEEAYRL?usp=sharing' },
@@ -118,29 +119,128 @@ export const AdminDashboard: React.FC = () => {
   const activeTabLabel = allTabs.find(t => t.id === activeTab)?.label || 'Painel';
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 -m-4 md:-m-8">
-      {/* Sidebar - Datletica Style */}
-      <aside className="w-20 md:w-72 bg-lobo-secondary text-white flex flex-col shrink-0 sticky top-0 h-screen transition-all duration-300 z-50 shadow-2xl">
-        <div className="p-8 pl-14 flex flex-col items-center md:items-start pt-12">
+    <div className="flex min-h-screen bg-zinc-50 -m-4 md:-m-8 relative overflow-x-hidden">
+      {/* Mobile Drawer Overlay */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] lg:hidden"
+            />
+            <motion.aside 
+              initial={{ x: -300 }}
+              animate={{ x: 0 }}
+              exit={{ x: -300 }}
+              className="fixed inset-y-0 left-0 w-80 bg-lobo-secondary text-white flex flex-col z-[70] lg:hidden shadow-2xl"
+            >
+              <div className="p-8 flex items-center justify-between border-b border-white/5">
+                <div className="flex flex-col">
+                  <h1 className="text-lg font-black uppercase tracking-tight">Menu Lobo</h1>
+                  <p className="text-[9px] text-lobo-primary font-bold uppercase tracking-[0.2em] mt-1">Navegação Interna</p>
+                </div>
+                <button 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10"
+                >
+                  <CloseIcon className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-grow overflow-y-auto custom-scrollbar px-6 py-6 space-y-2">
+                {navItems.map(item => {
+                  const Icon = item.icon;
+                  const hasChildren = !!item.children;
+                  const isExpanded = expandedMenus.includes(item.id);
+                  const isParentActive = hasChildren && item.children?.some(c => c.id === activeTab);
+                  const isActive = activeTab === item.id || isParentActive;
+
+                  return (
+                    <div key={item.id} className="space-y-1">
+                      <button
+                        onClick={() => {
+                          if (hasChildren) toggleMenu(item.id);
+                          else {
+                            setActiveTab(item.id);
+                            setIsMobileMenuOpen(false);
+                          }
+                        }}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-4 py-4 rounded-2xl transition-all font-black text-xs uppercase tracking-tight",
+                          isActive ? "bg-white text-lobo-secondary" : "text-white/40 hover:bg-white/5"
+                        )}
+                      >
+                        <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center", isActive ? item.color : "bg-white/5")}>
+                          <Icon className={cn("w-4 h-4", isActive ? "text-white" : "text-white/40")} />
+                        </div>
+                        {item.label}
+                        {hasChildren && <ChevronRight className={cn("ml-auto w-4 h-4 transition-transform", isExpanded && "rotate-90")} />}
+                      </button>
+
+                      {hasChildren && isExpanded && (
+                        <div className="pl-6 space-y-1 mt-1">
+                          {item.children?.map(sub => (
+                            <button
+                              key={sub.id}
+                              onClick={() => {
+                                setActiveTab(sub.id);
+                                setIsMobileMenuOpen(false);
+                              }}
+                              className={cn(
+                                "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-bold text-[10px] uppercase tracking-widest",
+                                activeTab === sub.id ? "bg-white/10 text-white" : "text-white/20"
+                              )}
+                            >
+                              <sub.icon className="w-3.5 h-3.5" />
+                              {sub.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="p-6 border-t border-white/5">
+                <button 
+                  onClick={() => { localStorage.removeItem('lobo_auth'); navigate('/login'); }}
+                  className="w-full h-14 rounded-2xl border border-white/10 text-white/40 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-red-500 hover:text-white transition-all"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  Sair do Painel
+                </button>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop Sidebar (Hidden on Mobile) */}
+      <aside className="hidden lg:flex w-72 bg-lobo-secondary text-white flex-col shrink-0 sticky top-0 h-screen z-50 shadow-2xl">
+        <div className="p-8 pl-14 flex flex-col items-center pt-12">
           <div 
             onClick={() => navigate('/')}
-            className="w-12 h-12 md:w-16 md:h-16 bg-white rounded-[1.5rem] flex items-center justify-center cursor-pointer hover:scale-105 hover:rotate-3 transition-all shadow-lg shadow-black/20 overflow-hidden"
+            className="w-16 h-16 bg-white rounded-[1.5rem] flex items-center justify-center cursor-pointer hover:scale-105 hover:rotate-3 transition-all shadow-lg shadow-black/20 overflow-hidden"
           >
             {config.logoUrl ? (
               <img src={config.logoUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
-              <Trophy className="w-6 h-6 md:w-10 md:h-10 text-zinc-900" />
+              <Trophy className="w-10 h-10 text-zinc-900" />
             )}
           </div>
-          <div className="hidden md:block mt-6 overflow-hidden">
+          <div className="mt-6 overflow-hidden">
             <h1 className="text-lg font-black uppercase tracking-tight truncate leading-none">Atlética Lobo</h1>
             <p className="text-[10px] text-lobo-primary font-bold uppercase tracking-[0.3em] leading-none mt-3">Painel de Gestão</p>
           </div>
         </div>
 
         <nav className="flex-grow py-4 pl-10 pr-4 space-y-1.5 overflow-y-auto custom-scrollbar">
-          <div className="md:px-4 mb-4">
-             <p className="hidden md:block text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Dashboard Principal</p>
+          <div className="px-4 mb-4">
+             <p className="text-[9px] font-black text-white/20 uppercase tracking-[0.2em]">Dashboard Principal</p>
           </div>
           
           {navItems.map(item => {
@@ -154,11 +254,8 @@ export const AdminDashboard: React.FC = () => {
               <div key={item.id} className="space-y-1">
                 <button
                   onClick={() => {
-                    if (hasChildren) {
-                      toggleMenu(item.id);
-                    } else {
-                      setActiveTab(item.id);
-                    }
+                    if (hasChildren) toggleMenu(item.id);
+                    else setActiveTab(item.id);
                   }}
                   className={cn(
                     "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative",
@@ -174,7 +271,7 @@ export const AdminDashboard: React.FC = () => {
                   )}>
                      <Icon className={cn("w-4 h-4", (isActive && !hasChildren) ? "text-white" : "text-white/40 group-hover:text-white")} />
                   </div>
-                  <span className="hidden md:block text-xs font-black tracking-tight uppercase">{item.label}</span>
+                  <span className="text-xs font-black tracking-tight uppercase">{item.label}</span>
                   
                   {isActive && !hasChildren && (
                      <motion.div 
@@ -186,7 +283,7 @@ export const AdminDashboard: React.FC = () => {
                   {hasChildren && (
                     <motion.div
                       animate={{ rotate: isExpanded ? 90 : 0 }}
-                      className="hidden md:block ml-auto opacity-20 group-hover:opacity-100 transition-opacity"
+                      className="ml-auto opacity-20 group-hover:opacity-100 transition-opacity"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </motion.div>
@@ -197,7 +294,7 @@ export const AdminDashboard: React.FC = () => {
                   <motion.div 
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    className="md:pl-6 space-y-1"
+                    className="pl-6 space-y-1"
                   >
                     {item.children?.map(sub => {
                       const SubIcon = sub.icon;
@@ -221,14 +318,7 @@ export const AdminDashboard: React.FC = () => {
                           )}>
                              <SubIcon className={cn("w-3 h-3", isSubActive ? "text-white" : "text-white/40")} />
                           </div>
-                          <span className="hidden md:block text-[10px] font-black tracking-tight uppercase">{sub.label}</span>
-                          
-                          {isSubActive && (
-                            <motion.div 
-                             layoutId="sidebarActiveSub"
-                             className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-4 bg-lobo-primary rounded-l-full" 
-                            />
-                          )}
+                          <span className="text-[10px] font-black tracking-tight uppercase">{sub.label}</span>
                         </button>
                       );
                     })}
@@ -245,7 +335,7 @@ export const AdminDashboard: React.FC = () => {
             className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl bg-white/5 text-white/40 hover:text-white hover:bg-red-500 transition-all group"
           >
             <ShieldCheck className="w-5 h-5 shrink-0" />
-            <span className="hidden md:block text-[10px] font-black uppercase tracking-widest text-left">
+            <span className="text-[10px] font-black uppercase tracking-widest text-left">
               Finalizar Sessão
             </span>
           </button>
@@ -253,42 +343,46 @@ export const AdminDashboard: React.FC = () => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-grow flex flex-col overflow-hidden">
+      <div className="flex-grow flex flex-col overflow-hidden w-full">
         {/* Top Bar */}
-        <header className="h-40 bg-white/80 backdrop-blur-md border-b border-zinc-100 px-10 flex items-start justify-between shrink-0 sticky top-0 z-40 transition-all duration-500">
-          <div className="flex items-start gap-6 pt-20">
+        <header className="h-28 md:h-40 bg-white/80 backdrop-blur-xl border-b border-zinc-100 flex items-center justify-between shrink-0 sticky top-0 z-40 px-6 md:px-10">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="lg:hidden w-12 h-12 rounded-2xl bg-zinc-900 flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform"
+            >
+              <Menu className="w-6 h-6" />
+            </button>
+
             <div className="flex flex-col">
-               <h2 className="text-2xl font-black text-lobo-secondary tracking-tighter uppercase leading-none">
+               <h2 className="text-xl md:text-2xl font-black text-lobo-secondary tracking-tighter uppercase leading-none">
                  {activeTabLabel}
                </h2>
-               <div className="flex items-center gap-2 mt-2">
-                  <span className="text-[10px] font-black text-lobo-secondary uppercase tracking-widest">Painel Administrativo</span>
+               <div className="flex items-center gap-2 mt-1 md:mt-2">
+                  <span className="text-[8px] md:text-[10px] font-black text-lobo-secondary uppercase tracking-widest">Gestão Lobo</span>
                   <div className="w-1 h-1 rounded-full bg-zinc-200" />
-                  <span className="text-[10px] font-bold text-zinc-400">Ver. 2.4.0</span>
+                  <span className="text-[8px] md:text-[10px] font-bold text-zinc-400">V. 3.0</span>
                </div>
             </div>
           </div>
 
-          <div className="flex items-start gap-6 pt-20">
+          <div className="flex items-center gap-4">
              <div className="relative">
                <button 
                  onClick={() => setShowDriveLinks(!showDriveLinks)}
                  className={cn(
-                   "flex items-center gap-3 px-6 py-2.5 rounded-2xl border transition-all shadow-sm active:scale-95 group",
+                   "flex items-center justify-center w-12 h-12 md:w-auto md:px-6 md:py-2.5 rounded-2xl border transition-all shadow-sm active:scale-95 group",
                    showDriveLinks ? "bg-zinc-900 border-zinc-900 text-white" : "bg-white border-zinc-100 text-zinc-600 hover:bg-zinc-50"
                  )}
                >
-                 <Cloud className={cn("w-4 h-4 transition-colors", showDriveLinks ? "text-lobo-primary" : "text-zinc-400 group-hover:text-lobo-primary")} />
-                 <span className="text-[10px] font-black uppercase tracking-widest">Drive da Atlética</span>
+                 <Cloud className={cn("w-5 h-5 md:w-4 md:h-4 transition-colors", showDriveLinks ? "text-lobo-primary" : "text-zinc-400 group-hover:text-lobo-primary")} />
+                 <span className="hidden md:block text-[10px] font-black uppercase tracking-widest ml-3">Drive</span>
                </button>
 
                <AnimatePresence>
                  {showDriveLinks && (
                    <>
-                     <div 
-                       className="fixed inset-0 z-40" 
-                       onClick={() => setShowDriveLinks(false)} 
-                     />
+                     <div className="fixed inset-0 z-40" onClick={() => setShowDriveLinks(false)} />
                      <motion.div
                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
                        animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -296,37 +390,20 @@ export const AdminDashboard: React.FC = () => {
                        className="absolute right-0 mt-3 w-72 bg-white rounded-[2rem] shadow-2xl border border-zinc-100 overflow-hidden z-50 p-2"
                      >
                        <div className="px-5 py-4 border-b border-zinc-50">
-                         <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] leading-none mb-1">Repositório Digital</p>
-                         <h4 className="text-xs font-black text-zinc-900 uppercase">Acesso por Diretoria</h4>
+                         <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] leading-none mb-1">Drive</p>
+                         <h4 className="text-xs font-black text-zinc-900 uppercase">Acesso Rápido</h4>
                        </div>
-                       
                        <div className="p-2 space-y-1">
                          {driveFolders.map((folder, i) => (
-                           <a
-                             key={i}
-                             href={folder.link}
-                             target="_blank"
-                             rel="noopener noreferrer"
-                             className="flex items-center gap-4 p-3 rounded-2xl hover:bg-zinc-50 transition-all group"
-                           >
+                           <a key={i} href={folder.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-zinc-50 transition-all group">
                              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", folder.bg)}>
                                <folder.icon className={cn("w-5 h-5", folder.color)} />
                              </div>
                              <div className="flex-grow">
                                <p className="text-[11px] font-black text-zinc-900 tracking-tight leading-none mb-1">{folder.name}</p>
-                               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                 <span className="text-[8px] font-bold text-zinc-400 uppercase">Abrir no Drive</span>
-                                 <ExternalLink className="w-2.5 h-2.5 text-zinc-300" />
-                               </div>
                              </div>
                            </a>
                          ))}
-                       </div>
-
-                       <div className="p-4 bg-zinc-50 rounded-b-[1.5rem] mt-2 border-t border-zinc-100">
-                          <p className="text-[8px] font-bold text-zinc-400 text-center uppercase tracking-widest leading-relaxed">
-                            Mantenha o Drive organizado para as próximas gestões.
-                          </p>
                        </div>
                      </motion.div>
                    </>
@@ -334,29 +411,16 @@ export const AdminDashboard: React.FC = () => {
                </AnimatePresence>
              </div>
 
-             <div className="hidden lg:flex items-center gap-4 px-5 py-2.5 bg-zinc-50 rounded-2xl border border-zinc-100 italic">
-                <LayoutDashboard className="w-4 h-4 text-zinc-300" />
-                {activeComp ? (
-                   <span className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">Comp: {activeComp.name}</span>
-                ) : (
-                   <span className="text-[10px] font-black text-red-100 uppercase tracking-widest">Nenhuma Competição Ativa</span>
-                )}
-             </div>
-             
-             <div className="flex items-center gap-4 pl-6 border-l border-zinc-100 h-10">
-               <div className="text-right hidden sm:block">
-                 <p className="text-xs font-black text-zinc-900 tracking-tight leading-none">{role}</p>
-                 <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Status Verificado</p>
-               </div>
-               <div className="w-12 h-12 rounded-2xl bg-lobo-secondary flex items-center justify-center text-lobo-primary shadow-lg shadow-black/10">
-                 <Users className="w-6 h-6" />
+             <div className="hidden sm:flex items-center gap-4 pl-6 border-l border-zinc-100 h-10">
+               <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-lobo-secondary flex items-center justify-center text-lobo-primary shadow-lg shadow-black/10">
+                 <Users className="w-5 h-5 md:w-6 md:h-6" />
                </div>
              </div>
           </div>
         </header>
 
         {/* Content Space */}
-        <main className="flex-grow p-10 overflow-y-auto custom-scrollbar">
+        <main className="flex-grow p-6 md:p-10 pb-28 md:pb-10 overflow-y-auto custom-scrollbar">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeTab}
@@ -383,13 +447,13 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                   <h3 className="text-2xl font-black text-zinc-900 tracking-tight uppercase">Bloqueado</h3>
                   <p className="text-zinc-500 text-sm max-w-sm mt-3 font-medium">
-                    Você precisa definir uma competição como <span className="font-bold text-lobo-primary">Ativa</span> nas configurações de Competições para gerenciar resultados e modalidades.
+                    Você precisa definir uma competição como <span className="font-bold text-lobo-primary">Ativa</span>.
                   </p>
                   <button 
                     onClick={() => setActiveTab('competitions')}
-                    className="mt-8 bg-lobo-secondary text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:brightness-110 transition-all"
+                    className="mt-8 bg-lobo-secondary text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl"
                   >
-                    Ativar Competição agora
+                    Ativar
                   </button>
                 </div>
               ) : (
@@ -402,6 +466,48 @@ export const AdminDashboard: React.FC = () => {
             </motion.div>
           </AnimatePresence>
         </main>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="fixed bottom-0 inset-x-0 bg-white/90 backdrop-blur-xl border-t border-zinc-100 h-20 px-4 flex items-center justify-around z-40 lg:hidden">
+          {[
+            { id: 'dashboard', icon: LayoutDashboard, label: 'Início' },
+            { id: 'socios', icon: UserCheck, label: 'Sócios' },
+            { id: 'inventory', icon: Package, label: 'Estoque' },
+            { id: 'finance', icon: DollarSign, label: 'Grana' },
+          ].map(item => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            if (item.id === 'finance' && role !== 'SUPER_ADMIN') return null;
+
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className="flex flex-col items-center gap-1 relative py-1 px-4"
+              >
+                <div className={cn(
+                  "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
+                  isActive ? "bg-lobo-secondary text-white shadow-lg" : "text-zinc-400"
+                )}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <span className={cn("text-[8px] font-black uppercase tracking-tighter", isActive ? "text-lobo-secondary" : "text-zinc-400")}>
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+          
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="flex flex-col items-center gap-1 text-zinc-400"
+          >
+            <div className="w-10 h-10 rounded-xl bg-zinc-50 flex items-center justify-center border border-zinc-100">
+               <Menu className="w-5 h-5" />
+            </div>
+            <span className="text-[8px] font-black uppercase tracking-tighter">Mais</span>
+          </button>
+        </nav>
       </div>
     </div>
   );
