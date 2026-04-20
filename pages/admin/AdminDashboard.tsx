@@ -119,7 +119,7 @@ export const AdminDashboard: React.FC = () => {
   const activeTabLabel = allTabs.find(t => t.id === activeTab)?.label || 'Painel';
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 -m-4 md:-m-8 relative overflow-x-hidden">
+    <div className="flex min-h-screen bg-zinc-50 relative overflow-x-hidden">
       {/* Mobile Drawer Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
@@ -412,9 +412,12 @@ export const AdminDashboard: React.FC = () => {
              </div>
 
              <div className="hidden sm:flex items-center gap-4 pl-6 border-l border-zinc-100 h-10">
-               <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-lobo-secondary flex items-center justify-center text-lobo-primary shadow-lg shadow-black/10">
-                 <Users className="w-5 h-5 md:w-6 md:h-6" />
-               </div>
+               <button 
+                 onClick={() => setShowDriveLinks(!showDriveLinks)}
+                 className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-lobo-secondary flex items-center justify-center text-lobo-primary shadow-lg shadow-black/10 hover:scale-105 transition-transform"
+               >
+                 <Cloud className="w-5 h-5 md:w-6 md:h-6" />
+               </button>
              </div>
           </div>
         </header>

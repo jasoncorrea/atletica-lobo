@@ -57,7 +57,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
 
       {!isAdmin && (
         <footer className="bg-gray-900 text-gray-500 py-6 text-center text-xs">
-          <p>© 2025 Atlética Lobo. O maior do sul.</p>
+          <p>© 2026 Atlética Lobo. O maior do sul.</p>
           <div className="flex justify-center items-center mt-2 space-x-2">
              {cloudActive ? (
                <span className="text-green-500 font-bold">● Cloud Online</span>
