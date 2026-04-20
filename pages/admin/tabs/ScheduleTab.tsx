@@ -32,6 +32,7 @@ export const ScheduleTab: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showAddModal, setShowAddModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   
   // Form States
   const [title, setTitle] = useState('');
@@ -54,21 +55,29 @@ export const ScheduleTab: React.FC = () => {
     e.preventDefault();
     if (!title || !date) return;
 
-    const db = getDb();
-    const newEvent: ManagementEvent = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: title.toUpperCase(),
-      description: desc,
-      date,
-      type
-    };
+    setIsSaving(true);
+    try {
+      const db = getDb();
+      const newEvent: ManagementEvent = {
+        id: Math.random().toString(36).substr(2, 9),
+        title: title.toUpperCase(),
+        description: desc,
+        date,
+        type
+      };
 
-    db.managementEvents = [...(db.managementEvents || []), newEvent];
-    await saveDb(db);
-    
-    setTitle('');
-    setDesc('');
-    setShowAddModal(false);
+      db.managementEvents = [...(db.managementEvents || []), newEvent];
+      await saveDb(db);
+      
+      setTitle('');
+      setDesc('');
+      setShowAddModal(false);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao salvar no cronograma. Verifique sua conexão ou permissões.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const removeEvent = async (id: string) => {
@@ -406,8 +415,21 @@ export const ScheduleTab: React.FC = () => {
                     </div>
                   </div>
 
-                  <button className="w-full bg-zinc-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.25em] shadow-xl hover:bg-indigo-600 transition-all active:scale-95">
-                    Confirmar no Cronograma
+                  <button 
+                    disabled={isSaving}
+                    className={cn(
+                      "w-full py-5 rounded-2xl font-black text-xs uppercase tracking-[0.25em] shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3",
+                      isSaving ? "bg-zinc-100 text-zinc-400 cursor-not-allowed" : "bg-zinc-900 text-white hover:bg-indigo-600"
+                    )}
+                  >
+                    {isSaving ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+                        Confirmando...
+                      </>
+                    ) : (
+                      'Confirmar no Cronograma'
+                    )}
                   </button>
                 </form>
               </div>

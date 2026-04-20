@@ -107,5 +107,10 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isSignedIn();
     }
+
+    match /managementEvents/{id} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
   }
 }
