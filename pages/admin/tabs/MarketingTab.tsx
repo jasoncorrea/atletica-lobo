@@ -293,14 +293,14 @@ export const MarketingTab: React.FC = () => {
           <div className="bg-zinc-50 border border-zinc-100 rounded-[2.5rem] p-10">
             <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight mb-8 flex items-center gap-3">
               <UserPlus className="w-6 h-6 text-lobo-primary" />
-              Recrutamento Fiscal
+              Novos Membros
             </h3>
             <form onSubmit={handleAddMember} className="flex gap-3">
               <div className="relative flex-1">
                 <User className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300" />
                 <input 
                   className="w-full bg-white border border-zinc-200 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold focus:ring-2 focus:ring-lobo-primary outline-none transition-all placeholder:text-zinc-300"
-                  placeholder="Nome COMPLETO do Fiscal"
+                  placeholder="Nome COMPLETO do Membro"
                   value={memberName}
                   onChange={e => setMemberName(e.target.value)}
                   required
@@ -317,7 +317,7 @@ export const MarketingTab: React.FC = () => {
 
           <div className="bg-white border border-zinc-100 rounded-[3rem] overflow-hidden shadow-sm">
              <div className="px-8 py-6 border-b border-zinc-50 bg-zinc-50/50 flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Tropa Ativa</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Membros Ativos</span>
                 <div className="flex items-center gap-2 px-3 py-1 bg-white rounded-full border border-zinc-100">
                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                    <span className="text-[9px] font-black text-zinc-600">{members.length} Agentes</span>
@@ -356,14 +356,14 @@ export const MarketingTab: React.FC = () => {
           <div className="bg-zinc-50 border border-zinc-100 rounded-[2.5rem] p-10">
             <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight mb-8 flex items-center gap-3">
               <FileText className="w-6 h-6 text-cyan-500" />
-              Arsenal de Conteúdo
+              Novas Publicações
             </h3>
             <form onSubmit={handleAddPost} className="space-y-4">
               <div className="relative">
                 <Hash className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300" />
                 <input 
                   className="w-full bg-white border border-zinc-200 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold focus:ring-2 focus:ring-lobo-primary outline-none transition-all placeholder:text-zinc-300"
-                  placeholder="Título da Campanha / Postagem"
+                  placeholder="Título da Publicação"
                   value={postTitle}
                   onChange={e => setPostTitle(e.target.value)}
                   required
