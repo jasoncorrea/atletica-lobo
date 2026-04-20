@@ -81,6 +81,8 @@ export const ScheduleTab: React.FC = () => {
       // Salva no banco de dados em background sem bloquear a UI
       saveDb(db).catch(err => {
         console.error("Erro ao sincronizar cronograma:", err);
+        // Se falhar no fundo, avisa o usuário pois o dado pode não ter sido persistido
+        alert('Atenção: O evento foi adicionado visualmente, mas houve um erro ao salvar no servidor. Verifique sua conexão e tente novamente.');
       });
     } catch (err) {
       console.error(err);
