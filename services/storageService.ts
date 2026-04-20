@@ -46,9 +46,16 @@ if (typeof window !== 'undefined') {
 
 let isFirebaseReady = false;
 let quotaErrorInterval: any = null;
+let lastQuotaCheckTime = 0;
 
 // Test connection
 async function testConnection() {
+  const now = Date.now();
+  // Throttle checks to 1 minute if previously failed to avoid spamming a broken quota
+  if (quotaErrorInterval && now - lastQuotaCheckTime < 55000) return;
+  
+  lastQuotaCheckTime = now;
+  
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
     console.log("Firebase connection established.");
@@ -69,9 +76,10 @@ async function testConnection() {
     });
     
   } catch (error: any) {
-    if (error.code === 'resource-exhausted' || error.message?.includes('quota')) {
+    const isQuota = error.code === 'resource-exhausted' || error.message?.includes('quota');
+    if (isQuota) {
       if (!quotaErrorInterval) {
-        quotaErrorInterval = setInterval(testConnection, 30000); // Check every 30s
+        quotaErrorInterval = setInterval(testConnection, 60000); // Check every 1m
       }
       return;
     }
@@ -95,7 +103,7 @@ export const handleFirestoreError = (error: any, op: string, path: string | null
   
   if (isQuotaError) {
     const info: FirestoreErrorInfo = {
-      error: 'Limite de cota do Firebase atingido. O sistema está operando em modo offline limitado com dados locais. Como você fez o upgrade para o Blaze, este aviso desaparecerá assim que o Firebase processar a alteração (pode levar alguns minutos).',
+      error: 'CRÍTICO: Cota de Leitura bloqueada pelo Google Cloud. Mesmo no Blaze, desative limites diários (Usage Caps) em: Console Google Cloud > APIs & Services > Cloud Firestore > Quotas. O limite "Free daily read units" pode ter uma trava manual.',
       operationType: op as any,
       path,
       authInfo: getAuthInfo()
@@ -298,15 +306,26 @@ onSnapshot(doc(db, 'config', 'global'), (snapshot) => {
   }
 });
 
-// Auto-seed athletics if empty in Firestore
+// Auto-seed athletics if empty in Firestore - use localStorage to avoid re-run spam
 async function seedInitialData() {
-  const athleticsSnap = await getDoc(doc(db, 'athletics', INITIAL_ATHLETICS[0].id));
-  if (!athleticsSnap.exists()) {
-    const batch = writeBatch(db);
-    INITIAL_ATHLETICS.forEach(a => {
-      batch.set(doc(db, 'athletics', a.id), a);
-    });
-    await batch.commit();
+  const currentProjectId = firebaseConfig.projectId;
+  const lastSeededProject = localStorage.getItem('lobo-last-seeded-project');
+  
+  if (lastSeededProject === currentProjectId) return;
+
+  try {
+    const athleticsSnap = await getDoc(doc(db, 'athletics', INITIAL_ATHLETICS[0].id));
+    if (!athleticsSnap.exists()) {
+      const batch = writeBatch(db);
+      INITIAL_ATHLETICS.forEach(a => {
+        batch.set(doc(db, 'athletics', a.id), a);
+      });
+      await batch.commit();
+    }
+    localStorage.setItem('lobo-last-seeded-project', currentProjectId);
+    localStorage.setItem('lobo-initial-seeded', 'true');
+  } catch (e) {
+    console.warn("Could not seed data:", e);
   }
 }
 seedInitialData();
