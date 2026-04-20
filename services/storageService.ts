@@ -45,16 +45,34 @@ if (typeof window !== 'undefined') {
 }
 
 let isFirebaseReady = false;
+let quotaErrorInterval: any = null;
 
 // Test connection
 async function testConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
     console.log("Firebase connection established.");
+    
+    if (quotaErrorInterval) {
+      clearInterval(quotaErrorInterval);
+      quotaErrorInterval = null;
+    }
+    
     window.dispatchEvent(new CustomEvent('lobo-quota-resolved'));
+    
+    // Restart listeners if they were in error state
+    Object.keys(activeListeners).forEach(col => {
+      const unsub = activeListeners[col];
+      unsub();
+      delete activeListeners[col];
+      startListener(col);
+    });
+    
   } catch (error: any) {
     if (error.code === 'resource-exhausted' || error.message?.includes('quota')) {
-      // Still in quota error
+      if (!quotaErrorInterval) {
+        quotaErrorInterval = setInterval(testConnection, 30000); // Check every 30s
+      }
       return;
     }
     if (error instanceof Error && error.message.includes('the client is offline')) {
@@ -63,6 +81,14 @@ async function testConnection() {
   }
 }
 testConnection();
+
+// Manual Sync Trigger
+if (typeof window !== 'undefined') {
+  window.addEventListener('lobo-force-sync', () => {
+    console.log("Forcing cloud sync recheck...");
+    testConnection();
+  });
+}
 
 export const handleFirestoreError = (error: any, op: string, path: string | null = null) => {
   const isQuotaError = error.code === 'resource-exhausted' || error.message?.includes('quota');

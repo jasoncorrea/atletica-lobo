@@ -67,17 +67,27 @@ export const QuotaAlert: React.FC = () => {
                   <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Integridade de Dados</span>
                 </div>
 
-                <button 
-                  onClick={() => {
-                    if (confirm('Deseja limpar todos os dados locais? Isso forçará o carregamento inicial assim que a cota resetar.')) {
-                      localStorage.clear();
-                      window.location.reload();
-                    }
-                  }}
-                  className="text-[9px] font-black uppercase tracking-widest text-white/20 hover:text-red-400 transition-colors"
-                >
-                  Limpar Cache
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => {
+                      window.dispatchEvent(new Event('lobo-force-sync'));
+                    }}
+                    className="text-[9px] font-black uppercase tracking-widest bg-orange-400 text-zinc-900 px-3 py-1.5 rounded-lg hover:bg-white transition-colors"
+                  >
+                    Reconectar Agora
+                  </button>
+                  <button 
+                    onClick={() => {
+                      if (confirm('Deseja limpar todos os dados locais? Isso forçará o carregamento inicial assim que a cota resetar.')) {
+                        localStorage.clear();
+                        window.location.reload();
+                      }
+                    }}
+                    className="text-[9px] font-black uppercase tracking-widest text-white/20 hover:text-red-400 transition-colors"
+                  >
+                    Limpar Cache
+                  </button>
+                </div>
               </div>
             </div>
           </div>
