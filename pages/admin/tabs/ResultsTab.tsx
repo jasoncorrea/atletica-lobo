@@ -55,7 +55,9 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
 
   useEffect(() => {
     loadData();
-  }, [comp]);
+    window.addEventListener('storage', loadData);
+    return () => window.removeEventListener('storage', loadData);
+  }, [comp.id]);
 
   const loadData = () => {
     const db = getDb();

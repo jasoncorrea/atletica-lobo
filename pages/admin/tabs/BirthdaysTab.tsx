@@ -18,6 +18,8 @@ export const BirthdaysTab: React.FC = () => {
 
   useEffect(() => {
     load();
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
   }, []);
 
   const handleAdd = (e: React.FormEvent) => {

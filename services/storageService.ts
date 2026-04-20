@@ -308,6 +308,7 @@ export const createCompetition = async (name: string, year: number) => {
 
     batch.set(doc(db, 'competitions', id), newComp);
 
+    // Seed Modalities (Always seed default modalities)
     INITIAL_SEED_MODALITIES.forEach(seed => {
       const modId = Math.random().toString(36).substring(2, 9);
       batch.set(doc(db, 'modalities', modId), {
@@ -319,15 +320,42 @@ export const createCompetition = async (name: string, year: number) => {
       });
     });
 
-    INITIAL_ATHLETICS.forEach(seed => {
-      const athleticId = Math.random().toString(36).substring(2, 9);
-      batch.set(doc(db, 'athletics', athleticId), {
-        id: athleticId,
-        competitionId: id,
-        name: seed.name,
-        logoUrl: seed.logoUrl
+    // Smart Athletics Seeding
+    const upperName = name.toUpperCase();
+    let athleticsToSeed: { name: string; logoUrl: string | null }[] = [];
+
+    if (upperName.includes('JOIA PG')) {
+      athleticsToSeed = [
+        'XV DE OUTUBRO', 'CAPETADA', 'LOS BRAVOS', 'DIREITO UEPG', 'MEDICINA UEPG',
+        'CAÓTICOS', 'BÁRBAROS', 'JAVAS', 'SHARKS', 'VI DE NOVEMBRO', 'LOBO',
+        'IMPÉRIO JURÍDICO', 'CORVOS', 'CORINGAÇO', 'HUNTERS', 'SOBERANA',
+        'GORILAS', 'TROIA', 'XIX DE SETEMBRO', 'Z'
+      ].map(n => ({ name: n, logoUrl: null }));
+    } else if (upperName.includes('ENGENHARIADAS PARANAENSE')) {
+      // Find the most recent Engenharíadas to copy athletics from
+      const prevEngenharíadas = [...currentDb.competitions]
+        .filter(c => c.name.toUpperCase().includes('ENGENHARIADAS PARANAENSE'))
+        .sort((a, b) => b.year - a.year)[0];
+
+      if (prevEngenharíadas) {
+        athleticsToSeed = currentDb.athletics
+          .filter(a => a.competitionId === prevEngenharíadas.id)
+          .map(a => ({ name: a.name, logoUrl: a.logoUrl }));
+      }
+    }
+
+    // Apply seeding
+    if (athleticsToSeed.length > 0) {
+      athleticsToSeed.forEach(seed => {
+        const athleticId = Math.random().toString(36).substring(2, 9);
+        batch.set(doc(db, 'athletics', athleticId), {
+          id: athleticId,
+          competitionId: id,
+          name: seed.name,
+          logoUrl: seed.logoUrl
+        });
       });
-    });
+    }
 
     await batch.commit();
     return newComp;

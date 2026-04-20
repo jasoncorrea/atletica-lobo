@@ -11,7 +11,11 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
   const [year, setYear] = useState(new Date().getFullYear());
 
   const load = () => setList(getDb().competitions);
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
+  }, []);
 
   const add = (e: React.FormEvent) => {
     e.preventDefault();

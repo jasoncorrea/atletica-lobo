@@ -41,7 +41,11 @@ export const InventoryTab: React.FC = () => {
     setProducts(db.products || []);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
+  }, []);
 
   const resetForm = () => {
     setEditingId(null);

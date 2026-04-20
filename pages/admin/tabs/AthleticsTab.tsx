@@ -20,7 +20,11 @@ export const AthleticsTab: React.FC<Props> = ({ comp }) => {
     setList(athletics);
   };
 
-  useEffect(() => { load(); }, [comp.id]);
+  useEffect(() => {
+    load();
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
+  }, [comp.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

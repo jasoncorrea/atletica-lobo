@@ -11,7 +11,11 @@ export const ModalitiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   const [gender, setGender] = useState('M');
 
   const load = () => setList(getDb().modalities.filter(m => m.competitionId === comp.id));
-  useEffect(() => { load(); }, [comp]);
+  useEffect(() => {
+    load();
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
+  }, [comp.id]);
 
   const add = () => {
     if (!name.trim()) return;

@@ -47,7 +47,11 @@ export const FinanceTab: React.FC = () => {
     setTransactions(db.transactions.sort((a, b) => b.date - a.date));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
+  }, []);
 
   const addTransaction = (e: React.FormEvent) => {
     e.preventDefault();
