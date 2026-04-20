@@ -89,7 +89,7 @@ service cloud.firestore {
     }
 
     match /socios/{id} {
-      allow read: if true;
+      allow read: if isSignedIn();
       allow write: if isSignedIn();
     }
 
@@ -105,6 +105,11 @@ service cloud.firestore {
 
     match /shareRecords/{id} {
       allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /managementEvents/{id} {
+      allow read: if isSignedIn();
       allow write: if isSignedIn();
     }
   }

@@ -11,7 +11,6 @@ export const SettingsTab: React.FC = () => {
 
   const save = () => {
     saveConfig(cfg);
-    window.dispatchEvent(new Event('storage'));
     setStatus('saved');
     setTimeout(() => setStatus('idle'), 3000);
   };

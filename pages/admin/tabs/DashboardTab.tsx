@@ -41,8 +41,8 @@ export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
 
   useEffect(() => {
     const handleStorage = () => setDb(getDb());
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    window.addEventListener('lobo-db-sync', handleStorage);
+    return () => window.removeEventListener('lobo-db-sync', handleStorage);
   }, []);
 
   // Stats Calculations

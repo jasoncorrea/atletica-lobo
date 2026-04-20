@@ -13,15 +13,14 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
   const load = () => setList(getDb().competitions);
   useEffect(() => {
     load();
-    window.addEventListener('storage', load);
-    return () => window.removeEventListener('storage', load);
+    window.addEventListener('lobo-db-sync', load);
+    return () => window.removeEventListener('lobo-db-sync', load);
   }, []);
 
   const add = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     createCompetition(name, year);
-    window.dispatchEvent(new Event('storage'));
     load(); 
     onUpdate(); 
     setName('');
@@ -43,7 +42,6 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
     const db = getDb();
     db.competitions.forEach(c => c.isActive = c.id === id);
     saveDb(db);
-    window.dispatchEvent(new Event('storage'));
     load(); 
     onUpdate();
   };

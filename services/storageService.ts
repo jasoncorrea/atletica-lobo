@@ -1,9 +1,8 @@
-
 import { 
   Competition, Athletic, Modality, Result, Penalty, 
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry,
   Transaction, FinanceCategory, Product, BirthdayMember,
-  ShareMember, SharePost, ShareRecord, Socio
+  ShareMember, SharePost, ShareRecord, Socio, ManagementEvent
 } from '../types';
 import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES, DB_KEY, APP_CONFIG_KEY } from '../constants';
 import { initializeApp } from 'firebase/app';
@@ -72,7 +71,7 @@ export const handleFirestoreError = (error: any, op: string, path: string | null
   throw error;
 };
 
-interface DatabaseSchema {
+export interface DatabaseSchema {
   competitions: Competition[];
   athletics: Athletic[];
   modalities: Modality[];
@@ -87,6 +86,7 @@ interface DatabaseSchema {
   sharePosts: SharePost[];
   shareRecords: ShareRecord[];
   socios: Socio[];
+  managementEvents: ManagementEvent[];
 }
 
 const initialDb: DatabaseSchema = {
@@ -103,7 +103,8 @@ const initialDb: DatabaseSchema = {
   shareMembers: [],
   sharePosts: [],
   shareRecords: [],
-  socios: []
+  socios: [],
+  managementEvents: []
 };
 
 // State management
@@ -122,7 +123,7 @@ const publicCollections = [
 ];
 
 const restrictedCollections = [
-  'transactions', 'financeCategories'
+  'transactions', 'financeCategories', 'managementEvents'
 ];
 
 const activeListeners: Record<string, () => void> = {};
@@ -158,6 +159,7 @@ const startListener = (colName: string) => {
       (currentDb as any)[colName] = data;
     }
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   }, (err) => {
     if (!err.message?.includes('insufficient permissions')) {
       console.error(`Error syncing ${colName}:`, err);
@@ -189,6 +191,7 @@ onSnapshot(doc(db, 'config', 'global'), (snapshot) => {
   if (snapshot.exists()) {
     currentConfig = snapshot.data() as AppConfig;
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   }
 }, (err) => console.error("Error syncing config:", err));
 
@@ -257,7 +260,9 @@ export const saveDb = async (dbUpdate: DatabaseSchema) => {
     }
 
     localStorage.setItem(DB_KEY, safeStringify(dbUpdate));
+    currentDb = { ...dbUpdate };
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   } catch (err) {
     handleFirestoreError(err, 'write');
   }
@@ -269,8 +274,11 @@ export const getConfig = (): AppConfig => {
 
 export const saveConfig = async (config: AppConfig) => {
   try {
+    currentConfig = { ...config };
     await setDoc(doc(db, 'config', 'global'), config);
     localStorage.setItem(APP_CONFIG_KEY, safeStringify(config));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   } catch (err) {
     handleFirestoreError(err, 'write', 'config/global');
   }
@@ -278,10 +286,21 @@ export const saveConfig = async (config: AppConfig) => {
 
 export const isOnline = () => true; // Always online with managed Firebase
 
+export const refreshAuth = async () => {
+  if (!auth.currentUser) {
+    try {
+      await signInAnonymously(auth);
+    } catch (err) {
+      console.error("Error refreshing auth:", err);
+    }
+  }
+};
+
 export const deleteItem = async (collectionName: keyof DatabaseSchema, id: string) => {
   try {
     await deleteDoc(doc(db, collectionName as string, id));
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   } catch (err) {
     handleFirestoreError(err, 'delete', `${collectionName}/${id}`);
     throw err;
@@ -364,9 +383,6 @@ export const createCompetition = async (name: string, year: number) => {
     throw err;
   }
 };
-
-// ... remaining functions kept similarly or slightly updated for cloud performance
-// ... (omitting full repetition of calculated logic as it uses getDb which is now reactive)
 
 export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] => {
   const db_local = currentDb;

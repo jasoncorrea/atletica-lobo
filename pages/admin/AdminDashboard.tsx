@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDb, getConfig } from '../../services/storageService';
+import { getDb, getConfig, refreshAuth } from '../../services/storageService';
 import { Competition, Role, AppConfig } from '../../types';
 import { DashboardTab } from './tabs/DashboardTab';
 import { CompetitionsTab } from './tabs/CompetitionsTab';
@@ -40,7 +40,8 @@ import {
   Camera,
   Tag,
   Megaphone,
-  ExternalLink
+  ExternalLink,
+  Calendar
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -71,9 +72,10 @@ export const AdminDashboard: React.FC = () => {
     if (savedRole) setRole(savedRole);
 
     const updateConfig = () => setConfig(getConfig());
-    window.addEventListener('storage', updateConfig);
+    window.addEventListener('lobo-db-sync', updateConfig);
     refresh();
-    return () => window.removeEventListener('storage', updateConfig);
+    refreshAuth();
+    return () => window.removeEventListener('lobo-db-sync', updateConfig);
   }, []);
 
   const refresh = () => {
