@@ -168,7 +168,7 @@ export const ScheduleTab: React.FC = () => {
 
         <div className="grid grid-cols-7 flex-grow">
           {Array.from({ length: firstDay }).map((_, i) => (
-            <div key={`empty-${i}`} className="aspect-square bg-zinc-50/10 border-r border-b border-zinc-50/50" />
+            <div key={`empty-${i}`} className="min-h-[70px] bg-zinc-50/10 border-r border-b border-zinc-50/50" />
           ))}
           
           {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -179,23 +179,28 @@ export const ScheduleTab: React.FC = () => {
 
             return (
               <div key={day} className={cn(
-                "aspect-square border-r border-b border-zinc-50 p-1 flex flex-col items-center justify-center relative group hover:bg-zinc-50 transition-colors",
+                "min-h-[70px] border-r border-b border-zinc-50 p-1.5 flex flex-col relative group hover:bg-zinc-50 transition-colors",
                 isToday && "bg-indigo-50/50"
               )}>
                 <span className={cn(
-                  "text-[9px] font-black",
-                  isToday ? "text-indigo-600" : "text-zinc-500"
+                  "text-[10px] font-black mb-1 shrink-0",
+                  isToday ? "text-indigo-600" : "text-zinc-400"
                 )}>{day}</span>
                 
-                <div className="flex gap-0.5 mt-0.5 flex-wrap justify-center max-w-full px-0.5">
+                <div className="space-y-0.5 overflow-hidden">
                   {dayEvents.map(e => {
                     const typeMeta = EVENT_TYPES.find(t => t.type === e.type);
                     return (
                       <div 
                         key={e.id}
-                        className={cn("w-1 h-1 rounded-full", typeMeta?.bg || 'bg-zinc-500')}
+                        className={cn(
+                          "px-1.5 py-0.5 rounded-md text-[7px] font-extrabold uppercase tracking-tighter truncate text-white leading-none shadow-sm",
+                          typeMeta?.bg || 'bg-zinc-500'
+                        )}
                         title={`${e.title}: ${e.description || ''}`}
-                      />
+                      >
+                        {e.title}
+                      </div>
                     );
                   })}
                 </div>
@@ -206,6 +211,7 @@ export const ScheduleTab: React.FC = () => {
                       {dayEvents.map(e => (
                         <div key={e.id} className="mb-1 last:mb-0">
                           <span className="font-black block uppercase tracking-tighter">{e.title}</span>
+                          <span className="text-[7px] block opacity-60 leading-tight line-clamp-2">{e.description}</span>
                         </div>
                       ))}
                    </div>
@@ -213,6 +219,11 @@ export const ScheduleTab: React.FC = () => {
               </div>
             );
           })}
+          
+          {/* Empty spaces at the end */}
+          {Array.from({ length: (7 - (firstDay + daysInMonth) % 7) % 7 }).map((_, i) => (
+            <div key={`empty-end-${i}`} className="min-h-[70px] bg-zinc-50/10 border-r border-b border-zinc-50/50" />
+          ))}
         </div>
       </div>
     );
@@ -255,7 +266,7 @@ export const ScheduleTab: React.FC = () => {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         {/* Multi-Month Calendar View */}
         <div className="xl:col-span-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
             {monthsToDisplay.map((monthDate, idx) => (
               <MonthCard key={idx} date={monthDate} />
             ))}
