@@ -166,9 +166,20 @@ const safeStringify = (obj: any): string => {
 const startListener = (colName: string) => {
   if (activeListeners[colName]) return;
   
-  const unsub = onSnapshot(collection(db, colName), (snapshot) => {
-    const data = snapshot.docs.map(d => d.data());
-    if (colName === 'scoreRules') {
+    const unsub = onSnapshot(collection(db, colName), (snapshot) => {
+      // Ignora atualizações locais para evitar loops e garantir persistência local imediata
+      if (snapshot.metadata.hasPendingWrites) return;
+
+      const data = snapshot.docs.map(d => d.data());
+      
+      // Lógica de "Merge" inteligente para evitar perda de dados local se o cloud estiver vazio
+      // (Especialmente útil se o Firebase estiver recém-criado)
+      if (data.length === 0 && (currentDb as any)[colName]?.length > 0) {
+        console.log(`Firestore: Recebido [] para ${colName}, mas mantendo dados locais.`);
+        return;
+      }
+
+      if (colName === 'scoreRules') {
       const map: any = {};
       data.forEach((item: any) => {
         if (item.id) map[item.id] = item.rule;
@@ -240,7 +251,21 @@ export const getDb = (): DatabaseSchema => {
 
 export const saveDb = async (dbUpdate: DatabaseSchema) => {
   try {
-    // Helper to clean undefined values recursively (Firestore fails on undefined)
+    // Primeiro salva LOCALMENTE para garantir que o usuário não perca os dados
+    localStorage.setItem(DB_KEY, safeStringify(dbUpdate));
+    currentDb = { ...dbUpdate };
+    window.dispatchEvent(new Event('storage'));
+
+    // Verifica se temos Auth para salvar no Cloud
+    if (!auth.currentUser) {
+      console.warn("Firestore: Usuário não autenticado. Salvando apenas localmente.");
+      // Se estamos no dashboard, tentamos reautenticar para a próxima vez
+      if (localStorage.getItem('lobo_auth') === 'true') {
+        signInAnonymously(auth).catch(console.error);
+      }
+      return; 
+    }
+
     const cleanObject = (obj: any): any => {
       if (obj === null || typeof obj !== 'object') return obj;
       if (Array.isArray(obj)) return obj.map(cleanObject);
@@ -284,9 +309,6 @@ export const saveDb = async (dbUpdate: DatabaseSchema) => {
       chunk.forEach(op => batch.set(op.ref, op.data));
       await batch.commit();
     }
-
-    localStorage.setItem(DB_KEY, safeStringify(dbUpdate));
-    window.dispatchEvent(new Event('storage'));
   } catch (err) {
     handleFirestoreError(err, 'write');
   }
