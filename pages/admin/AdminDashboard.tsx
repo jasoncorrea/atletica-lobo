@@ -39,7 +39,8 @@ import {
   FolderOpen,
   Camera,
   Tag,
-  Megaphone
+  Megaphone,
+  ExternalLink
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -220,8 +221,8 @@ export const AdminDashboard: React.FC = () => {
       </AnimatePresence>
 
       {/* Desktop Sidebar (Hidden on Mobile) */}
-      <aside className="hidden lg:flex w-72 bg-lobo-secondary text-white flex-col shrink-0 sticky top-0 h-screen z-50 shadow-2xl">
-        <div className="p-8 pl-14 flex flex-col items-center pt-12">
+      <aside className="hidden lg:flex w-72 bg-lobo-secondary text-white flex-col fixed inset-y-0 left-0 z-50 shadow-2xl">
+        <div className="p-8 pb-4 flex flex-col items-center pt-12">
           <div 
             onClick={() => navigate('/')}
             className="w-16 h-16 bg-white rounded-[1.5rem] flex items-center justify-center cursor-pointer hover:scale-105 hover:rotate-3 transition-all shadow-lg shadow-black/20 overflow-hidden"
@@ -343,7 +344,7 @@ export const AdminDashboard: React.FC = () => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-grow flex flex-col overflow-hidden w-full">
+      <div className="flex-grow flex flex-col lg:pl-72 w-full">
         {/* Top Bar */}
         <header className="h-28 md:h-40 bg-white/80 backdrop-blur-xl border-b border-zinc-100 flex items-center justify-between shrink-0 sticky top-0 z-40 px-6 md:px-10">
           <div className="flex items-center gap-4">
@@ -413,10 +414,11 @@ export const AdminDashboard: React.FC = () => {
 
              <div className="hidden sm:flex items-center gap-4 pl-6 border-l border-zinc-100 h-10">
                <button 
-                 onClick={() => setShowDriveLinks(!showDriveLinks)}
-                 className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-lobo-secondary flex items-center justify-center text-lobo-primary shadow-lg shadow-black/10 hover:scale-105 transition-transform"
+                 onClick={() => navigate('/')}
+                 title="Ver Site Público"
+                 className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-lobo-secondary flex items-center justify-center text-lobo-primary shadow-lg shadow-black/10 hover:scale-105 transition-transform group"
                >
-                 <Cloud className="w-5 h-5 md:w-6 md:h-6" />
+                 <ExternalLink className="w-5 h-5 md:w-6 md:h-6 group-hover:text-white transition-colors" />
                </button>
              </div>
           </div>
