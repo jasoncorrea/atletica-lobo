@@ -1,9 +1,8 @@
-
 import { 
   Competition, Athletic, Modality, Result, Penalty, 
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry,
   Transaction, FinanceCategory, Product, BirthdayMember,
-  ShareMember, SharePost, ShareRecord, Socio
+  ShareMember, SharePost, ShareRecord, Socio, ManagementEvent
 } from '../types';
 import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES, DB_KEY, APP_CONFIG_KEY } from '../constants';
 import { initializeApp } from 'firebase/app';
@@ -28,8 +27,6 @@ export interface FirestoreErrorInfo {
   }
 }
 
-const DB_SYNC_EVENT = 'lobo-db-sync';
-
 // Initializing Firebase
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
@@ -51,33 +48,30 @@ async function testConnection() {
 testConnection();
 
 export const handleFirestoreError = (error: any, op: string, path: string | null = null) => {
-  console.error(`Firestore Error [${op}] at ${path}:`, error);
-  
-  const user = auth.currentUser;
-  const info: FirestoreErrorInfo = {
-    error: error.message || 'Unknown Firestore Error',
-    operationType: op as any,
-    path,
-    authInfo: {
-      userId: user?.uid || 'anonymous',
-      email: user?.email || '',
-      emailVerified: user?.emailVerified || false,
-      isAnonymous: user?.isAnonymous || true,
-      providerInfo: user?.providerData.map(p => ({
-        providerId: p.providerId,
-        displayName: p.displayName || '',
-        email: p.email || ''
-      })) || []
-    }
-  };
-
   if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
+    const user = auth.currentUser;
+    const info: FirestoreErrorInfo = {
+      error: error.message || 'Unknown Firestore Error',
+      operationType: op as any,
+      path,
+      authInfo: {
+        userId: user?.uid || 'anonymous',
+        email: user?.email || '',
+        emailVerified: user?.emailVerified || false,
+        isAnonymous: user?.isAnonymous || true,
+        providerInfo: user?.providerData.map(p => ({
+          providerId: p.providerId,
+          displayName: p.displayName || '',
+          email: p.email || ''
+        })) || []
+      }
+    };
     throw new Error(safeStringify(info));
   }
   throw error;
 };
 
-interface DatabaseSchema {
+export interface DatabaseSchema {
   competitions: Competition[];
   athletics: Athletic[];
   modalities: Modality[];
@@ -92,6 +86,7 @@ interface DatabaseSchema {
   sharePosts: SharePost[];
   shareRecords: ShareRecord[];
   socios: Socio[];
+  managementEvents: ManagementEvent[];
 }
 
 const initialDb: DatabaseSchema = {
@@ -108,54 +103,27 @@ const initialDb: DatabaseSchema = {
   shareMembers: [],
   sharePosts: [],
   shareRecords: [],
-  socios: []
+  socios: [],
+  managementEvents: []
 };
 
 // State management
-const loadInitialDb = (): DatabaseSchema => {
-  const saved = localStorage.getItem(DB_KEY);
-  if (saved) {
-    try {
-      const parsed = JSON.parse(saved);
-      return { 
-        ...initialDb, 
-        ...parsed
-      };
-    } catch (e) {
-      console.error("Error hydration DB:", e);
-    }
-  }
-  return initialDb;
+let currentDb: DatabaseSchema = initialDb;
+let currentConfig: AppConfig = {
+  primaryColor: '#e38702',
+  secondaryColor: '#5a0509',
+  logoUrl: null
 };
-
-const loadInitialConfig = (): AppConfig => {
-  const saved = localStorage.getItem(APP_CONFIG_KEY);
-  if (saved) {
-    try {
-      return JSON.parse(saved);
-    } catch (e) {
-      console.error("Error hydration Config:", e);
-    }
-  }
-  return {
-    primaryColor: '#e38702',
-    secondaryColor: '#5a0509',
-    logoUrl: null
-  };
-};
-
-let currentDb: DatabaseSchema = loadInitialDb();
-let currentConfig: AppConfig = loadInitialConfig();
 
 // Syncing Firestore collections to Local State
 const publicCollections = [
   'competitions', 'athletics', 'modalities', 'results', 
   'penalties', 'products', 'birthdays', 'scoreRules',
-  'shareMembers', 'sharePosts', 'shareRecords'
+  'shareMembers', 'sharePosts', 'shareRecords', 'socios'
 ];
 
 const restrictedCollections = [
-  'transactions', 'financeCategories', 'socios'
+  'transactions', 'financeCategories', 'managementEvents'
 ];
 
 const activeListeners: Record<string, () => void> = {};
@@ -179,19 +147,9 @@ const safeStringify = (obj: any): string => {
 const startListener = (colName: string) => {
   if (activeListeners[colName]) return;
   
-    const unsub = onSnapshot(collection(db, colName), (snapshot) => {
-      // Ignora atualizações locais para evitar loops e garantir persistência local imediata
-      if (snapshot.metadata.hasPendingWrites) return;
-
-      const data = snapshot.docs.map(d => d.data());
-      
-      // Lógica de "Merge" inteligente para evitar perda de dados local se o cloud estiver vazio
-      if (data.length === 0 && (currentDb as any)[colName]?.length > 0) {
-        console.log(`Firestore: Recebido [] para ${colName}, mas mantendo dados locais.`);
-        return;
-      }
-
-      if (colName === 'scoreRules') {
+  const unsub = onSnapshot(collection(db, colName), (snapshot) => {
+    const data = snapshot.docs.map(d => d.data());
+    if (colName === 'scoreRules') {
       const map: any = {};
       data.forEach((item: any) => {
         if (item.id) map[item.id] = item.rule;
@@ -200,7 +158,8 @@ const startListener = (colName: string) => {
     } else {
       (currentDb as any)[colName] = data;
     }
-    window.dispatchEvent(new Event(DB_SYNC_EVENT));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   }, (err) => {
     if (!err.message?.includes('insufficient permissions')) {
       console.error(`Error syncing ${colName}:`, err);
@@ -210,31 +169,14 @@ const startListener = (colName: string) => {
   activeListeners[colName] = unsub;
 };
 
-export const refreshAuth = async () => {
-  if (localStorage.getItem('lobo_auth') === 'true' && !auth.currentUser) {
-    try {
-      console.log("Firestore: Forçando reautenticação para sincronizar dados restritos...");
-      await signInAnonymously(auth);
-    } catch (err) {
-      console.error("Firestore: Falha ao autenticar para sincronização:", err);
-    }
-  }
-};
-
 // Start public listeners immediately
 publicCollections.forEach(startListener);
 
 // Manage restricted listeners based on Auth state
-onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, (user) => {
   if (user) {
-    console.log("Firestore: Usuário autenticado. Iniciando listeners restritos.");
     restrictedCollections.forEach(startListener);
   } else {
-    // If not signed in to Firebase but logged in to the dashboard, try re-auth
-    if (localStorage.getItem('lobo_auth') === 'true') {
-      refreshAuth();
-    }
-
     restrictedCollections.forEach(colName => {
       if (activeListeners[colName]) {
         activeListeners[colName]();
@@ -248,7 +190,8 @@ onAuthStateChanged(auth, async (user) => {
 onSnapshot(doc(db, 'config', 'global'), (snapshot) => {
   if (snapshot.exists()) {
     currentConfig = snapshot.data() as AppConfig;
-    window.dispatchEvent(new Event(DB_SYNC_EVENT));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   }
 }, (err) => console.error("Error syncing config:", err));
 
@@ -271,22 +214,7 @@ export const getDb = (): DatabaseSchema => {
 
 export const saveDb = async (dbUpdate: DatabaseSchema) => {
   try {
-    // 1. Persistência Local Imediata (Crucial para No-Loss)
-    localStorage.setItem(DB_KEY, safeStringify(dbUpdate));
-    currentDb = { ...dbUpdate };
-    window.dispatchEvent(new Event(DB_SYNC_EVENT));
-
-    // 2. Garantia de Autenticação antes do Cloud Sync
-    if (!auth.currentUser && localStorage.getItem('lobo_auth') === 'true') {
-      console.log("Firestore: Tentando reautenticação expressa para upload...");
-      await refreshAuth();
-    }
-
-    if (!auth.currentUser) {
-      console.warn("Firestore: Sync abortado (Sem usuário autenticado).");
-      return; 
-    }
-
+    // Helper to clean undefined values recursively (Firestore fails on undefined)
     const cleanObject = (obj: any): any => {
       if (obj === null || typeof obj !== 'object') return obj;
       if (Array.isArray(obj)) return obj.map(cleanObject);
@@ -330,7 +258,11 @@ export const saveDb = async (dbUpdate: DatabaseSchema) => {
       chunk.forEach(op => batch.set(op.ref, op.data));
       await batch.commit();
     }
-    console.log(`Firestore: Sincronização de ${operations.length} itens concluída com sucesso.`);
+
+    localStorage.setItem(DB_KEY, safeStringify(dbUpdate));
+    currentDb = { ...dbUpdate };
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   } catch (err) {
     handleFirestoreError(err, 'write');
   }
@@ -345,7 +277,8 @@ export const saveConfig = async (config: AppConfig) => {
     currentConfig = { ...config };
     await setDoc(doc(db, 'config', 'global'), config);
     localStorage.setItem(APP_CONFIG_KEY, safeStringify(config));
-    window.dispatchEvent(new Event(DB_SYNC_EVENT));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   } catch (err) {
     handleFirestoreError(err, 'write', 'config/global');
   }
@@ -353,16 +286,21 @@ export const saveConfig = async (config: AppConfig) => {
 
 export const isOnline = () => true; // Always online with managed Firebase
 
+export const refreshAuth = async () => {
+  if (!auth.currentUser) {
+    try {
+      await signInAnonymously(auth);
+    } catch (err) {
+      console.error("Error refreshing auth:", err);
+    }
+  }
+};
+
 export const deleteItem = async (collectionName: keyof DatabaseSchema, id: string) => {
   try {
     await deleteDoc(doc(db, collectionName as string, id));
-    
-    // Remove localmente também para ser instantâneo
-    if (Array.isArray((currentDb as any)[collectionName])) {
-      (currentDb as any)[collectionName] = (currentDb as any)[collectionName].filter((item: any) => item.id !== id);
-    }
-
-    window.dispatchEvent(new Event(DB_SYNC_EVENT));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   } catch (err) {
     handleFirestoreError(err, 'delete', `${collectionName}/${id}`);
     throw err;
@@ -445,9 +383,6 @@ export const createCompetition = async (name: string, year: number) => {
     throw err;
   }
 };
-
-// ... remaining functions kept similarly or slightly updated for cloud performance
-// ... (omitting full repetition of calculated logic as it uses getDb which is now reactive)
 
 export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] => {
   const db_local = currentDb;
