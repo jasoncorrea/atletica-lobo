@@ -3,7 +3,7 @@ import {
   Competition, Athletic, Modality, Result, Penalty, 
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry,
   Transaction, FinanceCategory, Product, BirthdayMember,
-  ShareMember, SharePost, ShareRecord, Socio, ManagementEvent
+  ShareMember, SharePost, ShareRecord, Socio
 } from '../types';
 import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES, DB_KEY, APP_CONFIG_KEY } from '../constants';
 import { initializeApp } from 'firebase/app';
@@ -92,7 +92,6 @@ interface DatabaseSchema {
   sharePosts: SharePost[];
   shareRecords: ShareRecord[];
   socios: Socio[];
-  managementEvents: ManagementEvent[];
 }
 
 const initialDb: DatabaseSchema = {
@@ -109,8 +108,7 @@ const initialDb: DatabaseSchema = {
   shareMembers: [],
   sharePosts: [],
   shareRecords: [],
-  socios: [],
-  managementEvents: []
+  socios: []
 };
 
 // State management
@@ -121,9 +119,7 @@ const loadInitialDb = (): DatabaseSchema => {
       const parsed = JSON.parse(saved);
       return { 
         ...initialDb, 
-        ...parsed,
-        // Ensure defaults for arrays if parsed version is old
-        managementEvents: parsed.managementEvents || []
+        ...parsed
       };
     } catch (e) {
       console.error("Error hydration DB:", e);
@@ -132,12 +128,24 @@ const loadInitialDb = (): DatabaseSchema => {
   return initialDb;
 };
 
-let currentDb: DatabaseSchema = loadInitialDb();
-let currentConfig: AppConfig = {
-  primaryColor: '#e38702',
-  secondaryColor: '#5a0509',
-  logoUrl: null
+const loadInitialConfig = (): AppConfig => {
+  const saved = localStorage.getItem(APP_CONFIG_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Error hydration Config:", e);
+    }
+  }
+  return {
+    primaryColor: '#e38702',
+    secondaryColor: '#5a0509',
+    logoUrl: null
+  };
 };
+
+let currentDb: DatabaseSchema = loadInitialDb();
+let currentConfig: AppConfig = loadInitialConfig();
 
 // Syncing Firestore collections to Local State
 const publicCollections = [
@@ -147,7 +155,7 @@ const publicCollections = [
 ];
 
 const restrictedCollections = [
-  'transactions', 'financeCategories', 'managementEvents', 'socios'
+  'transactions', 'financeCategories', 'socios'
 ];
 
 const activeListeners: Record<string, () => void> = {};
@@ -334,6 +342,7 @@ export const getConfig = (): AppConfig => {
 
 export const saveConfig = async (config: AppConfig) => {
   try {
+    currentConfig = { ...config };
     await setDoc(doc(db, 'config', 'global'), config);
     localStorage.setItem(APP_CONFIG_KEY, safeStringify(config));
     window.dispatchEvent(new Event(DB_SYNC_EVENT));

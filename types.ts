@@ -133,14 +133,3 @@ export interface ShareRecord {
   postId: string;
   shared: boolean;
 }
-
-export type ManagementEventType = 'reuniao' | 'evento' | 'competicao' | 'prazo' | 'post' | 'outro';
-
-export interface ManagementEvent {
-  id: string;
-  title: string;
-  description?: string;
-  date: string; // ISO YYYY-MM-DD
-  type: ManagementEventType;
-  createdBy?: string;
-}
