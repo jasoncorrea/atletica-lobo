@@ -67,16 +67,24 @@ export const ScheduleTab: React.FC = () => {
         type
       };
 
-      db.managementEvents = [...(db.managementEvents || []), newEvent];
-      await saveDb(db);
+      // Adiciona localmente primeiro para ser instantâneo
+      const updatedEvents = [...(db.managementEvents || []), newEvent];
+      db.managementEvents = updatedEvents;
+      setEvents(updatedEvents);
       
+      // Fecha o modal e limpa os campos IMEDIATAMENTE para UX snappiness
+      setShowAddModal(false);
       setTitle('');
       setDesc('');
-      setShowAddModal(false);
+      setIsSaving(false);
+
+      // Salva no banco de dados em background sem bloquear a UI
+      saveDb(db).catch(err => {
+        console.error("Erro ao sincronizar cronograma:", err);
+      });
     } catch (err) {
       console.error(err);
-      alert('Erro ao salvar no cronograma. Verifique sua conexão ou permissões.');
-    } finally {
+      alert('Erro inesperado ao adicionar evento.');
       setIsSaving(false);
     }
   };
