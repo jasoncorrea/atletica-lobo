@@ -118,12 +118,12 @@ let currentConfig: AppConfig = {
 // Syncing Firestore collections to Local State
 const publicCollections = [
   'competitions', 'athletics', 'modalities', 'results', 
-  'penalties', 'products', 'birthdays', 'scoreRules',
-  'shareMembers', 'sharePosts', 'shareRecords', 'socios'
+  'penalties', 'products', 'birthdays', 'scoreRules'
 ];
 
 const restrictedCollections = [
-  'transactions', 'financeCategories', 'managementEvents'
+  'transactions', 'financeCategories', 'managementEvents',
+  'socios', 'shareMembers', 'sharePosts', 'shareRecords'
 ];
 
 const activeListeners: Record<string, () => void> = {};
