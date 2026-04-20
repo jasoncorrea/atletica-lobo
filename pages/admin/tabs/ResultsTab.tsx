@@ -55,8 +55,8 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
 
   useEffect(() => {
     loadData();
-    window.addEventListener('lobo-db-sync', loadData);
-    return () => window.removeEventListener('lobo-db-sync', loadData);
+    window.addEventListener('storage', loadData);
+    return () => window.removeEventListener('storage', loadData);
   }, [comp.id]);
 
   const loadData = () => {
@@ -166,6 +166,7 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
     if (existingIdx >= 0) db.results[existingIdx] = newResult;
     else db.results.push(newResult);
     saveDb(db);
+    window.dispatchEvent(new Event('storage'));
     loadData();
     if (inputMode === 'bracket') resetBracket();
     else setRankings({});

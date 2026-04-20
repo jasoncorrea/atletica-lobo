@@ -49,8 +49,8 @@ export const FinanceTab: React.FC = () => {
 
   useEffect(() => {
     load();
-    window.addEventListener('lobo-db-sync', load);
-    return () => window.removeEventListener('lobo-db-sync', load);
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
   }, []);
 
   const addTransaction = (e: React.FormEvent) => {
@@ -81,6 +81,7 @@ export const FinanceTab: React.FC = () => {
 
     db.transactions.push(newTx);
     saveDb(db);
+    window.dispatchEvent(new Event('storage'));
     
     setAmount('');
     setDesc('');
@@ -108,6 +109,7 @@ export const FinanceTab: React.FC = () => {
       isDefault: false
     });
     saveDb(db);
+    window.dispatchEvent(new Event('storage'));
     setNewCatName('');
     load();
   };

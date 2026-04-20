@@ -13,8 +13,8 @@ export const ModalitiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   const load = () => setList(getDb().modalities.filter(m => m.competitionId === comp.id));
   useEffect(() => {
     load();
-    window.addEventListener('lobo-db-sync', load);
-    return () => window.removeEventListener('lobo-db-sync', load);
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
   }, [comp.id]);
 
   const add = () => {
@@ -28,6 +28,7 @@ export const ModalitiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
       status: 'pending' 
     });
     saveDb(db);
+    window.dispatchEvent(new Event('storage'));
     load(); 
     setName('');
   };

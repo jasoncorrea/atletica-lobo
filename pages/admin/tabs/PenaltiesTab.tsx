@@ -19,8 +19,8 @@ export const PenaltiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   };
   useEffect(() => {
     load();
-    window.addEventListener('lobo-db-sync', load);
-    return () => window.removeEventListener('lobo-db-sync', load);
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
   }, [comp.id]);
 
   const add = (e: React.FormEvent) => {
@@ -36,6 +36,7 @@ export const PenaltiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
       date: Date.now() 
     });
     saveDb(db);
+    window.dispatchEvent(new Event('storage'));
     load(); 
     setReason('');
   };
@@ -45,6 +46,7 @@ export const PenaltiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
     const db = getDb();
     db.penalties = db.penalties.filter(p => p.id !== id);
     saveDb(db);
+    window.dispatchEvent(new Event('storage'));
     setPens(prev => prev.filter(p => p.id !== id));
   };
 
