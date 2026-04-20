@@ -103,6 +103,7 @@ export const AdminDashboard: React.FC = () => {
     { id: 'birthdays', label: 'Aniversariantes', icon: Cake, color: 'bg-pink-500' },
     { id: 'inventory', label: 'Estoque', icon: Package, color: 'bg-orange-500' },
     { id: 'marketing', label: 'Marketing', icon: Share2, color: 'bg-cyan-500' },
+    { id: 'drive_group', label: 'Google Drive', icon: Cloud, color: 'bg-zinc-800' },
     { id: 'settings', label: 'Configurações', icon: Settings, color: 'bg-zinc-500' }
   ];
 
@@ -274,7 +275,11 @@ export const AdminDashboard: React.FC = () => {
                   </div>
                   <span className="text-xs font-black tracking-tight uppercase">{item.label}</span>
                   
-                  {isActive && !hasChildren && (
+                  {item.id === 'drive_group' && (
+                    <span className="ml-auto bg-lobo-primary text-[8px] px-1.5 py-0.5 rounded-full text-white font-black animate-pulse">NOVO</span>
+                  )}
+
+                  {isActive && !hasChildren && item.id !== 'drive_group' && (
                      <motion.div 
                       layoutId="sidebarActive"
                       className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-lobo-primary rounded-l-full" 
@@ -368,48 +373,11 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
-             <div className="relative">
-               <button 
-                 onClick={() => setShowDriveLinks(!showDriveLinks)}
-                 className={cn(
-                   "flex items-center justify-center w-12 h-12 md:w-auto md:px-6 md:py-2.5 rounded-2xl border transition-all shadow-sm active:scale-95 group",
-                   showDriveLinks ? "bg-zinc-900 border-zinc-900 text-white" : "bg-white border-zinc-100 text-zinc-600 hover:bg-zinc-50"
-                 )}
-               >
-                 <Cloud className={cn("w-5 h-5 md:w-4 md:h-4 transition-colors", showDriveLinks ? "text-lobo-primary" : "text-zinc-400 group-hover:text-lobo-primary")} />
-                 <span className="hidden md:block text-[10px] font-black uppercase tracking-widest ml-3">Drive</span>
-               </button>
-
-               <AnimatePresence>
-                 {showDriveLinks && (
-                   <>
-                     <div className="fixed inset-0 z-40" onClick={() => setShowDriveLinks(false)} />
-                     <motion.div
-                       initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                       animate={{ opacity: 1, scale: 1, y: 0 }}
-                       exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                       className="absolute right-0 mt-3 w-72 bg-white rounded-[2rem] shadow-2xl border border-zinc-100 overflow-hidden z-50 p-2"
-                     >
-                       <div className="px-5 py-4 border-b border-zinc-50">
-                         <p className="text-[9px] font-black text-zinc-400 uppercase tracking-[0.2em] leading-none mb-1">Drive</p>
-                         <h4 className="text-xs font-black text-zinc-900 uppercase">Acesso Rápido</h4>
-                       </div>
-                       <div className="p-2 space-y-1">
-                         {driveFolders.map((folder, i) => (
-                           <a key={i} href={folder.link} target="_blank" rel="noopener noreferrer" className="flex items-center gap-4 p-3 rounded-2xl hover:bg-zinc-50 transition-all group">
-                             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-transform group-hover:scale-110", folder.bg)}>
-                               <folder.icon className={cn("w-5 h-5", folder.color)} />
-                             </div>
-                             <div className="flex-grow">
-                               <p className="text-[11px] font-black text-zinc-900 tracking-tight leading-none mb-1">{folder.name}</p>
-                             </div>
-                           </a>
-                         ))}
-                       </div>
-                     </motion.div>
-                   </>
-                 )}
-               </AnimatePresence>
+             <div className="hidden sm:flex flex-col items-end mr-4">
+                <span className="text-[10px] font-black text-lobo-secondary uppercase tracking-widest">{new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}</span>
+                <span className="text-xs font-black text-zinc-900 tabular-nums">
+                  {new Date().toLocaleDateString('pt-BR')}
+                </span>
              </div>
 
              <div className="hidden sm:flex items-center gap-4 pl-6 border-l border-zinc-100 h-10">
@@ -441,6 +409,62 @@ export const AdminDashboard: React.FC = () => {
               {activeTab === 'birthdays' && <BirthdaysTab />}
               {activeTab === 'socios' && <SociosTab />}
               {activeTab === 'marketing' && <MarketingTab />}
+              {activeTab === 'drive_group' && (
+                <div className="space-y-8 animate-fade-in">
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="w-12 h-12 bg-lobo-secondary rounded-2xl flex items-center justify-center text-white shadow-xl shadow-lobo-secondary/20">
+                      <Cloud className="w-7 h-7" />
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-black text-zinc-900 uppercase tracking-tighter leading-none">Recursos Globais</h2>
+                      <p className="text-[10px] font-black text-lobo-primary uppercase tracking-widest mt-2">Central Lobo no Google Drive</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {driveFolders.map((folder, i) => (
+                      <a 
+                        key={i} 
+                        href={folder.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="group bg-white p-8 rounded-[2.5rem] border border-zinc-100 shadow-sm hover:shadow-xl hover:border-lobo-primary/20 transition-all flex flex-col justify-between aspect-video relative overflow-hidden"
+                      >
+                        <div className="relative z-10">
+                          <div className={cn("w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110 group-hover:rotate-3 shadow-lg", folder.bg)}>
+                            <folder.icon className={cn("w-7 h-7", folder.color)} />
+                          </div>
+                          <h4 className="text-lg font-black text-zinc-900 uppercase tracking-tight leading-none mb-2">{folder.name}</h4>
+                          <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest leading-none">Abrir no Drive</p>
+                        </div>
+                        
+                        <ExternalLink className="absolute right-8 bottom-8 w-6 h-6 text-zinc-200 group-hover:text-lobo-primary transition-colors" />
+                        <folder.icon className="absolute -right-10 -bottom-10 w-48 h-48 opacity-[0.02] text-zinc-900 group-hover:opacity-[0.05] transition-opacity" />
+                      </a>
+                    ))}
+                  </div>
+
+                  <div className="bg-zinc-900 p-12 rounded-[3.5rem] mt-12 relative overflow-hidden">
+                    <div className="relative z-10 max-w-2xl">
+                       <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-4">Padronização de Arquivos</h3>
+                       <p className="text-white/40 text-sm leading-relaxed mb-8">
+                         Mantenha todos os documentos e artes centralizados nas pastas oficiais para garantir a continuidade da gestão e a identidade visual da Atlética Lobo.
+                       </p>
+                       <div className="flex gap-4">
+                          <div className="px-6 py-3 bg-white/5 rounded-xl border border-white/10 flex items-center gap-3">
+                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                             <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Backup Ativo</span>
+                          </div>
+                          <div className="px-6 py-3 bg-white/5 rounded-xl border border-white/10 flex items-center gap-3">
+                             <div className="w-2 h-2 rounded-full bg-amber-500" />
+                             <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">Compartilhamento Interno</span>
+                          </div>
+                       </div>
+                    </div>
+                    <ShieldCheck className="absolute -right-20 -bottom-20 w-80 h-80 text-white/5 rotate-12" />
+                  </div>
+                </div>
+              )}
               {activeTab === 'settings' && <SettingsTab />}
               {activeTab === 'finance' && role === 'SUPER_ADMIN' && <FinanceTab />}
               {activeTab === 'inventory' && <InventoryTab />}

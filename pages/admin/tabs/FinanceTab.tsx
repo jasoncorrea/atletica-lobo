@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, saveDb } from '../../../services/storageService';
+import { getDb, saveDb, deleteItem } from '../../../services/storageService';
 import { FinanceCategory, Transaction, PaymentAccount, TransactionType } from '../../../types';
 import { 
   DollarSign, 
@@ -85,13 +85,14 @@ export const FinanceTab: React.FC = () => {
     load();
   };
 
-  const deleteTransaction = (id: string) => {
+  const deleteTransaction = async (id: string) => {
     if (!confirm('Excluir este lançamento?')) return;
-    const db = getDb();
-    db.transactions = db.transactions.filter(t => t.id !== id);
-    saveDb(db);
-    window.dispatchEvent(new Event('storage'));
-    load();
+    try {
+      await deleteItem('transactions', id);
+      load();
+    } catch (err) {
+      alert('Erro ao excluir lançamento financeiro.');
+    }
   };
 
   const addCategory = (e: React.FormEvent) => {

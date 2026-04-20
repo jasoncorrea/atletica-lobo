@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, saveDb, handleImageUpload } from '../../../services/storageService';
+import { getDb, saveDb, handleImageUpload, deleteItem } from '../../../services/storageService';
 import { Athletic, Competition } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Edit2, Trash2, X, Camera, Shield } from 'lucide-react';
@@ -76,14 +76,15 @@ export const AthleticsTab: React.FC<Props> = ({ comp }) => {
     }
   };
 
-  const remove = (id: string) => {
+  const remove = async (id: string) => {
     if (!confirm('Tem certeza que deseja remover esta atlética? Isso pode afetar resultados passados.')) return;
     if (editingId === id) resetForm();
-    const db = getDb();
-    db.athletics = db.athletics.filter(a => a.id !== id);
-    saveDb(db);
-    window.dispatchEvent(new Event('storage'));
-    setList(prev => prev.filter(a => a.id !== id));
+    try {
+      await deleteItem('athletics', id);
+      load();
+    } catch (err) {
+      alert('Erro ao apagar atlética.');
+    }
   };
 
   return (

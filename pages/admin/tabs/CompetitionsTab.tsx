@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, saveDb, createCompetition } from '../../../services/storageService';
+import { getDb, saveDb, createCompetition, deleteItem } from '../../../services/storageService';
 import { Competition } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trophy, Trash2, CheckCircle2, Calendar, Target, Flag, Sparkles, LayoutGrid, Clock } from 'lucide-react';
@@ -23,14 +23,16 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
     setName('');
   };
 
-  const remove = (id: string) => {
+  const remove = async (id: string) => {
     if (!confirm('Excluir esta competição apagará todas as modalidades e resultados vinculados. Continuar?')) return;
-    const db = getDb();
-    db.competitions = db.competitions.filter(c => c.id !== id);
-    saveDb(db);
-    window.dispatchEvent(new Event('storage'));
-    setList(prev => prev.filter(c => c.id !== id));
-    onUpdate();
+    try {
+      await deleteItem('competitions', id);
+      load();
+      onUpdate();
+    } catch (err) {
+      console.error('Erro ao excluir:', err);
+      alert('Erro ao excluir a competição.');
+    }
   };
 
   const setActive = (id: string) => {

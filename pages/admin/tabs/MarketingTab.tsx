@@ -118,18 +118,22 @@ export const MarketingTab: React.FC = () => {
 
   const removeMember = async (id: string) => {
     if (!confirm('Deseja remover este membro?')) return;
-    const db = getDb();
-    db.shareMembers = db.shareMembers.filter(m => m.id !== id);
-    saveDb(db);
-    window.dispatchEvent(new Event('storage'));
+    try {
+      await deleteItem('shareMembers', id);
+      load();
+    } catch (err) {
+      alert('Erro ao remover membro.');
+    }
   };
 
   const removePost = async (id: string) => {
     if (!confirm('Deseja remover este post?')) return;
-    const db = getDb();
-    db.sharePosts = db.sharePosts.filter(p => p.id !== id);
-    saveDb(db);
-    window.dispatchEvent(new Event('storage'));
+    try {
+      await deleteItem('sharePosts', id);
+      load();
+    } catch (err) {
+      alert('Erro ao remover publicação.');
+    }
   };
 
   return (

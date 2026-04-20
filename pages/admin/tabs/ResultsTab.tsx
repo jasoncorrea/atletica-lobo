@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { getDb, saveDb } from '../../../services/storageService';
+import { getDb, saveDb, deleteItem } from '../../../services/storageService';
 import { Competition, Modality, Athletic, Result } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -16,7 +16,8 @@ import {
   Award,
   ChevronDown,
   Edit2,
-  AlertTriangle
+  AlertTriangle,
+  Trash2
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
@@ -167,6 +168,16 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
     loadData();
     if (inputMode === 'bracket') resetBracket();
     else setRankings({});
+  };
+
+  const deleteResult = async (id: string) => {
+    if (!confirm('Deseja excluir este resultado permanentemente?')) return;
+    try {
+      await deleteItem('results', id);
+      loadData();
+    } catch (err) {
+      alert('Erro ao excluir resultado.');
+    }
   };
 
   const handleEdit = (result: Result) => {
@@ -537,8 +548,17 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
                       <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Resultado Final</span>
                       <span className="font-black text-sm text-zinc-900 tracking-tight">{getModalityName(r.modalityId)}</span>
                     </div>
-                    <div className="bg-zinc-100 p-1.5 rounded-lg text-zinc-400 group-hover:bg-lobo-primary group-hover:text-white transition-colors">
-                      <Edit2 className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-2">
+                      <div className="bg-zinc-100 p-1.5 rounded-lg text-zinc-400 group-hover:bg-lobo-primary group-hover:text-white transition-colors" title="Editar">
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </div>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); deleteResult(r.id); }}
+                        className="bg-red-50 p-1.5 rounded-lg text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                        title="Excluir"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                   

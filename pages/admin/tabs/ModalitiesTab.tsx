@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, saveDb } from '../../../services/storageService';
+import { getDb, saveDb, deleteItem } from '../../../services/storageService';
 import { Competition, Modality } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Target, Trash2, Layers, Search, Ghost, User, UserCheck, Users } from 'lucide-react';
@@ -29,13 +29,14 @@ export const ModalitiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
     setName('');
   };
 
-  const remove = (id: string) => {
+  const remove = async (id: string) => {
     if (!confirm('Excluir esta modalidade removerá todos os resultados vinculados a ela. Continuar?')) return;
-    const db = getDb();
-    db.modalities = db.modalities.filter(m => m.id !== id);
-    saveDb(db);
-    window.dispatchEvent(new Event('storage'));
-    setList(prev => prev.filter(m => m.id !== id));
+    try {
+      await deleteItem('modalities', id);
+      load();
+    } catch (err) {
+      alert('Erro ao excluir modalidade.');
+    }
   };
 
   const getGenderMeta = (g: string) => {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, saveDb, handleImageUpload } from '../../../services/storageService';
+import { getDb, saveDb, handleImageUpload, deleteItem } from '../../../services/storageService';
 import { Product } from '../../../types';
 import { 
   Package, 
@@ -64,13 +64,14 @@ export const InventoryTab: React.FC = () => {
     setSubTab('add');
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (!confirm('Deseja realmente excluir este produto?')) return;
-    const db = getDb();
-    db.products = db.products.filter(p => p.id !== id);
-    saveDb(db);
-    window.dispatchEvent(new Event('storage'));
-    load();
+    try {
+      await deleteItem('products', id);
+      load();
+    } catch (err) {
+      alert('Erro ao excluir produto do estoque.');
+    }
   };
 
   const handleSave = (e: React.FormEvent) => {
