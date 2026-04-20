@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, saveDb } from '../../../services/storageService';
+import { getDb, updateItem, deleteItem } from '../../../services/storageService';
 import { Competition, Athletic, Penalty } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, Trash2, ShieldAlert, History, Search, Scale, ChevronDown, Flag } from 'lucide-react';
@@ -23,29 +23,36 @@ export const PenaltiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
     return () => window.removeEventListener('lobo-db-sync', load);
   }, [comp.id]);
 
-  const add = (e: React.FormEvent) => {
+  const add = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!target) return;
-    const db = getDb();
-    db.penalties.push({ 
+    
+    const newPenalty: Penalty = { 
       id: Math.random().toString(36).substr(2, 9), 
       competitionId: comp.id, 
       athleticId: target, 
       points: pts, 
       reason, 
       date: Date.now() 
-    });
-    saveDb(db);
-    load(); 
-    setReason('');
+    };
+
+    try {
+      await updateItem('penalties', newPenalty);
+      load(); 
+      setReason('');
+    } catch (err) {
+      alert('Erro ao salvar punição.');
+    }
   };
 
-  const remove = (id: string) => {
+  const remove = async (id: string) => {
     if (!confirm('Excluir esta punição reverterá os pontos perdidos pela atlética. Continuar?')) return;
-    const db = getDb();
-    db.penalties = db.penalties.filter(p => p.id !== id);
-    saveDb(db);
-    setPens(prev => prev.filter(p => p.id !== id));
+    try {
+      await deleteItem('penalties', id);
+      load();
+    } catch (err) {
+      alert('Erro ao excluir punição.');
+    }
   };
 
   return (

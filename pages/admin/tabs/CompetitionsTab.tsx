@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, saveDb, createCompetition, deleteItem } from '../../../services/storageService';
+import { getDb, updateItem, createCompetition, deleteItem } from '../../../services/storageService';
 import { Competition } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trophy, Trash2, CheckCircle2, Calendar, Target, Flag, Sparkles, LayoutGrid, Clock } from 'lucide-react';
@@ -38,12 +38,21 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
     }
   };
 
-  const setActive = (id: string) => {
-    const db = getDb();
-    db.competitions.forEach(c => c.isActive = c.id === id);
-    saveDb(db);
-    load(); 
-    onUpdate();
+  const setActive = async (id: string) => {
+    try {
+      const db = getDb();
+      // Em um ambiente Firestore, desativar os outros um por um ou via batch
+      // Como o storageService já tem o db na memória, podemos iterar
+      const updates = db.competitions.map(async c => {
+        const updated = { ...c, isActive: c.id === id };
+        await updateItem('competitions', updated);
+      });
+      await Promise.all(updates);
+      load(); 
+      onUpdate();
+    } catch (err) {
+      alert('Erro ao ativar competição.');
+    }
   };
 
   return (

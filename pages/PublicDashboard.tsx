@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getDb, calculateLeaderboard, saveDb, deleteItem } from '../services/storageService';
+import { getDb, calculateLeaderboard, updateItem, deleteItem } from '../services/storageService';
 import { Competition, LeaderboardEntry, BirthdayMember, ShareMember, SharePost, ShareRecord, Socio } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Medal, AlertCircle, ChevronDown, Award, Cake, Calendar, Star, Users, Share2, CheckCircle2, Circle, BarChart2, UserCheck, Search } from 'lucide-react';
@@ -52,10 +52,8 @@ export const PublicDashboard: React.FC = () => {
     if (exists) {
       await deleteItem('shareRecords', recordId);
     } else {
-      const db = getDb();
       const newRecord: ShareRecord = { id: recordId, memberId, postId, shared: true };
-      db.shareRecords = [...(db.shareRecords || []), newRecord];
-      await saveDb(db);
+      await updateItem('shareRecords', newRecord);
     }
   };
 
