@@ -109,7 +109,25 @@ const initialDb: DatabaseSchema = {
 };
 
 // State management
-let currentDb: DatabaseSchema = initialDb;
+const loadInitialDb = (): DatabaseSchema => {
+  const saved = localStorage.getItem(DB_KEY);
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      return { 
+        ...initialDb, 
+        ...parsed,
+        // Ensure defaults for arrays if parsed version is old
+        managementEvents: parsed.managementEvents || []
+      };
+    } catch (e) {
+      console.error("Error hydration DB:", e);
+    }
+  }
+  return initialDb;
+};
+
+let currentDb: DatabaseSchema = loadInitialDb();
 let currentConfig: AppConfig = {
   primaryColor: '#e38702',
   secondaryColor: '#5a0509',
@@ -173,10 +191,19 @@ const startListener = (colName: string) => {
 publicCollections.forEach(startListener);
 
 // Manage restricted listeners based on Auth state
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
   if (user) {
     restrictedCollections.forEach(startListener);
   } else {
+    // If not signed in to Firebase but logged in to the dashboard, try re-auth
+    if (localStorage.getItem('lobo_auth') === 'true') {
+      try {
+        await signInAnonymously(auth);
+      } catch (err) {
+        console.error("Firebase auto-reauth failed:", err);
+      }
+    }
+
     restrictedCollections.forEach(colName => {
       if (activeListeners[colName]) {
         activeListeners[colName]();
