@@ -69,6 +69,7 @@ const CATEGORY_TEXT: Record<string, string> = {
 export const ScheduleTab: React.FC = () => {
   const [events, setEvents] = useState<PlannerEvent[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string, title: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateInput, setDateInput] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [isSaving, setIsSaving] = useState(false);
@@ -121,12 +122,13 @@ export const ScheduleTab: React.FC = () => {
     }
   };
 
-  const handleDeleteEvent = async (id: string) => {
-    // Removed confirm() as it can be unreliable in some iframe environments
-    // and replaced with immediate deletion for better responsiveness in this admin context
+  const handleDeleteEvent = async () => {
+    if (!confirmDelete) return;
+    
     setIsSaving(true);
     try {
-      await deleteItem('plannerEvents', id);
+      await deleteItem('plannerEvents', confirmDelete.id);
+      setConfirmDelete(null);
     } catch (error) {
       console.error("Error deleting event:", error);
       alert('Erro ao excluir o compromisso.');
@@ -155,7 +157,7 @@ export const ScheduleTab: React.FC = () => {
     return [...events]
       .filter(e => e.date >= startOfDay(today).getTime())
       .sort((a, b) => a.date - b.date)
-      .slice(0, 5);
+      .slice(0, 15);
   }, [events, today]);
 
   const renderCalendar = React.useCallback((monthDate: Date) => {
@@ -218,13 +220,13 @@ export const ScheduleTab: React.FC = () => {
                       key={`dot-${e.id}-${dotIdx}`} 
                       onClick={(ev) => {
                         ev.stopPropagation();
-                        handleDeleteEvent(e.id);
+                        setConfirmDelete({ id: e.id, title: e.title });
                       }}
                       className={cn(
                         "text-[9px] font-black uppercase truncate px-2 py-1 rounded-md text-white w-full text-left hover:brightness-110 transition-all active:scale-[0.98] shadow-sm",
                         CATEGORY_COLORS[e.category]
                       )}
-                      title={`${e.title} (Clique para excluir)`}
+                      title={`${e.title} (Clique para opções)`}
                     >
                       {e.title}
                     </button>
@@ -313,7 +315,7 @@ export const ScheduleTab: React.FC = () => {
               </div>
             </h3>
 
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
               {upcomingEvents.length > 0 ? (
                 upcomingEvents.map((event, idx) => (
                   <div key={`${event.id}-${idx}`} className="group/item relative p-4 rounded-3xl bg-zinc-50 border border-zinc-50 hover:bg-white hover:border-zinc-100 hover:shadow-xl hover:shadow-black/5 transition-all">
@@ -322,7 +324,7 @@ export const ScheduleTab: React.FC = () => {
                           {event.category}
                        </span>
                        <button 
-                        onClick={() => handleDeleteEvent(event.id)}
+                        onClick={() => setConfirmDelete({ id: event.id, title: event.title })}
                         disabled={isSaving}
                         className="opacity-60 hover:opacity-100 p-2 text-zinc-400 hover:text-red-500 transition-all active:scale-90 disabled:opacity-30"
                         title="Excluir Compromisso"
@@ -445,6 +447,50 @@ export const ScheduleTab: React.FC = () => {
                     {isSaving ? 'Salvando...' : 'Salvar Compromisso'}
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation Modal */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmDelete(null)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[150]"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-[2.5rem] shadow-2xl z-[160] overflow-hidden p-10 text-center"
+            >
+              <div className="w-20 h-20 bg-red-50 rounded-3xl flex items-center justify-center text-red-500 mx-auto mb-6">
+                <Trash2 className="w-10 h-10" />
+              </div>
+              <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight mb-2">Excluir Compromisso?</h3>
+              <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest leading-relaxed mb-8">
+                Você está prestes a remover o evento <span className="text-zinc-900">"{confirmDelete.title}"</span>. Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  onClick={() => setConfirmDelete(null)}
+                  className="flex-1 py-4 border border-zinc-100 text-zinc-400 font-black text-[10px] uppercase tracking-widest rounded-2xl hover:bg-zinc-50"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleDeleteEvent}
+                  disabled={isSaving}
+                  className="flex-1 py-4 bg-red-500 text-white font-black text-[10px] uppercase tracking-widest rounded-2xl shadow-xl shadow-red-500/20 hover:scale-105 active:scale-95 transition-all"
+                >
+                  {isSaving ? 'Limpando...' : 'Sim, Excluir'}
+                </button>
               </div>
             </motion.div>
           </>
