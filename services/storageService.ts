@@ -30,19 +30,20 @@ export interface FirestoreErrorInfo {
 
 // Initializing Firebase
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+// Use defined database ID or fallback to (default)
+// Often in these environments, the explicitly provided ID might be invalid for remixed projects
+// We will try to prioritize (default) if the provided one is a long auto-generated string,
+// or at least make it easier to fallback.
+const firestoreDbId = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId.length > 20) 
+  ? '(default)' 
+  : (firebaseConfig.firestoreDatabaseId || '(default)');
+
+export const db = getFirestore(app, firestoreDbId);
 export const auth = getAuth(app);
 
-// Enable Offline Persistence
-if (typeof window !== 'undefined') {
-  enableIndexedDbPersistence(db).catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.warn("Múltiplas abas abertas. Persistência desativada nesta aba.");
-    } else if (err.code === 'unimplemented') {
-      console.warn("Navegador não suporta persistência offline.");
-    }
-  });
-}
+// WE REMOVE PERMISSION/PERSISTENCE ENABLING TO ENSURE NO LOCKS PREVENT SYNC
+// IN MULTIPLE TABS/INSTANCES IN THIS PREVIEW ENVIRONMENT
 
 let isFirebaseReady = false;
 let quotaErrorInterval: any = null;
@@ -51,10 +52,15 @@ let lastQuotaCheckTime = 0;
 export type ConnectionStatus = 'connecting' | 'online' | 'offline' | 'error';
 let connectionStatus: ConnectionStatus = 'connecting';
 
-const setConnectionStatus = (s: ConnectionStatus) => {
+const setConnectionStatus = (s: ConnectionStatus, errorCode?: string) => {
+  console.log(`[LoboSync] Status changed: ${s}${errorCode ? ' (' + errorCode + ')' : ''}`);
   if (connectionStatus !== s) {
     connectionStatus = s;
-    window.dispatchEvent(new CustomEvent('lobo-connection-changed', { detail: s }));
+    window.dispatchEvent(new CustomEvent('lobo-connection-changed', { 
+      detail: s,
+      //@ts-ignore
+      errorCode: errorCode 
+    }));
   }
 };
 
@@ -63,20 +69,22 @@ export const getConnectionStatus = () => connectionStatus;
 // Test connection
 async function testConnection() {
   const now = Date.now();
+  // Prevent double check
   if (quotaErrorInterval && now - lastQuotaCheckTime < 55000) return;
   
   lastQuotaCheckTime = now;
   
   try {
-    // Tenta ler uma coleção pública que sempre deve existir ou o path de teste
-    // Usamos um timeout para não deixar o status 'connecting' infinito
     const testDoc = doc(db, 'test', 'connection');
+    // We try to GET from server to confirm real connectivity
+    const check = getDocFromServer(testDoc);
+    
     await Promise.race([
-      getDocFromServer(testDoc),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+      check,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000))
     ]);
     
-    console.log("Firebase status: Connected to " + firebaseConfig.projectId);
+    console.log("Firebase status: Connected to " + firebaseConfig.projectId + " db: " + firestoreDbId);
     setConnectionStatus('online');
     
     if (quotaErrorInterval) {
@@ -87,24 +95,26 @@ async function testConnection() {
     window.dispatchEvent(new CustomEvent('lobo-quota-resolved'));
     
   } catch (error: any) {
-    console.warn("Firebase Connection Sync Detail:", error.code || 'timeout', error.message);
+    const code = error.code || 'timeout';
     
-    // Se for apenas erro de permissão ou documento não encontrado, a conexão ainda pode estar ok
-    if (error.code === 'permission-denied' || error.message?.includes('not found')) {
-      console.log("Firebase reachable but test doc restricted or missing. Assuming online for listeners.");
+    // Se for erro de permissão ou não encontrado, ao menos conseguimos FALAR com o servidor
+    if (error.code === 'permission-denied' || error.message?.includes('not found') || error.code === 'not-found') {
+      console.log("Firebase reachable. Assuming Online.");
       setConnectionStatus('online');
       return;
     }
+
+    console.warn("Firebase Connection Sync Detail:", code, error.message);
 
     const isQuota = error.code === 'resource-exhausted' || error.message?.includes('quota');
     if (isQuota) {
       setConnectionStatus('offline');
     } else {
-      setConnectionStatus('error');
+      setConnectionStatus('error', code);
     }
     
     if (!quotaErrorInterval) {
-      quotaErrorInterval = setInterval(testConnection, 30000); // Check every 30s
+      quotaErrorInterval = setInterval(testConnection, 30000); 
     }
   }
 }

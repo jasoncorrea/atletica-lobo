@@ -12,7 +12,7 @@ export const SyncBadge: React.FC = () => {
     const handleStatus = (e: any) => {
       setStatus(e.detail);
       if (e.detail === 'error') {
-        setLastError('A conexão com o banco de dados falhou. Verifique as configurações do Firebase.');
+        setLastError(`Falha na conexão ${e.errorCode ? '[' + e.errorCode + ']' : ''}. Verifique o console.`);
       } else {
         setLastError(null);
       }

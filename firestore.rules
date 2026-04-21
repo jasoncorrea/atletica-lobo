@@ -98,21 +98,6 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
-    match /shareMembers/{id} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    match /sharePosts/{id} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
-    match /shareRecords/{id} {
-      allow read: if true;
-      allow write: if isSignedIn();
-    }
-
     match /managementEvents/{id} {
       allow read: if true;
       allow write: if isSignedIn();
