@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDb, getConfig, refreshAuth } from '../../services/storageService';
+import { getDb, getConfig, startListener, stopListener, isQuotaExceeded } from '../../services/storageService';
 import { Competition, Role, AppConfig } from '../../types';
 import { DashboardTab } from './tabs/DashboardTab';
 import { CompetitionsTab } from './tabs/CompetitionsTab';
@@ -15,7 +15,6 @@ import { InventoryTab } from './tabs/InventoryTab';
 import { BirthdaysTab } from './tabs/BirthdaysTab';
 import { MarketingTab } from './tabs/MarketingTab';
 import { SociosTab } from './tabs/SociosTab';
-import { ScheduleTab } from './tabs/ScheduleTab';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Trophy, 
@@ -35,6 +34,7 @@ import {
   X as CloseIcon,
   ChevronRight,
   Cloud,
+  CloudOff,
   Gamepad,
   History,
   FolderOpen,
@@ -42,7 +42,7 @@ import {
   Tag,
   Megaphone,
   ExternalLink,
-  Calendar
+  ShieldAlert
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -65,6 +65,46 @@ export const AdminDashboard: React.FC = () => {
   ];
 
   useEffect(() => {
+    const collections = ['competitions']; // Admin always needs competitions list
+    
+    switch (activeTab) {
+      case 'dashboard':
+        collections.push('athletics', 'results', 'modalities');
+        break;
+      case 'athletics':
+        collections.push('athletics');
+        break;
+      case 'modalities':
+        collections.push('modalities');
+        break;
+      case 'results':
+        collections.push('results', 'modalities');
+        break;
+      case 'penalties':
+        collections.push('penalties', 'athletics');
+        break;
+      case 'socios':
+        collections.push('socios');
+        break;
+      case 'birthdays':
+        collections.push('birthdays');
+        break;
+      case 'inventory':
+        collections.push('products');
+        break;
+      case 'marketing':
+        collections.push('shareMembers', 'sharePosts', 'shareRecords');
+        break;
+      case 'finance':
+        collections.push('transactions', 'financeCategories');
+        break;
+    }
+
+    collections.forEach(startListener);
+    return () => collections.forEach(stopListener);
+  }, [activeTab]);
+
+  useEffect(() => {
     if (!localStorage.getItem('lobo_auth')) {
       navigate('/login');
       return;
@@ -72,15 +112,10 @@ export const AdminDashboard: React.FC = () => {
     const savedRole = localStorage.getItem('lobo_role') as Role;
     if (savedRole) setRole(savedRole);
 
-    const onSync = () => {
-      setConfig(getConfig());
-      refresh();
-    };
-    
-    window.addEventListener('lobo-db-sync', onSync);
+    const updateConfig = () => setConfig(getConfig());
+    window.addEventListener('storage', updateConfig);
     refresh();
-    refreshAuth();
-    return () => window.removeEventListener('lobo-db-sync', onSync);
+    return () => window.removeEventListener('storage', updateConfig);
   }, []);
 
   const refresh = () => {
@@ -110,7 +145,6 @@ export const AdminDashboard: React.FC = () => {
     { id: 'birthdays', label: 'Aniversariantes', icon: Cake, color: 'bg-pink-500' },
     { id: 'inventory', label: 'Estoque', icon: Package, color: 'bg-orange-500' },
     { id: 'marketing', label: 'Marketing', icon: Share2, color: 'bg-cyan-500' },
-    { id: 'schedule', label: 'Cronograma', icon: Calendar, color: 'bg-indigo-500' },
     { id: 'settings', label: 'Configurações', icon: Settings, color: 'bg-zinc-500' }
   ];
 
@@ -376,7 +410,17 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-4">
-             <div className="relative mr-2">
+             {isQuotaExceeded() && (
+               <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-red-50 border border-red-100 rounded-xl text-red-600">
+                  <ShieldAlert className="w-4 h-4" />
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black uppercase tracking-tight leading-none">Sincronização Pausada</span>
+                    <span className="text-[8px] font-bold uppercase tracking-widest mt-1">Quota Diária Atingida</span>
+                  </div>
+               </div>
+             )}
+             
+             <div className="relative">
                <button 
                  onClick={() => setShowDriveLinks(!showDriveLinks)}
                  className={cn(
@@ -420,13 +464,6 @@ export const AdminDashboard: React.FC = () => {
                </AnimatePresence>
              </div>
 
-             <div className="hidden sm:flex flex-col items-end mr-4">
-                <span className="text-[10px] font-black text-lobo-secondary uppercase tracking-widest">{new Date().toLocaleDateString('pt-BR', { weekday: 'long' })}</span>
-                <span className="text-xs font-black text-zinc-900 tabular-nums">
-                  {new Date().toLocaleDateString('pt-BR')}
-                </span>
-             </div>
-
              <div className="hidden sm:flex items-center gap-4 pl-6 border-l border-zinc-100 h-10">
                <button 
                  onClick={() => navigate('/')}
@@ -456,7 +493,6 @@ export const AdminDashboard: React.FC = () => {
               {activeTab === 'birthdays' && <BirthdaysTab />}
               {activeTab === 'socios' && <SociosTab />}
               {activeTab === 'marketing' && <MarketingTab />}
-              {activeTab === 'schedule' && <ScheduleTab />}
               {activeTab === 'settings' && <SettingsTab />}
               {activeTab === 'finance' && role === 'SUPER_ADMIN' && <FinanceTab />}
               {activeTab === 'inventory' && <InventoryTab />}

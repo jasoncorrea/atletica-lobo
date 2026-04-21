@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, updateItem, deleteItem } from '../../../services/storageService';
+import { getDb, addItem, deleteItem } from '../../../services/storageService';
 import { BirthdayMember } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Cake, UserPlus, Trash2, Calendar, User, Briefcase, Search, Sparkles } from 'lucide-react';
@@ -18,30 +18,22 @@ export const BirthdaysTab: React.FC = () => {
 
   useEffect(() => {
     load();
-    window.addEventListener('lobo-db-sync', load);
-    return () => window.removeEventListener('lobo-db-sync', load);
   }, []);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !role || !date) return;
 
-    const newMember: BirthdayMember = {
-      id: Math.random().toString(36).substr(2, 9),
+    await addItem('birthdays', {
       name,
       role,
       birthDate: date,
-    };
-
-    try {
-      await updateItem('birthdays', newMember);
-      setName('');
-      setRole('');
-      setDate('');
-      load();
-    } catch (err) {
-      alert('Erro ao salvar aniversariante.');
-    }
+    });
+    
+    setName('');
+    setRole('');
+    setDate('');
+    load();
   };
 
   const removeMember = async (id: string) => {

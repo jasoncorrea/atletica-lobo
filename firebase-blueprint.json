@@ -177,20 +177,6 @@
         "shared": { "type": "boolean" }
       },
       "required": ["id", "memberId", "postId", "shared"]
-    },
-    "managementEvent": {
-      "title": "ManagementEvent",
-      "description": "Board management calendar event",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "title": { "type": "string" },
-        "description": { "type": "string" },
-        "date": { "type": "string" },
-        "type": { "type": "string" },
-        "createdBy": { "type": "string" }
-      },
-      "required": ["id", "title", "date", "type"]
     }
   },
   "firestore": {
@@ -245,10 +231,6 @@
     "/shareRecords/{recordId}": {
       "schema": "shareRecord",
       "description": "Marketing share logs"
-    },
-    "/managementEvents/{eventId}": {
-      "schema": "managementEvent",
-      "description": "Internal board calendar events"
     },
     "/scoreRules/{ruleId}": {
       "schema": "scoreRule",

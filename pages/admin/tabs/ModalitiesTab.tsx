@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, updateItem, deleteItem } from '../../../services/storageService';
+import { getDb, addItem, deleteItem } from '../../../services/storageService';
 import { Competition, Modality } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Target, Trash2, Layers, Search, Ghost, User, UserCheck, Users } from 'lucide-react';
@@ -11,36 +11,24 @@ export const ModalitiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   const [gender, setGender] = useState('M');
 
   const load = () => setList(getDb().modalities.filter(m => m.competitionId === comp.id));
-  useEffect(() => {
-    load();
-    window.addEventListener('lobo-db-sync', load);
-    return () => window.removeEventListener('lobo-db-sync', load);
-  }, [comp.id]);
+  useEffect(() => { load(); }, [comp]);
 
   const add = async () => {
     if (!name.trim()) return;
-    
-    const newModality: Modality = { 
-      id: Math.random().toString(36).substr(2, 9), 
+    await addItem('modalities', { 
       competitionId: comp.id, 
       name, 
       gender: gender as any, 
       status: 'pending' 
-    };
-
-    await updateItem('modalities', newModality);
+    });
     load(); 
     setName('');
   };
 
   const remove = async (id: string) => {
     if (!confirm('Excluir esta modalidade removerá todos os resultados vinculados a ela. Continuar?')) return;
-    try {
-      await deleteItem('modalities', id);
-      load();
-    } catch (err) {
-      alert('Erro ao excluir modalidade.');
-    }
+    await deleteItem('modalities', id);
+    setList(prev => prev.filter(m => m.id !== id));
   };
 
   const getGenderMeta = (g: string) => {

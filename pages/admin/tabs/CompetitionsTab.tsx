@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, updateItem, createCompetition, deleteItem } from '../../../services/storageService';
+import { getDb, updateItem, deleteItem, createCompetition, saveItems } from '../../../services/storageService';
 import { Competition } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trophy, Trash2, CheckCircle2, Calendar, Target, Flag, Sparkles, LayoutGrid, Clock } from 'lucide-react';
@@ -11,16 +11,13 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
   const [year, setYear] = useState(new Date().getFullYear());
 
   const load = () => setList(getDb().competitions);
-  useEffect(() => {
-    load();
-    window.addEventListener('lobo-db-sync', load);
-    return () => window.removeEventListener('lobo-db-sync', load);
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const add = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     createCompetition(name, year);
+    window.dispatchEvent(new Event('storage'));
     load(); 
     onUpdate(); 
     setName('');
@@ -28,31 +25,22 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
 
   const remove = async (id: string) => {
     if (!confirm('Excluir esta competição apagará todas as modalidades e resultados vinculados. Continuar?')) return;
-    try {
-      await deleteItem('competitions', id);
-      load();
-      onUpdate();
-    } catch (err) {
-      console.error('Erro ao excluir:', err);
-      alert('Erro ao excluir a competição.');
-    }
+    await deleteItem('competitions', id);
+    setList(prev => prev.filter(c => c.id !== id));
+    onUpdate();
   };
 
   const setActive = async (id: string) => {
-    try {
-      const db = getDb();
-      // Em um ambiente Firestore, desativar os outros um por um ou via batch
-      // Como o storageService já tem o db na memória, podemos iterar
-      const updates = db.competitions.map(async c => {
-        const updated = { ...c, isActive: c.id === id };
-        await updateItem('competitions', updated);
-      });
-      await Promise.all(updates);
-      load(); 
-      onUpdate();
-    } catch (err) {
-      alert('Erro ao ativar competição.');
-    }
+    const current = getDb().competitions;
+    const updates = current.map(c => ({
+      ...c,
+      isActive: c.id === id
+    }));
+    
+    // We update the whole collection because we need to clear other active states
+    await saveItems('competitions', updates);
+    load(); 
+    onUpdate();
   };
 
   return (

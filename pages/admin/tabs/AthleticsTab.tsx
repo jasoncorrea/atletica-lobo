@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, updateItem, handleImageUpload, deleteItem } from '../../../services/storageService';
+import { getDb, addItem, updateItem, deleteItem, handleImageUpload } from '../../../services/storageService';
 import { Athletic, Competition } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Edit2, Trash2, X, Camera, Shield } from 'lucide-react';
@@ -20,35 +20,23 @@ export const AthleticsTab: React.FC<Props> = ({ comp }) => {
     setList(athletics);
   };
 
-  useEffect(() => {
-    load();
-    window.addEventListener('lobo-db-sync', load);
-    return () => window.removeEventListener('lobo-db-sync', load);
-  }, [comp.id]);
+  useEffect(() => { load(); }, [comp.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
 
-    const db = getDb();
-
     if (editingId) {
-      const index = db.athletics.findIndex(a => a.id === editingId);
-      if (index !== -1) {
-        const updatedAthletic = { ...db.athletics[index], name };
-        await updateItem('athletics', updatedAthletic);
-      }
+      await updateItem('athletics', editingId, { name });
     } else {
-      const newAthletic = { 
-        id: Math.random().toString(36).substr(2, 9), 
+      await addItem('athletics', { 
         name, 
         logoUrl: null,
         competitionId: comp.id
-      };
-      await updateItem('athletics', newAthletic);
+      });
     }
     
-    setTimeout(load, 100);
+    load();
     resetForm();
   };
 
@@ -67,12 +55,7 @@ export const AthleticsTab: React.FC<Props> = ({ comp }) => {
     try {
       setIsUploading(id);
       const url = await handleImageUpload(file);
-      const db = getDb();
-      const ath = db.athletics.find(a => a.id === id);
-      if (ath) {
-        const updatedAth = { ...ath, logoUrl: url };
-        await updateItem('athletics', updatedAth);
-      }
+      await updateItem('athletics', id, { logoUrl: url });
       load();
     } catch { 
       // Ignored
@@ -84,12 +67,8 @@ export const AthleticsTab: React.FC<Props> = ({ comp }) => {
   const remove = async (id: string) => {
     if (!confirm('Tem certeza que deseja remover esta atlética? Isso pode afetar resultados passados.')) return;
     if (editingId === id) resetForm();
-    try {
-      await deleteItem('athletics', id);
-      load();
-    } catch (err) {
-      alert('Erro ao apagar atlética.');
-    }
+    await deleteItem('athletics', id);
+    setList(prev => prev.filter(a => a.id !== id));
   };
 
   return (

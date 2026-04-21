@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, updateItem, deleteItem } from '../../../services/storageService';
+import { getDb, addItem, deleteItem } from '../../../services/storageService';
 import { ShareMember, SharePost, ShareRecord } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -43,12 +43,10 @@ export const MarketingTab: React.FC = () => {
   
   // Member Form
   const [memberName, setMemberName] = useState('');
-
+  
   // Post Form
   const [postTitle, setPostTitle] = useState('');
   const [postLink, setPostLink] = useState('');
-  const [loading, setLoading] = useState(false);
-  
 
   const load = () => {
     const db = getDb();
@@ -60,8 +58,8 @@ export const MarketingTab: React.FC = () => {
   useEffect(() => {
     load();
     const handleStorage = () => load();
-    window.addEventListener('lobo-db-sync', handleStorage);
-    return () => window.removeEventListener('lobo-db-sync', handleStorage);
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   // Stats Calculations
@@ -86,64 +84,40 @@ export const MarketingTab: React.FC = () => {
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!memberName) return;
-    setLoading(true);
     
-    try {
-      const newMember: ShareMember = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: memberName.toUpperCase()
-      };
-      
-      await updateItem('shareMembers', newMember);
-      setMemberName('');
-    } catch (err) {
-      alert('Erro ao salvar membro no banco de dados.');
-    } finally {
-      setLoading(false);
-    }
+    await addItem('shareMembers', {
+      name: memberName.toUpperCase()
+    });
+    
+    setMemberName('');
+    load();
   };
 
   const handleAddPost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!postTitle) return;
-    setLoading(true);
     
-    try {
-      const newPost: SharePost = {
-        id: Math.random().toString(36).substr(2, 9),
-        title: postTitle.toUpperCase(),
-        link: postLink || undefined,
-        date: Date.now()
-      };
-      
-      await updateItem('sharePosts', newPost);
-      setPostTitle('');
-      setPostLink('');
-    } catch (err) {
-      alert('Erro ao salvar publicação no banco de dados.');
-    } finally {
-      setLoading(false);
-    }
+    await addItem('sharePosts', {
+      title: postTitle.toUpperCase(),
+      link: postLink || undefined,
+      date: Date.now()
+    });
+    
+    setPostTitle('');
+    setPostLink('');
+    load();
   };
 
   const removeMember = async (id: string) => {
     if (!confirm('Deseja remover este membro?')) return;
-    try {
-      await deleteItem('shareMembers', id);
-      load();
-    } catch (err) {
-      alert('Erro ao remover membro.');
-    }
+    await deleteItem('shareMembers', id);
+    load();
   };
 
   const removePost = async (id: string) => {
     if (!confirm('Deseja remover este post?')) return;
-    try {
-      await deleteItem('sharePosts', id);
-      load();
-    } catch (err) {
-      alert('Erro ao remover publicação.');
-    }
+    await deleteItem('sharePosts', id);
+    load();
   };
 
   return (
@@ -307,14 +281,14 @@ export const MarketingTab: React.FC = () => {
           <div className="bg-zinc-50 border border-zinc-100 rounded-[2.5rem] p-10">
             <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight mb-8 flex items-center gap-3">
               <UserPlus className="w-6 h-6 text-lobo-primary" />
-              Novos Membros
+              Recrutamento Fiscal
             </h3>
             <form onSubmit={handleAddMember} className="flex gap-3">
               <div className="relative flex-1">
                 <User className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300" />
                 <input 
                   className="w-full bg-white border border-zinc-200 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold focus:ring-2 focus:ring-lobo-primary outline-none transition-all placeholder:text-zinc-300"
-                  placeholder="Nome COMPLETO do Membro"
+                  placeholder="Nome COMPLETO do Fiscal"
                   value={memberName}
                   onChange={e => setMemberName(e.target.value)}
                   required
@@ -331,7 +305,7 @@ export const MarketingTab: React.FC = () => {
 
           <div className="bg-white border border-zinc-100 rounded-[3rem] overflow-hidden shadow-sm">
              <div className="px-8 py-6 border-b border-zinc-50 bg-zinc-50/50 flex items-center justify-between">
-                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Membros Ativos</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-zinc-400">Tropa Ativa</span>
                 <div className="flex items-center gap-2 px-3 py-1 bg-white rounded-full border border-zinc-100">
                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                    <span className="text-[9px] font-black text-zinc-600">{members.length} Agentes</span>
@@ -370,14 +344,14 @@ export const MarketingTab: React.FC = () => {
           <div className="bg-zinc-50 border border-zinc-100 rounded-[2.5rem] p-10">
             <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight mb-8 flex items-center gap-3">
               <FileText className="w-6 h-6 text-cyan-500" />
-              Novas Publicações
+              Arsenal de Conteúdo
             </h3>
             <form onSubmit={handleAddPost} className="space-y-4">
               <div className="relative">
                 <Hash className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-300" />
                 <input 
                   className="w-full bg-white border border-zinc-200 rounded-2xl pl-12 pr-6 py-4 text-sm font-bold focus:ring-2 focus:ring-lobo-primary outline-none transition-all placeholder:text-zinc-300"
-                  placeholder="Título da Publicação"
+                  placeholder="Título da Campanha / Postagem"
                   value={postTitle}
                   onChange={e => setPostTitle(e.target.value)}
                   required

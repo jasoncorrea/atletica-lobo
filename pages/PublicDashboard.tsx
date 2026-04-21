@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { getDb, calculateLeaderboard, updateItem, deleteItem } from '../services/storageService';
-import { Competition, LeaderboardEntry, BirthdayMember, ShareMember, SharePost, ShareRecord, Socio, ManagementEvent } from '../types';
+import { getDb, calculateLeaderboard, addItem, deleteItem, startListener, stopListener, isQuotaExceeded } from '../services/storageService';
+import { Competition, LeaderboardEntry, BirthdayMember, ShareMember, SharePost, ShareRecord, Socio } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Medal, AlertCircle, ChevronDown, Award, Cake, Calendar, Star, Users, Share2, CheckCircle2, Circle, BarChart2, UserCheck, Search } from 'lucide-react';
+import { Trophy, Medal, AlertCircle, ChevronDown, Award, Cake, Calendar, Star, Users, Share2, CheckCircle2, Circle, BarChart2, UserCheck, Search, ShieldAlert } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { getAuth } from 'firebase/auth';
 
@@ -15,13 +15,29 @@ export const PublicDashboard: React.FC = () => {
   const [sharePosts, setSharePosts] = useState<SharePost[]>([]);
   const [shareRecords, setShareRecords] = useState<ShareRecord[]>([]);
   const [socios, setSocios] = useState<Socio[]>([]);
-  const [managementEvents, setManagementEvents] = useState<ManagementEvent[]>([]);
   const [activeTab, setActiveTab] = useState<'leaderboard' | 'birthdays' | 'marketing' | 'socios'>('leaderboard');
   const [sociosSearch, setSociosSearch] = useState('');
   const [activeFilters, setActiveFilters] = useState<string[]>(['Ativo', '2026']);
   const [selectedSocio, setSelectedSocio] = useState<Socio | null>(null);
   const auth = getAuth();
   const isAdmin = !!auth.currentUser;
+
+  useEffect(() => {
+    const collections = ['competitions'];
+    
+    if (activeTab === 'leaderboard') {
+      collections.push('athletics', 'results', 'penalties', 'scoreRules');
+    } else if (activeTab === 'birthdays') {
+      collections.push('birthdays');
+    } else if (activeTab === 'marketing') {
+      collections.push('shareMembers', 'sharePosts', 'shareRecords');
+    } else if (activeTab === 'socios') {
+      collections.push('socios');
+    }
+
+    collections.forEach(startListener);
+    return () => collections.forEach(stopListener);
+  }, [activeTab]);
 
   useEffect(() => {
     const load = () => {
@@ -33,18 +49,15 @@ export const PublicDashboard: React.FC = () => {
       setSharePosts(db.sharePosts || []);
       setShareRecords(db.shareRecords || []);
       setSocios(db.socios || []);
-      setManagementEvents(db.managementEvents || []);
       
-      if (comps.length > 0) {
+      if (comps.length > 0 && !selectedCompId) {
         const active = comps.find(c => c.isActive) || comps[0];
-        const newSelectedId = selectedCompId || active.id;
-        if (!selectedCompId) setSelectedCompId(active.id);
-        setLeaderboard(calculateLeaderboard(newSelectedId));
+        setSelectedCompId(active.id);
       }
     };
     load();
-    window.addEventListener('lobo-db-sync', load);
-    return () => window.removeEventListener('lobo-db-sync', load);
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
   }, [selectedCompId]);
 
   const toggleShare = async (memberId: string, postId: string) => {
@@ -56,8 +69,7 @@ export const PublicDashboard: React.FC = () => {
     if (exists) {
       await deleteItem('shareRecords', recordId);
     } else {
-      const newRecord: ShareRecord = { id: recordId, memberId, postId, shared: true };
-      await updateItem('shareRecords', newRecord);
+      await addItem('shareRecords', { memberId, postId, shared: true }, recordId);
     }
   };
 
@@ -133,6 +145,15 @@ export const PublicDashboard: React.FC = () => {
         </div>
         
         <div className="relative z-10 flex flex-col items-center md:items-start text-center md:text-left">
+          {isQuotaExceeded() && (
+             <div className="flex items-center gap-3 px-4 py-2 bg-red-50 border border-red-100 rounded-xl text-red-600 w-fit mb-4">
+                <ShieldAlert className="w-4 h-4" />
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-tight leading-none text-left">Sync Pausado (Quota)</span>
+                  <span className="text-[8px] font-bold uppercase tracking-widest mt-1 text-left">Modo Local Ativo</span>
+                </div>
+             </div>
+          )}
           <div className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-[0.3em] text-zinc-400 mb-2">
             <div className="w-2 h-2 rounded-full bg-lobo-primary animate-pulse" />
             <span>Portal do Atleta</span>

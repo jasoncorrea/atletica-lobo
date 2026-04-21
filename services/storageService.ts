@@ -1,15 +1,15 @@
+
 import { 
   Competition, Athletic, Modality, Result, Penalty, 
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry,
   Transaction, FinanceCategory, Product, BirthdayMember,
-  ShareMember, SharePost, ShareRecord, Socio, ManagementEvent
+  ShareMember, SharePost, ShareRecord, Socio
 } from '../types';
 import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES, DB_KEY, APP_CONFIG_KEY } from '../constants';
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, onSnapshot, doc, setDoc, getDoc, 
-  writeBatch, query, deleteDoc, getDocFromServer,
-  enableIndexedDbPersistence, collectionGroup
+  writeBatch, query, deleteDoc, getDocFromServer, getDocs
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import firebaseConfig from '../firebase-applet-config.json';
@@ -28,158 +28,68 @@ export interface FirestoreErrorInfo {
   }
 }
 
-// Initializing Firebase
-const app = initializeApp(firebaseConfig);
+// State management
+let currentDbId = firebaseConfig.firestoreDatabaseId;
+const backupDatabaseIds: string[] = []; // You can add more IDs here manually if created
 
-// VOLTANDO PARA O ID DA IA: Usamos o ID automático provisionado (ai-studio-...)
-const firestoreDbId = firebaseConfig.firestoreDatabaseId || '(default)';
-console.log(`[LoboSync] USANDO CONFIG DA IA: ${firestoreDbId} no projeto ${firebaseConfig.projectId}`);
-
-export const db = getFirestore(app, firestoreDbId);
-export const auth = getAuth(app);
-
-// WE REMOVE PERMISSION/PERSISTENCE ENABLING TO ENSURE NO LOCKS PREVENT SYNC
-// IN MULTIPLE TABS/INSTANCES IN THIS PREVIEW ENVIRONMENT
-
-let isFirebaseReady = false;
-let quotaErrorInterval: any = null;
-let lastQuotaCheckTime = 0;
-
-export type ConnectionStatus = 'connecting' | 'online' | 'offline' | 'error';
-let connectionStatus: ConnectionStatus = 'connecting';
-
-const setConnectionStatus = (s: ConnectionStatus, errorCode?: string) => {
-  console.log(`[LoboSync] Status changed: ${s}${errorCode ? ' (' + errorCode + ')' : ''}`);
-  if (connectionStatus !== s) {
-    connectionStatus = s;
-    window.dispatchEvent(new CustomEvent('lobo-connection-changed', { 
-      detail: s,
-      //@ts-ignore
-      errorCode: errorCode 
-    }));
-  }
+const getFirestoreInstance = (dbId: string) => {
+  return getFirestore(app, dbId);
 };
 
-export const getConnectionStatus = () => connectionStatus;
+export let db = getFirestoreInstance(currentDbId);
 
-// Test connection
-async function testConnection() {
-  const now = Date.now();
-  // Prevent double check
-  if (quotaErrorInterval && now - lastQuotaCheckTime < 55000) return;
-  
-  lastQuotaCheckTime = now;
-  
-  try {
-    const testDoc = doc(db, 'test', 'connection');
-    // We try to GET from server to confirm real connectivity
-    const check = getDocFromServer(testDoc);
-    
-    await Promise.race([
-      check,
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000))
-    ]);
-    
-    console.log("[LoboSync] Firebase Online. DB: " + firestoreDbId);
-    setConnectionStatus('online');
-    
-    if (quotaErrorInterval) {
-      clearInterval(quotaErrorInterval);
-      quotaErrorInterval = null;
-    }
-    
-    window.dispatchEvent(new CustomEvent('lobo-quota-resolved'));
-    
-  } catch (error: any) {
-    const code = error.code || 'timeout';
-    
-    // Se for erro de permissão ou não encontrado, ao menos conseguimos FALAR com o servidor
-    if (error.code === 'permission-denied' || error.message?.includes('not found') || error.code === 'not-found') {
-      console.log("Firebase reachable. Assuming Online.");
-      setConnectionStatus('online');
-      return;
-    }
-
-    console.warn("Firebase Connection Sync Detail:", code, error.message);
-
-    const isQuota = error.code === 'resource-exhausted' || error.message?.includes('quota');
-    if (isQuota) {
-      setConnectionStatus('offline');
-    } else {
-      setConnectionStatus('error', code);
-    }
-    
-    if (!quotaErrorInterval) {
-      quotaErrorInterval = setInterval(testConnection, 30000); 
+export const switchToNextDatabase = () => {
+  if (backupDatabaseIds.length > 0) {
+    const nextId = backupDatabaseIds.shift();
+    if (nextId) {
+      currentDbId = nextId;
+      db = getFirestoreInstance(currentDbId);
+      console.warn(`Switched to backup database: ${currentDbId}`);
+      quotaExceeded = false; // Reset temporary flag to try the new DB
+      return true;
     }
   }
-}
-
-testConnection();
-
-// Manual Sync Trigger
-if (typeof window !== 'undefined') {
-  window.addEventListener('lobo-force-sync', () => {
-    console.log("Forcing cloud sync recheck...");
-    // Reset status to connecting to show user something is happening
-    setConnectionStatus('connecting');
-    testConnection();
-    
-    // Re-trigger listeners to be sure
-    publicCollections.forEach(col => {
-      if (activeListeners[col]) activeListeners[col]();
-      delete activeListeners[col];
-      startListener(col);
-    });
-  });
-}
+  return false;
+};
 
 export const handleFirestoreError = (error: any, op: string, path: string | null = null) => {
-  if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
-    const info: FirestoreErrorInfo = {
-      error: error.message || 'Sem permissão para esta operação.',
-      operationType: op as any,
-      path,
-      authInfo: getAuthInfo()
-    };
-    // Don't throw for read operations to avoid crashing UI
-    if (op === 'list' || op === 'get') {
-      console.warn("Acesso negado (Firestore):", path || op);
-      return;
+  if (error.code === 'resource-exhausted' || error.message?.includes('Quota limit exceeded')) {
+    console.warn(`Quota limit exceeded for DB ${currentDbId} during ${op} at ${path}.`);
+    
+    // Attempt failover to another DB instance
+    const switched = switchToNextDatabase();
+    if (!switched) {
+      quotaExceeded = true;
+      console.warn("No more cloud databases available. Local Mode active.");
     }
-    throw new Error(safeStringify(info));
+    return true; 
   }
-  
-  const isQuotaError = error.code === 'resource-exhausted' || error.message?.includes('quota');
-  if (isQuotaError) {
+  // ... rest existing
+
+  if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
+    const user = auth.currentUser;
     const info: FirestoreErrorInfo = {
-      error: 'Cota de Leitura excedida no Firebase.',
+      error: error.message || 'Unknown Firestore Error',
       operationType: op as any,
       path,
-      authInfo: getAuthInfo()
+      authInfo: {
+        userId: user?.uid || 'anonymous',
+        email: user?.email || '',
+        emailVerified: user?.emailVerified || false,
+        isAnonymous: user?.isAnonymous || true,
+        providerInfo: user?.providerData.map(p => ({
+          providerId: p.providerId,
+          displayName: p.displayName || '',
+          email: p.email || ''
+        })) || []
+      }
     };
-    window.dispatchEvent(new CustomEvent('lobo-quota-exceeded', { detail: info }));
-    return;
+    throw new Error(safeStringify(info));
   }
   throw error;
 };
 
-const getAuthInfo = () => {
-  const user = auth.currentUser;
-  return {
-    userId: user?.uid || 'anonymous',
-    email: user?.email || '',
-    emailVerified: user?.emailVerified || false,
-    isAnonymous: user?.isAnonymous || true,
-    providerInfo: user?.providerData.map(p => ({
-      providerId: p.providerId,
-      displayName: p.displayName || '',
-      email: p.email || ''
-    })) || []
-  };
-};
-
-export interface DatabaseSchema {
+interface DatabaseSchema {
   competitions: Competition[];
   athletics: Athletic[];
   modalities: Modality[];
@@ -194,7 +104,6 @@ export interface DatabaseSchema {
   sharePosts: SharePost[];
   shareRecords: ShareRecord[];
   socios: Socio[];
-  managementEvents: ManagementEvent[];
 }
 
 const initialDb: DatabaseSchema = {
@@ -211,31 +120,53 @@ const initialDb: DatabaseSchema = {
   shareMembers: [],
   sharePosts: [],
   shareRecords: [],
-  socios: [],
-  managementEvents: []
+  socios: []
 };
 
 // State management
-let currentDb: DatabaseSchema = initialDb;
-let currentConfig: AppConfig = {
-  primaryColor: '#e38702',
-  secondaryColor: '#5a0509',
-  logoUrl: null
+const loadInitialDb = (): DatabaseSchema => {
+  const saved = localStorage.getItem(DB_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Error parsing saved DB:", e);
+    }
+  }
+  return initialDb;
 };
+
+const loadInitialConfig = (): AppConfig => {
+  const saved = localStorage.getItem(APP_CONFIG_KEY);
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Error parsing saved config:", e);
+    }
+  }
+  return {
+    primaryColor: '#e38702',
+    secondaryColor: '#5a0509',
+    logoUrl: null
+  };
+};
+
+let currentDb: DatabaseSchema = loadInitialDb();
+let currentConfig: AppConfig = loadInitialConfig();
 
 // Syncing Firestore collections to Local State
 const publicCollections = [
   'competitions', 'athletics', 'modalities', 'results', 
   'penalties', 'products', 'birthdays', 'scoreRules',
-  'socios', 'shareMembers', 'sharePosts', 'shareRecords',
-  'managementEvents'
+  'shareMembers', 'sharePosts', 'shareRecords', 'socios'
 ];
 
 const restrictedCollections = [
   'transactions', 'financeCategories'
 ];
 
-const activeListeners: Record<string, () => void> = {};
+const activeListeners: Record<string, { unsub: () => void, count: number }> = {};
 
 // Safe stringify to avoid circular references
 const safeStringify = (obj: any): string => {
@@ -253,80 +184,57 @@ const safeStringify = (obj: any): string => {
   }
 };
 
-const startListener = (colName: string) => {
-  if (activeListeners[colName]) return;
-  
-  console.log(`[LoboSync] Iniciando ouvinte para: ${colName}`);
+export const startListener = (colName: string) => {
+  if (activeListeners[colName]) {
+    activeListeners[colName].count++;
+    return;
+  }
   
   const unsub = onSnapshot(collection(db, colName), (snapshot) => {
     const data = snapshot.docs.map(d => d.data());
-    
-    console.log(`[LoboSync] +${data.length} itens de ${colName}:`, data.map((i:any) => i.id || 'sem-id').slice(0, 5).join(', ') + (data.length > 5 ? '...' : ''));
-
-    // Update state with IMMUTABILITY to ensure React re-renders
-    const nextDb = { ...currentDb };
     if (colName === 'scoreRules') {
       const map: any = {};
       data.forEach((item: any) => {
         if (item.id) map[item.id] = item.rule;
       });
-      nextDb.scoreRules = map;
+      currentDb.scoreRules = map;
     } else {
-      (nextDb as any)[colName] = data;
+      (currentDb as any)[colName] = data;
     }
-    
-    currentDb = nextDb;
-    setConnectionStatus('online');
-    window.dispatchEvent(new Event('lobo-db-sync'));
-    
-    // Save to local cache as secondary safety
-    localStorage.setItem(`${DB_KEY}_cache_${colName}`, safeStringify(data));
+    localStorage.setItem(DB_KEY, safeStringify(currentDb));
+    window.dispatchEvent(new Event('storage'));
   }, (err) => {
-    console.error(`[LoboSync] Erro crítico em ${colName}:`, err.code, err.message);
-    
-    if (err.message?.includes('quota') || err.code === 'resource-exhausted') {
-      setConnectionStatus('offline');
-      const cached = localStorage.getItem(`${DB_KEY}_cache_${colName}`);
-      if (cached) {
-        try {
-          const data = JSON.parse(cached);
-          const nextDb = { ...currentDb };
-          if (colName === 'scoreRules') {
-            const map: any = {};
-            data.forEach((item: any) => { if (item.id) map[item.id] = item.rule; });
-            nextDb.scoreRules = map;
-          } else {
-            (nextDb as any)[colName] = data;
-          }
-          currentDb = nextDb;
-          window.dispatchEvent(new Event('lobo-db-sync'));
-        } catch (e) {}
-      }
+    if (!err.message?.includes('insufficient permissions') && !err.message?.includes('Quota limit exceeded')) {
+      console.error(`Error syncing ${colName}:`, err);
+    }
+    if (err.message?.includes('Quota limit exceeded')) {
+      console.warn(`Quota exceeded for ${colName}. Using local cache.`);
     }
   });
   
-  activeListeners[colName] = unsub;
+  activeListeners[colName] = { unsub, count: 1 };
 };
 
-// Start ALL public listeners immediately - absolutely NO auth dependency for public data
-publicCollections.forEach(startListener);
+export const stopListener = (colName: string) => {
+  if (activeListeners[colName]) {
+    activeListeners[colName].count--;
+    if (activeListeners[colName].count <= 0) {
+      activeListeners[colName].unsub();
+      delete activeListeners[colName];
+    }
+  }
+};
 
 // Manage restricted listeners based on Auth state
 onAuthStateChanged(auth, (user) => {
-  if (user) {
-    console.log("[LoboSync] Usuário autenticado. Iniciando coleções restritas.");
-    restrictedCollections.forEach(startListener);
-  } else {
-    console.log("[LoboSync] Usuário deslogado. Parando coleções restritas.");
-    restrictedCollections.forEach(colName => {
-      if (activeListeners[colName]) {
-        activeListeners[colName]();
-        delete activeListeners[colName];
-      }
+  if (!user) {
+    // Cleanup any active listeners on logout
+    Object.keys(activeListeners).forEach(colName => {
+      activeListeners[colName].unsub();
+      delete activeListeners[colName];
     });
   }
 });
-
 
 // Syncing Config
 onSnapshot(doc(db, 'config', 'global'), (snapshot) => {
@@ -334,34 +242,25 @@ onSnapshot(doc(db, 'config', 'global'), (snapshot) => {
     currentConfig = snapshot.data() as AppConfig;
     localStorage.setItem(APP_CONFIG_KEY, safeStringify(currentConfig));
     window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new Event('lobo-db-sync'));
   }
 }, (err) => {
-  if (err.message?.includes('quota') || err.code === 'resource-exhausted') {
-    console.warn("Cota excedida ao sincronizar config. Usando cache local.");
-    const cached = localStorage.getItem(APP_CONFIG_KEY);
-    if (cached) {
-      try {
-        currentConfig = JSON.parse(cached);
-        window.dispatchEvent(new Event('storage'));
-        window.dispatchEvent(new Event('lobo-db-sync'));
-      } catch (e) {
-        console.error("Erro ao carregar cache de config:", e);
-      }
-    }
+  if (err.message?.includes('Quota limit exceeded')) {
+    console.warn("Quota exceeded for config. Using local cache.");
   } else {
     console.error("Error syncing config:", err);
   }
 });
 
-// Auto-seed athletics if empty in Firestore - use localStorage to avoid re-run spam
+// Auto-seed athletics if empty in Firestore and No data in local
 async function seedInitialData() {
-  const currentProjectId = firebaseConfig.projectId;
-  const lastSeededProject = localStorage.getItem('lobo-last-seeded-project');
-  
-  if (lastSeededProject === currentProjectId) return;
+  // If we already have data in local, don't seed (it might overwrite or create duplicates if we are not careful)
+  // But wait, if local has data and cloud doesn't, we SHOULD seed the cloud eventually.
+  // However, for quota safety, we only seed if BOTH are empty.
+  if (currentDb.athletics.length > 0 && currentDb.competitions.length > 0) return;
+  if (quotaExceeded) return;
 
   try {
+    // Check if cloud is truly empty
     const athleticsSnap = await getDoc(doc(db, 'athletics', INITIAL_ATHLETICS[0].id));
     if (!athleticsSnap.exists()) {
       const batch = writeBatch(db);
@@ -369,96 +268,167 @@ async function seedInitialData() {
         batch.set(doc(db, 'athletics', a.id), a);
       });
       await batch.commit();
+      console.log("Seeded initial athletics to Firestore.");
     }
-    localStorage.setItem('lobo-last-seeded-project', currentProjectId);
-    localStorage.setItem('lobo-initial-seeded', 'true');
-  } catch (e) {
-    console.warn("Could not seed data:", e);
+  } catch (err) {
+    handleFirestoreError(err, 'write', 'seed/athletics');
   }
 }
 seedInitialData();
+
+export const addItem = async <K extends keyof DatabaseSchema>(collectionName: K, item: any, customId?: string) => {
+  const id = customId || item.id || Math.random().toString(36).substring(2, 9);
+  const data = { ...item, id };
+
+  try {
+    if (!quotaExceeded) {
+      await setDoc(doc(db, collectionName as string, id), data);
+    }
+  } catch (err) {
+    handleFirestoreError(err, 'create', collectionName as string);
+  }
+  
+  // Always update local state even if quota exceeded
+  if (Array.isArray((currentDb as any)[collectionName])) {
+    (currentDb as any)[collectionName].push(data);
+  }
+  localStorage.setItem(DB_KEY, safeStringify(currentDb));
+  window.dispatchEvent(new Event('storage'));
+  return data;
+};
+
+export const updateItem = async <K extends keyof DatabaseSchema>(collectionName: K, id: string, updates: Partial<any>) => {
+  try {
+    if (!quotaExceeded) {
+      await setDoc(doc(db, collectionName as string, id), updates, { merge: true });
+    }
+  } catch (err) {
+    handleFirestoreError(err, 'update', `${collectionName as string}/${id}`);
+  }
+  
+  // Update local state and trigger storage event
+  const list = (currentDb as any)[collectionName];
+  if (Array.isArray(list)) {
+    const idx = list.findIndex((i: any) => i.id === id);
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...updates };
+    }
+  }
+  localStorage.setItem(DB_KEY, safeStringify(currentDb));
+  window.dispatchEvent(new Event('storage'));
+};
+
+export const saveItems = async <K extends keyof DatabaseSchema>(collectionName: K, items: any[]) => {
+  try {
+    if (!quotaExceeded) {
+      const BATCH_SIZE = 400;
+      for (let i = 0; i < items.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        const chunk = items.slice(i, i + BATCH_SIZE);
+        chunk.forEach(item => {
+          if (item.id) {
+            batch.set(doc(db, collectionName as string, item.id), item);
+          }
+        });
+        await batch.commit();
+      }
+    }
+  } catch (err) {
+    handleFirestoreError(err, 'write', collectionName as string);
+  }
+  
+  // Update local state
+  (currentDb as any)[collectionName] = items;
+  localStorage.setItem(DB_KEY, safeStringify(currentDb));
+  window.dispatchEvent(new Event('storage'));
+};
+
+export const clearCollection = async <K extends keyof DatabaseSchema>(collectionName: K) => {
+  try {
+    if (!quotaExceeded) {
+      const dbRef = collection(db, collectionName as string);
+      const snapshot = await getDocs(dbRef);
+      
+      const BATCH_SIZE = 400;
+      const docs = snapshot.docs;
+      
+      for (let i = 0; i < docs.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        const chunk = docs.slice(i, i + BATCH_SIZE);
+        chunk.forEach((d: any) => {
+          batch.delete(d.ref);
+        });
+        await batch.commit();
+      }
+    }
+  } catch (err) {
+    handleFirestoreError(err, 'delete', collectionName as string);
+  }
+
+  // Update local state
+  (currentDb as any)[collectionName] = [];
+  localStorage.setItem(DB_KEY, safeStringify(currentDb));
+  window.dispatchEvent(new Event('storage'));
+};
 
 export const getDb = (): DatabaseSchema => {
   return currentDb;
 };
 
-// targeted save to avoid massive writes
-export const updateItem = async (collectionName: keyof DatabaseSchema, item: any) => {
-  if (!item.id) throw new Error("Item must have an ID");
-  try {
-    await setDoc(doc(db, collectionName as string, item.id), item);
-    // Local update to trigger UI immediately if needed
-    if (Array.isArray((currentDb as any)[collectionName])) {
-      const idx = (currentDb as any)[collectionName].findIndex((i: any) => i.id === item.id);
-      if (idx > -1) (currentDb as any)[collectionName][idx] = item;
-      else (currentDb as any)[collectionName].push(item);
-    }
-  } catch (err) {
-    handleFirestoreError(err, 'write', `${collectionName}/${item.id}`);
-  }
-};
-
 export const saveDb = async (dbUpdate: DatabaseSchema) => {
   try {
-    // Only save what's necessary if we have targeted updates
-    // For legacy support, we still implement the batch save but with size check
-    const cleanObject = (obj: any): any => {
-      if (obj === null || typeof obj !== 'object') return obj;
-      if (Array.isArray(obj)) return obj.map(cleanObject);
-      
-      if (obj.constructor && (obj.constructor.name === 'DocumentReference' || obj.constructor.name === 'Firestore')) {
-        return obj.path || '[Complex Object]';
-      }
+    if (!quotaExceeded) {
+      // Helper to clean undefined values recursively (Firestore fails on undefined)
+      const cleanObject = (obj: any): any => {
+        if (obj === null || typeof obj !== 'object') return obj;
+        if (Array.isArray(obj)) return obj.map(cleanObject);
+        
+        // If it's a Firestore-like object (with parent/db refs), don't recurse deep
+        if (obj.constructor && (obj.constructor.name === 'DocumentReference' || obj.constructor.name === 'Firestore')) {
+          return obj.path || '[Complex Object]';
+        }
 
-      const newObj: any = {};
-      Object.keys(obj).forEach(key => {
-        if (obj[key] === undefined) return;
-        newObj[key] = cleanObject(obj[key]);
-      });
-      return newObj;
-    };
+        const newObj: any = {};
+        Object.keys(obj).forEach(key => {
+          if (obj[key] === undefined) return;
+          newObj[key] = cleanObject(obj[key]);
+        });
+        return newObj;
+      };
 
-    const cleanedDb = cleanObject(dbUpdate);
-    const operations: { ref: any, data: any }[] = [];
+      const cleanedDb = cleanObject(dbUpdate);
+      const operations: { ref: any, data: any }[] = [];
 
-    // Map all collections - but compare with currentDb to only write changes
-    (Object.keys(cleanedDb) as Array<keyof DatabaseSchema>).forEach(key => {
-      if (Array.isArray(cleanedDb[key])) {
-        (cleanedDb[key] as any[]).forEach(item => {
-          if (item.id) {
-            const currentItem = (currentDb[key] as any[])?.find((i: any) => i.id === item.id);
-            // Simple stringify comparison to see if write is needed
-            if (!currentItem || JSON.stringify(currentItem) !== JSON.stringify(item)) {
+      // Map all collections to operations
+      (Object.keys(cleanedDb) as Array<keyof DatabaseSchema>).forEach(key => {
+        if (Array.isArray(cleanedDb[key])) {
+          (cleanedDb[key] as any[]).forEach(item => {
+            if (item.id) {
               operations.push({ ref: doc(db, key as string, item.id), data: item });
             }
-          }
-        });
-      } else if (key === 'scoreRules') {
-        Object.entries(cleanedDb.scoreRules).forEach(([modId, rule]) => {
-          if (JSON.stringify(currentDb.scoreRules[modId]) !== JSON.stringify(rule)) {
+          });
+        } else if (key === 'scoreRules') {
+          Object.entries(cleanedDb.scoreRules).forEach(([modId, rule]) => {
             operations.push({ ref: doc(db, 'scoreRules', modId), data: { id: modId, rule } });
-          }
-        });
+          });
+        }
+      });
+
+      // Execute in batches of 400 (Stay safe below 500 limit)
+      const BATCH_SIZE = 400;
+      for (let i = 0; i < operations.length; i += BATCH_SIZE) {
+        const batch = writeBatch(db);
+        const chunk = operations.slice(i, i + BATCH_SIZE);
+        chunk.forEach(op => batch.set(op.ref, op.data));
+        await batch.commit();
       }
-    });
-
-    if (operations.length === 0) return;
-
-    const BATCH_SIZE = 400;
-    for (let i = 0; i < operations.length; i += BATCH_SIZE) {
-      const batch = writeBatch(db);
-      const chunk = operations.slice(i, i + BATCH_SIZE);
-      chunk.forEach(op => batch.set(op.ref, op.data));
-      await batch.commit();
     }
-
-    localStorage.setItem(DB_KEY, safeStringify(dbUpdate));
-    currentDb = { ...dbUpdate };
-    window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new Event('lobo-db-sync'));
   } catch (err) {
     handleFirestoreError(err, 'write');
   }
+
+  localStorage.setItem(DB_KEY, safeStringify(dbUpdate));
+  window.dispatchEvent(new Event('storage'));
 };
 
 export const getConfig = (): AppConfig => {
@@ -467,42 +437,34 @@ export const getConfig = (): AppConfig => {
 
 export const saveConfig = async (config: AppConfig) => {
   try {
-    currentConfig = { ...config };
-    await setDoc(doc(db, 'config', 'global'), config);
-    localStorage.setItem(APP_CONFIG_KEY, safeStringify(config));
-    window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new Event('lobo-db-sync'));
+    if (!quotaExceeded) {
+      await setDoc(doc(db, 'config', 'global'), config);
+    }
   } catch (err) {
     handleFirestoreError(err, 'write', 'config/global');
   }
+  localStorage.setItem(APP_CONFIG_KEY, safeStringify(config));
+  window.dispatchEvent(new Event('storage'));
 };
 
 export const isOnline = () => true; // Always online with managed Firebase
 
-export const refreshAuth = async () => {
-  if (!auth.currentUser) {
-    try {
-      await signInAnonymously(auth);
-    } catch (err: any) {
-      if (err.code === 'auth/admin-restricted-operation') {
-        // Silently ignore if anonymous auth is not enabled, 
-        // as public listeners work without it anyway.
-        return;
-      }
-      console.warn("Firebase Auth (Auto):", err.code || err.message);
-    }
-  }
-};
-
 export const deleteItem = async (collectionName: keyof DatabaseSchema, id: string) => {
   try {
-    await deleteDoc(doc(db, collectionName as string, id));
-    window.dispatchEvent(new Event('storage'));
-    window.dispatchEvent(new Event('lobo-db-sync'));
+    if (!quotaExceeded) {
+      await deleteDoc(doc(db, collectionName as string, id));
+    }
   } catch (err) {
     handleFirestoreError(err, 'delete', `${collectionName}/${id}`);
-    throw err;
   }
+  
+  // Always update local state
+  const list = (currentDb as any)[collectionName];
+  if (Array.isArray(list)) {
+    (currentDb as any)[collectionName] = list.filter((i: any) => i.id !== id);
+  }
+  localStorage.setItem(DB_KEY, safeStringify(currentDb));
+  window.dispatchEvent(new Event('storage'));
 };
 
 export const createCompetition = async (name: string, year: number) => {
@@ -516,54 +478,28 @@ export const createCompetition = async (name: string, year: number) => {
   };
 
   try {
-    const batch = writeBatch(db);
-    
-    // Deactivate others
-    currentDb.competitions.forEach(c => {
-      batch.update(doc(db, 'competitions', c.id), { isActive: false });
-    });
-
-    batch.set(doc(db, 'competitions', id), newComp);
-
-    // Seed Modalities (Always seed default modalities)
-    INITIAL_SEED_MODALITIES.forEach(seed => {
-      const modId = Math.random().toString(36).substring(2, 9);
-      batch.set(doc(db, 'modalities', modId), {
-        id: modId,
-        competitionId: id,
-        name: seed.name,
-        gender: seed.gender,
-        status: 'pending'
+    if (!quotaExceeded) {
+      const batch = writeBatch(db);
+      
+      // Deactivate others
+      currentDb.competitions.forEach(c => {
+        batch.update(doc(db, 'competitions', c.id), { isActive: false });
       });
-    });
 
-    // Smart Athletics Seeding
-    const upperName = name.toUpperCase();
-    let athleticsToSeed: { name: string; logoUrl: string | null }[] = [];
+      batch.set(doc(db, 'competitions', id), newComp);
 
-    if (upperName.includes('JOIA PG')) {
-      athleticsToSeed = [
-        'XV DE OUTUBRO', 'CAPETADA', 'LOS BRAVOS', 'DIREITO UEPG', 'MEDICINA UEPG',
-        'CAÓTICOS', 'BÁRBAROS', 'JAVAS', 'SHARKS', 'VI DE NOVEMBRO', 'LOBO',
-        'IMPÉRIO JURÍDICO', 'CORVOS', 'CORINGAÇO', 'HUNTERS', 'SOBERANA',
-        'GORILAS', 'TROIA', 'XIX DE SETEMBRO', 'Z'
-      ].map(n => ({ name: n, logoUrl: null }));
-    } else if (upperName.includes('ENGENHARIADAS PARANAENSE')) {
-      // Find the most recent Engenharíadas to copy athletics from
-      const prevEngenharíadas = [...currentDb.competitions]
-        .filter(c => c.name.toUpperCase().includes('ENGENHARIADAS PARANAENSE'))
-        .sort((a, b) => b.year - a.year)[0];
+      INITIAL_SEED_MODALITIES.forEach(seed => {
+        const modId = Math.random().toString(36).substring(2, 9);
+        batch.set(doc(db, 'modalities', modId), {
+          id: modId,
+          competitionId: id,
+          name: seed.name,
+          gender: seed.gender,
+          status: 'pending'
+        });
+      });
 
-      if (prevEngenharíadas) {
-        athleticsToSeed = currentDb.athletics
-          .filter(a => a.competitionId === prevEngenharíadas.id)
-          .map(a => ({ name: a.name, logoUrl: a.logoUrl }));
-      }
-    }
-
-    // Apply seeding
-    if (athleticsToSeed.length > 0) {
-      athleticsToSeed.forEach(seed => {
+      INITIAL_ATHLETICS.forEach(seed => {
         const athleticId = Math.random().toString(36).substring(2, 9);
         batch.set(doc(db, 'athletics', athleticId), {
           id: athleticId,
@@ -572,15 +508,24 @@ export const createCompetition = async (name: string, year: number) => {
           logoUrl: seed.logoUrl
         });
       });
-    }
 
-    await batch.commit();
-    return newComp;
+      await batch.commit();
+    }
   } catch (err) {
     handleFirestoreError(err, 'create', 'competitions');
-    throw err;
   }
+
+  // Update local state
+  currentDb.competitions = currentDb.competitions.map(c => ({ ...c, isActive: false }));
+  currentDb.competitions.push(newComp);
+  localStorage.setItem(DB_KEY, safeStringify(currentDb));
+  window.dispatchEvent(new Event('storage'));
+  
+  return newComp;
 };
+
+// ... remaining functions kept similarly or slightly updated for cloud performance
+// ... (omitting full repetition of calculated logic as it uses getDb which is now reactive)
 
 export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] => {
   const db_local = currentDb;

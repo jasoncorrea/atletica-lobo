@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, updateItem, deleteItem } from '../../../services/storageService';
+import { getDb, addItem, saveItems, deleteItem } from '../../../services/storageService';
 import { FinanceCategory, Transaction, PaymentAccount, TransactionType } from '../../../types';
 import { 
   DollarSign, 
@@ -47,13 +47,9 @@ export const FinanceTab: React.FC = () => {
     setTransactions(db.transactions.sort((a, b) => b.date - a.date));
   };
 
-  useEffect(() => {
-    load();
-    window.addEventListener('lobo-db-sync', load);
-    return () => window.removeEventListener('lobo-db-sync', load);
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  const addTransaction = async (e: React.FormEvent) => {
+  const addTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !desc) return;
     if (type === 'expense' && !catId) {
@@ -67,8 +63,8 @@ export const FinanceTab: React.FC = () => {
       return;
     }
 
-    const newTx: Transaction = {
-      id: Math.random().toString(36).substr(2, 9),
+    const db = getDb();
+    const newTx: any = {
       type,
       amount: val,
       description: desc,
@@ -78,44 +74,31 @@ export const FinanceTab: React.FC = () => {
       createdAt: Date.now()
     };
 
-    try {
-      await updateItem('transactions', newTx);
-      setAmount('');
-      setDesc('');
-      setShowAddModal(false);
-      load();
-    } catch (err) {
-      alert('Erro ao salvar transação.');
-    }
+    addItem('transactions', newTx);
+    
+    setAmount('');
+    setDesc('');
+    setShowAddModal(false);
+    load();
   };
 
   const deleteTransaction = async (id: string) => {
     if (!confirm('Excluir este lançamento?')) return;
-    try {
-      await deleteItem('transactions', id);
-      load();
-    } catch (err) {
-      alert('Erro ao excluir lançamento financeiro.');
-    }
+    await deleteItem('transactions', id);
+    load();
   };
 
   const addCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName) return;
     
-    const newCat: FinanceCategory = {
-      id: Math.random().toString(36).substr(2, 9),
+    await addItem('financeCategories', {
       name: newCatName.toUpperCase(),
       isDefault: false
-    };
-
-    try {
-      await updateItem('financeCategories', newCat);
-      setNewCatName('');
-      load();
-    } catch (err) {
-      alert('Erro ao salvar categoria.');
-    }
+    });
+    
+    setNewCatName('');
+    load();
   };
 
   const formatCurrency = (val: number) => {

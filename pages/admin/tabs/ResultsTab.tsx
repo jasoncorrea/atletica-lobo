@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { getDb, updateItem, deleteItem } from '../../../services/storageService';
+import { getDb, addItem, updateItem } from '../../../services/storageService';
 import { Competition, Modality, Athletic, Result } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -16,8 +16,7 @@ import {
   Award,
   ChevronDown,
   Edit2,
-  AlertTriangle,
-  Trash2
+  AlertTriangle
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
@@ -55,9 +54,7 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
 
   useEffect(() => {
     loadData();
-    window.addEventListener('lobo-db-sync', loadData);
-    return () => window.removeEventListener('lobo-db-sync', loadData);
-  }, [comp.id]);
+  }, [comp]);
 
   const loadData = () => {
     const db = getDb();
@@ -155,32 +152,25 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
       }
       finalRanking = calculateRankingFromBracket();
     }
+    
     const db = getDb();
-    const existingIdx = db.results.findIndex(r => r.competitionId === comp.id && r.modalityId === selMod);
-    const newResult: Result = { 
-      id: existingIdx >= 0 ? db.results[existingIdx].id : Math.random().toString(36).substr(2, 9),
+    const existing = db.results.find(r => r.competitionId === comp.id && r.modalityId === selMod);
+    
+    const resultData = { 
       competitionId: comp.id, 
       modalityId: selMod, 
       ranking: finalRanking 
     };
-    try {
-      await updateItem('results', newResult);
-      loadData();
-      if (inputMode === 'bracket') resetBracket();
-      else setRankings({});
-    } catch (err) {
-      alert('Erro ao salvar resultado.');
-    }
-  };
 
-  const deleteResult = async (id: string) => {
-    if (!confirm('Deseja excluir este resultado permanentemente?')) return;
-    try {
-      await deleteItem('results', id);
-      loadData();
-    } catch (err) {
-      alert('Erro ao excluir resultado.');
+    if (existing) {
+      await updateItem('results', existing.id, resultData);
+    } else {
+      await addItem('results', resultData);
     }
+
+    loadData();
+    if (inputMode === 'bracket') resetBracket();
+    else setRankings({});
   };
 
   const handleEdit = (result: Result) => {
@@ -551,17 +541,8 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
                       <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Resultado Final</span>
                       <span className="font-black text-sm text-zinc-900 tracking-tight">{getModalityName(r.modalityId)}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="bg-zinc-100 p-1.5 rounded-lg text-zinc-400 group-hover:bg-lobo-primary group-hover:text-white transition-colors" title="Editar">
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </div>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); deleteResult(r.id); }}
-                        className="bg-red-50 p-1.5 rounded-lg text-red-400 hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                        title="Excluir"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                    <div className="bg-zinc-100 p-1.5 rounded-lg text-zinc-400 group-hover:bg-lobo-primary group-hover:text-white transition-colors">
+                      <Edit2 className="w-3.5 h-3.5" />
                     </div>
                   </div>
                   

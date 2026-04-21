@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, updateItem, deleteItem } from '../../../services/storageService';
+import { getDb, saveItems, deleteItem, clearCollection } from '../../../services/storageService';
 import { Socio } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -43,8 +43,8 @@ export const SociosTab: React.FC = () => {
 
   useEffect(() => {
     load();
-    window.addEventListener('lobo-db-sync', load);
-    return () => window.removeEventListener('lobo-db-sync', load);
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
   }, []);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,12 +147,7 @@ export const SociosTab: React.FC = () => {
     if (importPreview.length === 0) return;
 
     try {
-      setIsImporting(true);
-      // Process sequential updates to avoid quota burst
-      for (const socio of importPreview) {
-        await updateItem('socios', socio);
-      }
-      
+      await saveItems('socios', importPreview as Socio[]);
       load();
       setImportPreview([]);
       setImportStatus({ success: true, message: 'Lista de sócios atualizada com sucesso!' });
@@ -162,14 +157,13 @@ export const SociosTab: React.FC = () => {
         success: false, 
         message: 'Falha ao salvar no banco de dados. ' + (error?.message || '') 
       });
-    } finally {
-      setIsImporting(false);
     }
   };
 
   const clearSocios = async () => {
-    if (!confirm('Deseja limpar toda a lista de sócios? Para isso, você deve excluir cada registro ou entrar em contato com o suporte.')) return;
-    alert('A exclusão em massa foi desativada por segurança. Remova os sócios individualmente se necessário.');
+    if (!confirm('Deseja limpar toda a lista de sócios?')) return;
+    await clearCollection('socios');
+    load();
   };
 
   const toggleFilter = (filter: string) => {

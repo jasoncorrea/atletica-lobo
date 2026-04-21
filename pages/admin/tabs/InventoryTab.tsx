@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, updateItem, handleImageUpload, deleteItem } from '../../../services/storageService';
+import { getDb, addItem, updateItem, deleteItem, handleImageUpload } from '../../../services/storageService';
 import { Product } from '../../../types';
 import { 
   Package, 
@@ -41,11 +41,7 @@ export const InventoryTab: React.FC = () => {
     setProducts(db.products || []);
   };
 
-  useEffect(() => {
-    load();
-    window.addEventListener('lobo-db-sync', load);
-    return () => window.removeEventListener('lobo-db-sync', load);
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const resetForm = () => {
     setEditingId(null);
@@ -70,36 +66,36 @@ export const InventoryTab: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Deseja realmente excluir este produto?')) return;
-    try {
-      await deleteItem('products', id);
-      load();
-    } catch (err) {
-      alert('Erro ao excluir produto do estoque.');
-    }
+    await deleteItem('products', id);
+    load();
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !qty || !priceMember || !priceNonMember) return;
 
-    const newProduct: Product = {
-      id: editingId || Math.random().toString(36).substr(2, 9),
+    const priceM = parseFloat(String(priceMember).replace(',', '.'));
+    const priceNM = parseFloat(String(priceNonMember).replace(',', '.'));
+    const quantity = parseInt(qty);
+
+    const productData = {
       name: name.toUpperCase(),
       size,
-      quantity: parseInt(qty),
-      priceMember: parseFloat(String(priceMember).replace(',', '.')),
-      priceNonMember: parseFloat(String(priceNonMember).replace(',', '.')),
+      quantity,
+      priceMember: priceM,
+      priceNonMember: priceNM,
       imageUrl: imgUrl
     };
 
-    try {
-      await updateItem('products', newProduct);
-      resetForm();
-      setSubTab('list');
-      load();
-    } catch (err) {
-      alert('Erro ao salvar produto no estoque.');
+    if (editingId) {
+      await updateItem('products', editingId, productData);
+    } else {
+      await addItem('products', productData);
     }
+
+    resetForm();
+    setSubTab('list');
+    load();
   };
 
   const handleUpload = async (file: File) => {
