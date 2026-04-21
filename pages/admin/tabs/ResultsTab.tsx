@@ -497,7 +497,7 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     onClick={save} 
-                    className="w-full bg-zinc-900 text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-zinc-900/20 mt-4 flex items-center justify-center space-x-3 transition-opacity hover:opacity-90"
+                    className="w-full bg-lobo-secondary text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-lobo-secondary/20 mt-4 flex items-center justify-center space-x-3 transition-opacity hover:opacity-90"
                   >
                     <Save className="w-6 h-6" />
                     <span>PUBLICAR RESULTADOS</span>

@@ -278,7 +278,7 @@ export const AdminDashboard: React.FC = () => {
             {config.logoUrl ? (
               <img src={config.logoUrl} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
-              <Trophy className="w-10 h-10 text-zinc-900" />
+            <Trophy className="w-10 h-10 text-lobo-secondary" />
             )}
           </div>
           <div className="mt-6 overflow-hidden">
@@ -398,7 +398,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden w-12 h-12 rounded-2xl bg-zinc-900 flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform"
+              className="lg:hidden w-12 h-12 rounded-2xl bg-lobo-secondary flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -431,7 +431,7 @@ export const AdminDashboard: React.FC = () => {
                  onClick={() => setShowDriveLinks(!showDriveLinks)}
                  className={cn(
                    "flex items-center justify-center w-12 h-12 md:w-auto md:px-6 md:py-2.5 rounded-2xl border transition-all shadow-sm active:scale-95 group",
-                   showDriveLinks ? "bg-zinc-900 border-zinc-900 text-white" : "bg-white border-zinc-100 text-zinc-600 hover:bg-zinc-50"
+                   showDriveLinks ? "bg-lobo-secondary border-lobo-secondary text-white" : "bg-white border-zinc-100 text-zinc-600 hover:bg-zinc-50"
                  )}
                >
                  <Cloud className={cn("w-5 h-5 md:w-4 md:h-4 transition-colors", showDriveLinks ? "text-lobo-primary" : "text-zinc-400 group-hover:text-lobo-primary")} />

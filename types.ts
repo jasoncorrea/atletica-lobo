@@ -55,6 +55,10 @@ export interface AppConfig {
   secondaryColor: string;
   logoUrl: string | null;
   publicEventCategories?: string[];
+  homeAnnouncementTitle?: string;
+  homeAnnouncementBody?: string;
+  homeAnnouncementMediaUrl?: string | null;
+  homeAnnouncementMediaType?: 'image' | 'video' | null;
 }
 
 // --- TIPOS FINANCEIROS E RBAC ---

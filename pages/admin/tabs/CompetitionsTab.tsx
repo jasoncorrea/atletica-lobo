@@ -82,7 +82,7 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
           animate={{ opacity: 1, x: 0 }}
           className="xl:col-span-4 sticky top-28"
         >
-          <div className="bg-zinc-900 rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
+          <div className="bg-lobo-secondary rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
             <div className="relative z-10 space-y-8">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-lobo-primary rounded-2xl text-zinc-900">

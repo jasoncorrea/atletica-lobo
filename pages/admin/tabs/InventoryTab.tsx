@@ -138,7 +138,7 @@ export const InventoryTab: React.FC = () => {
             onClick={() => { setSubTab('list'); resetForm(); }}
             className={cn(
               "px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-              subTab === 'list' ? "bg-zinc-900 text-white shadow-xl" : "text-zinc-500 hover:text-zinc-800"
+              subTab === 'list' ? "bg-lobo-secondary text-white shadow-xl" : "text-zinc-500 hover:text-zinc-800"
             )}
           >
             Estoque Atual

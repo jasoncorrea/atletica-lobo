@@ -148,6 +148,60 @@ export const PublicDashboard: React.FC = () => {
         </div>
       )}
 
+      {/* Featured Home Announcement */}
+      {config.homeAnnouncementTitle && (
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-[2.5rem] border border-zinc-100 shadow-xl shadow-black/5 overflow-hidden grid grid-cols-1 lg:grid-cols-2 gap-0"
+        >
+          <div className="p-10 lg:p-14 border-b lg:border-b-0 lg:border-r border-zinc-50 flex flex-col justify-center">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-1 rounded-full bg-lobo-primary" />
+              <span className="text-[10px] font-black text-lobo-primary uppercase tracking-widest">Destaque Lobo</span>
+            </div>
+            <h2 className="text-4xl lg:text-5xl font-black text-lobo-secondary tracking-tighter uppercase leading-[0.9] mb-6">
+              {config.homeAnnouncementTitle}
+            </h2>
+            <div className="prose prose-zinc prose-sm max-w-none">
+              <p className="text-zinc-500 font-bold leading-relaxed whitespace-pre-wrap">
+                {config.homeAnnouncementBody}
+              </p>
+            </div>
+          </div>
+          
+          <div className="relative h-64 lg:h-auto bg-zinc-50 flex items-center justify-center overflow-hidden">
+            {config.homeAnnouncementMediaUrl ? (
+              <>
+                {config.homeAnnouncementMediaType === 'video' ? (
+                  <video 
+                    src={config.homeAnnouncementMediaUrl} 
+                    className="absolute inset-0 w-full h-full object-cover" 
+                    muted 
+                    loop 
+                    autoPlay 
+                    playsInline 
+                  />
+                ) : (
+                  <img 
+                    src={config.homeAnnouncementMediaUrl} 
+                    className="absolute inset-0 w-full h-full object-cover" 
+                    alt="Destaque"
+                    referrerPolicy="no-referrer"
+                  />
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent lg:hidden" />
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-3 text-zinc-300">
+                <Trophy className="w-12 h-12" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Atlética Lobo</span>
+              </div>
+            )}
+          </div>
+        </motion.section>
+      )}
+
       {/* Tabs */}
       <nav className="flex items-center space-x-1 bg-white p-1.5 rounded-2xl border border-zinc-100 shadow-sm w-fit mx-auto md:mx-0">
         <button 

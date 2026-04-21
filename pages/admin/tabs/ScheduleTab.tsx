@@ -324,7 +324,7 @@ export const ScheduleTab: React.FC = () => {
           </div>
           <button 
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-3 bg-zinc-900 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-black/10 hover:scale-105 active:scale-95 transition-all"
+            className="flex items-center gap-3 bg-lobo-secondary text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-black/10 hover:scale-105 active:scale-95 transition-all"
           >
             <Plus className="w-4 h-4 text-lobo-primary" />
             Novo Evento
@@ -429,7 +429,7 @@ export const ScheduleTab: React.FC = () => {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-white rounded-[3rem] shadow-2xl z-[110] overflow-hidden"
             >
-              <div className="bg-zinc-900 p-8 text-white relative">
+              <div className="bg-lobo-secondary p-8 text-white relative">
                 <div className="absolute top-0 right-0 p-8 opacity-10">
                    <Plus className="w-20 h-20 text-lobo-primary" />
                 </div>

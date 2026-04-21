@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getDb } from '../../../services/storageService';
-import { Competition } from '../../../types';
+import { getDb, getConfig, saveConfig } from '../../../services/storageService';
+import { Competition, AppConfig } from '../../../types';
 import { 
   BarChart, 
   Bar, 
@@ -27,7 +27,13 @@ import {
   Activity,
   UserCheck,
   DollarSign,
-  Flag
+  Flag,
+  FileText,
+  Upload,
+  Save,
+  Image as ImageIcon,
+  Video,
+  X
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { cn } from '../../../lib/utils';
@@ -38,12 +44,42 @@ interface Props {
 
 export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
   const [db, setDb] = useState(getDb());
+  const [config, setConfig] = useState<AppConfig>(getConfig());
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const handleStorage = () => setDb(getDb());
+    const handleStorage = () => {
+      setDb(getDb());
+      setConfig(getConfig());
+    };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
+
+  const handleSaveAnnouncement = async () => {
+    setIsSaving(true);
+    try {
+      await saveConfig(config);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const result = event.target?.result as string;
+      setConfig(prev => ({
+        ...prev,
+        homeAnnouncementMediaUrl: result,
+        homeAnnouncementMediaType: file.type.startsWith('video/') ? 'video' : 'image'
+      }));
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Stats Calculations
   const displayComp = activeComp || db.competitions.find(c => c.isActive);
@@ -89,10 +125,10 @@ export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
         <div className="flex items-center gap-4">
            {displayComp && (
              <div className="bg-lobo-primary px-6 py-3 rounded-2xl shadow-xl shadow-lobo-primary/20 flex items-center gap-3">
-                <Trophy className="w-5 h-5 text-zinc-900" />
+                <Trophy className="w-5 h-5 text-white" />
                 <div>
-                   <p className="text-[9px] font-black text-zinc-900/40 uppercase tracking-widest leading-none">Comp. em Foco</p>
-                   <p className="text-xs font-black text-zinc-900 leading-none mt-1 uppercase">{displayComp.name}</p>
+                   <p className="text-[9px] font-black text-white/40 uppercase tracking-widest leading-none">Comp. em Foco</p>
+                   <p className="text-xs font-black text-white leading-none mt-1 uppercase">{displayComp.name}</p>
                 </div>
              </div>
            )}
@@ -176,7 +212,7 @@ export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
                            <motion.div 
                               initial={{ width: 0 }}
                               animate={{ width: `${(activeSocios / (totalSocios || 1)) * 100}%` }}
-                              className="h-full bg-lobo-primary shadow-[0_0_15px_rgba(227,135,2,0.5)]" 
+                              className="h-full bg-lobo-primary shadow-[0_0_15px_rgba(90,5,9,0.3)]" 
                            />
                         </div>
                      </div>
@@ -197,8 +233,8 @@ export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
             </div>
 
             <div className="bg-white border border-zinc-100 rounded-[3rem] p-8 shadow-sm">
-               <h3 className="text-xs font-black text-zinc-900 uppercase tracking-widest mb-6 flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-orange-500" />
+               <h3 className="text-xs font-black text-lobo-secondary uppercase tracking-widest mb-6 flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-lobo-primary" />
                   Próximas Competições
                </h3>
                <div className="space-y-4">
@@ -206,7 +242,7 @@ export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
                     <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-zinc-50 border border-zinc-100 group hover:border-lobo-primary transition-colors cursor-pointer">
                        <div className={cn(
                          "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors",
-                         c.isActive ? "bg-amber-500 text-white" : "bg-white text-zinc-300 group-hover:text-amber-500"
+                         c.isActive ? "bg-lobo-primary text-white" : "bg-white text-zinc-300 group-hover:text-lobo-primary"
                        )}>
                           <Trophy className="w-5 h-5" />
                        </div>
@@ -221,8 +257,107 @@ export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
                     <p className="text-center py-6 text-[10px] font-bold text-zinc-400 uppercase tracking-widest italic">Nenhuma competição</p>
                   )}
                </div>
-               <button className="w-full mt-6 py-4 rounded-2xl bg-zinc-50 text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] hover:bg-zinc-900 hover:text-white transition-all">Ver Calendário Completo</button>
+               <button className="w-full mt-6 py-4 rounded-2xl bg-zinc-50 text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] hover:bg-lobo-secondary hover:text-white transition-all">Ver Calendário Completo</button>
             </div>
+      </section>
+
+      {/* Featured Home Announcement Editor */}
+      <section className="bg-lobo-secondary rounded-[3rem] p-10 text-white relative overflow-hidden">
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <div className="space-y-6">
+            <div className="inline-flex items-center gap-3 px-4 py-2 bg-lobo-primary/10 rounded-2xl text-lobo-primary">
+              <FileText className="w-5 h-5" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Destaque da Home</span>
+            </div>
+            <div className="space-y-4">
+              <h3 className="text-3xl font-black tracking-tight">Comunicado Principal</h3>
+              <p className="text-sm text-zinc-400 font-medium leading-relaxed">
+                Adicione um título, corpo de texto e uma mídia (foto ou vídeo) para aparecer em destaque na página inicial, logo abaixo do feed de eventos.
+              </p>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t border-white/10">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Título do Comunicado</label>
+                <input 
+                  type="text" 
+                  value={config.homeAnnouncementTitle || ''}
+                  onChange={(e) => setConfig(prev => ({ ...prev, homeAnnouncementTitle: e.target.value }))}
+                  placeholder="Ex: Novos Mantos Disponíveis!"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-lobo-primary focus:bg-white/10 outline-none transition-all"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Corpo do Texto</label>
+                <textarea 
+                  value={config.homeAnnouncementBody || ''}
+                  onChange={(e) => setConfig(prev => ({ ...prev, homeAnnouncementBody: e.target.value }))}
+                  placeholder="Descreva o anúncio em detalhes..."
+                  rows={4}
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-2 focus:ring-lobo-primary focus:bg-white/10 outline-none transition-all resize-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-zinc-500 ml-1">Mídia do Destaque</label>
+              <div className={cn(
+                "relative h-64 w-full rounded-[2.5rem] border-2 border-dashed flex flex-col items-center justify-center transition-all overflow-hidden",
+                config.homeAnnouncementMediaUrl ? "border-lobo-primary/30" : "border-white/10 hover:border-white/20"
+              )}>
+                {config.homeAnnouncementMediaUrl ? (
+                  <>
+                    {config.homeAnnouncementMediaType === 'video' ? (
+                      <video src={config.homeAnnouncementMediaUrl} className="absolute inset-0 w-full h-full object-cover" muted loop autoPlay />
+                    ) : (
+                      <img src={config.homeAnnouncementMediaUrl} className="absolute inset-0 w-full h-full object-cover" />
+                    )}
+                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <button 
+                        onClick={() => setConfig(prev => ({ ...prev, homeAnnouncementMediaUrl: null, homeAnnouncementMediaType: null }))}
+                        className="p-3 bg-red-500 rounded-full text-white shadow-xl hover:scale-110 transition-transform"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center p-8">
+                    <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-4 text-zinc-500">
+                      <Upload className="w-8 h-8" />
+                    </div>
+                    <p className="text-xs font-black uppercase tracking-widest text-zinc-500 mb-2">Selecione uma Mídia</p>
+                    <p className="text-[10px] font-bold text-zinc-600">JPG, PNG ou MP4</p>
+                    <input 
+                      type="file" 
+                      onChange={handleFileChange}
+                      accept="image/*,video/*"
+                      className="absolute inset-0 opacity-0 cursor-pointer"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-4 pt-6">
+              <button 
+                onClick={handleSaveAnnouncement}
+                disabled={isSaving}
+                className="flex-grow bg-lobo-primary hover:bg-lobo-primary/90 disabled:opacity-50 text-white py-5 rounded-3xl font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all shadow-xl shadow-lobo-primary/20"
+              >
+                {isSaving ? (
+                  <div className="w-5 h-5 border-2 border-zinc-900/30 border-t-zinc-900 rounded-full animate-spin" />
+                ) : (
+                  <Save className="w-5 h-5" />
+                )}
+                Salvar Alterações
+              </button>
+            </div>
+          </div>
+        </div>
+        <FileText className="absolute -right-20 -bottom-20 w-80 h-80 opacity-[0.03] text-lobo-primary -rotate-12" />
       </section>
     </div>
   );
