@@ -17,7 +17,16 @@ export const PenaltiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
     setAths(db.athletics.filter(a => a.competitionId === comp.id));
     setPens(db.penalties.filter(p => p.competitionId === comp.id));
   };
-  useEffect(() => { load(); }, [comp]);
+  useEffect(() => { 
+    const refresh = () => {
+      const db = getDb();
+      setAths(db.athletics.filter(a => a.competitionId === comp.id));
+      setPens(db.penalties.filter(p => p.competitionId === comp.id));
+    };
+    refresh();
+    window.addEventListener('storage', refresh);
+    return () => window.removeEventListener('storage', refresh);
+  }, [comp.id]);
 
   const add = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,9 +45,8 @@ export const PenaltiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Excluir esta punição reverterá os pontos perdidos pela atlética. Continuar?')) return;
+    // Removed confirm as it can be unreliable in iframes
     await deleteItem('penalties', id);
-    setPens(prev => prev.filter(p => p.id !== id));
   };
 
   return (

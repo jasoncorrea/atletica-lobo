@@ -38,7 +38,9 @@ export const SociosTab: React.FC = () => {
 
   const load = () => {
     const db = getDb();
-    setSocios(db.socios || []);
+    const all = db.socios || [];
+    const unique = Array.from(new Map(all.map(s => [s.id, s])).values());
+    setSocios(unique);
   };
 
   useEffect(() => {
@@ -161,9 +163,8 @@ export const SociosTab: React.FC = () => {
   };
 
   const clearSocios = async () => {
-    if (!confirm('Deseja limpar toda a lista de sócios?')) return;
+    // Removed confirm as it can be unreliable in iframes
     await clearCollection('socios');
-    load();
   };
 
   const toggleFilter = (filter: string) => {

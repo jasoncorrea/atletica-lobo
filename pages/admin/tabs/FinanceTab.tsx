@@ -43,11 +43,21 @@ export const FinanceTab: React.FC = () => {
 
   const load = () => {
     const db = getDb();
-    setCategories(db.financeCategories);
-    setTransactions(db.transactions.sort((a, b) => b.date - a.date));
+    
+    const rawCats = db.financeCategories || [];
+    const uniqueCats = Array.from(new Map(rawCats.map(c => [c.id, c])).values());
+    setCategories(uniqueCats);
+    
+    const rawTxs = db.transactions || [];
+    const uniqueTxs = Array.from(new Map(rawTxs.map(t => [t.id, t])).values());
+    setTransactions(uniqueTxs.sort((a, b) => b.date - a.date));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    load();
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
+  }, []);
 
   const addTransaction = (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,9 +93,8 @@ export const FinanceTab: React.FC = () => {
   };
 
   const deleteTransaction = async (id: string) => {
-    if (!confirm('Excluir este lançamento?')) return;
+    // Removed confirm as it can be unreliable in iframes
     await deleteItem('transactions', id);
-    load();
   };
 
   const addCategory = async (e: React.FormEvent) => {

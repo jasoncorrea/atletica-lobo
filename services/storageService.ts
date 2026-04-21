@@ -3,7 +3,7 @@ import {
   Competition, Athletic, Modality, Result, Penalty, 
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry,
   Transaction, FinanceCategory, Product, BirthdayMember,
-  ShareMember, SharePost, ShareRecord, Socio
+  ShareMember, SharePost, ShareRecord, Socio, PlannerEvent
 } from '../types';
 import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES, DB_KEY, APP_CONFIG_KEY } from '../constants';
 import { initializeApp } from 'firebase/app';
@@ -60,6 +60,21 @@ export const switchToNextDatabase = () => {
   return false;
 };
 
+const safeStringify = (obj: any): string => {
+  try {
+    return JSON.stringify(obj);
+  } catch (err) {
+    const cache = new Set();
+    return JSON.stringify(obj, (_key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        if (cache.has(value)) return '[Circular]';
+        cache.add(value);
+      }
+      return value;
+    });
+  }
+};
+
 // Test connection
 async function testConnection() {
   try {
@@ -101,7 +116,7 @@ export const handleFirestoreError = (error: any, op: string, path: string | null
         email: user?.email || '',
         emailVerified: user?.emailVerified || false,
         isAnonymous: user?.isAnonymous || true,
-        providerInfo: user?.providerData.map(p => ({
+        providerInfo: user?.providerData.map((p: any) => ({
           providerId: p.providerId,
           displayName: p.displayName || '',
           email: p.email || ''
@@ -128,6 +143,7 @@ interface DatabaseSchema {
   sharePosts: SharePost[];
   shareRecords: ShareRecord[];
   socios: Socio[];
+  plannerEvents: PlannerEvent[];
 }
 
 const initialDb: DatabaseSchema = {
@@ -144,7 +160,8 @@ const initialDb: DatabaseSchema = {
   shareMembers: [],
   sharePosts: [],
   shareRecords: [],
-  socios: []
+  socios: [],
+  plannerEvents: []
 };
 
 // State management
@@ -152,7 +169,9 @@ const loadInitialDb = (): DatabaseSchema => {
   const saved = localStorage.getItem(DB_KEY);
   if (saved) {
     try {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      // Merge with initialDb to ensure new collections exist
+      return { ...initialDb, ...parsed };
     } catch (e) {
       console.error("Error parsing saved DB:", e);
     }
@@ -183,7 +202,7 @@ let currentConfig: AppConfig = loadInitialConfig();
 const publicCollections = [
   'competitions', 'athletics', 'modalities', 'results', 
   'penalties', 'products', 'birthdays', 'scoreRules',
-  'shareMembers', 'sharePosts', 'shareRecords', 'socios'
+  'shareMembers', 'sharePosts', 'shareRecords', 'socios', 'plannerEvents'
 ];
 
 const restrictedCollections = [
@@ -191,22 +210,6 @@ const restrictedCollections = [
 ];
 
 const activeListeners: Record<string, { unsub: () => void, count: number }> = {};
-
-// Safe stringify to avoid circular references
-const safeStringify = (obj: any): string => {
-  try {
-    return JSON.stringify(obj);
-  } catch (err) {
-    const cache = new Set();
-    return JSON.stringify(obj, (key, value) => {
-      if (typeof value === 'object' && value !== null) {
-        if (cache.has(value)) return '[Circular]';
-        cache.add(value);
-      }
-      return value;
-    });
-  }
-};
 
 export const startListener = (colName: string) => {
   if (activeListeners[colName]) {
@@ -314,7 +317,15 @@ export const addItem = async <K extends keyof DatabaseSchema>(collectionName: K,
   
   // Always update local state even if quota exceeded
   if (Array.isArray((currentDb as any)[collectionName])) {
-    (currentDb as any)[collectionName].push(data);
+    const list = (currentDb as any)[collectionName];
+    const itemExists = list.some((i: any) => i.id === id);
+    if (!itemExists) {
+      list.push(data);
+    } else {
+      // If it exists, update it instead of pushing
+      const idx = list.findIndex((i: any) => i.id === id);
+      list[idx] = data;
+    }
   }
   localStorage.setItem(DB_KEY, safeStringify(currentDb));
   window.dispatchEvent(new Event('storage'));
@@ -491,6 +502,13 @@ export const deleteItem = async (collectionName: keyof DatabaseSchema, id: strin
   window.dispatchEvent(new Event('storage'));
 };
 
+const JOIA_PG_ATHLETICS_NAMES = [
+  'XV DE OUTUBRO', 'CAPETADA', 'LOS BRAVOS', 'DIREITO UEPG', 'MEDICINA UEPG', 
+  'CAÓTICOS', 'BÁRBAROS', 'JAVAS', 'SHARKS', 'VI DE NOVEMBRO', 'LOBO', 
+  'IMPÉRIO JURÍDICO', 'CORVOS', 'CORINGAÇO', 'HUNTERS', 'SOBERANA', 
+  'GORILAS', 'TROIA', 'XIX DE SETEMBRO', 'Z.'
+];
+
 export const createCompetition = async (name: string, year: number) => {
   const id = Math.random().toString(36).substring(2, 9);
   const newComp: Competition = {
@@ -500,6 +518,45 @@ export const createCompetition = async (name: string, year: number) => {
     isActive: true,
     createdAt: Date.now()
   };
+
+  // Determine athletics to seed based on templates
+  let athleticsToSeed: Partial<Athletic>[] = [];
+  const normalizedName = name.toUpperCase();
+
+  if (normalizedName.includes('JOIA PG')) {
+    athleticsToSeed = JOIA_PG_ATHLETICS_NAMES.map(n => ({
+      name: n,
+      logoUrl: null
+    }));
+  } else if (normalizedName.includes('ENGENHARIADAS PARANAENSE')) {
+    // Find most recent EP
+    const previousEP = [...currentDb.competitions]
+      .filter(c => c.name.toUpperCase().includes('ENGENHARIADAS PARANAENSE'))
+      .sort((a, b) => b.createdAt - a.createdAt)[0];
+    
+    if (previousEP) {
+      const oldAthletics = currentDb.athletics.filter(a => a.competitionId === previousEP.id);
+      athleticsToSeed = oldAthletics.map(a => ({
+        name: a.name,
+        logoUrl: a.logoUrl
+      }));
+    }
+  }
+
+  const modalitiesToSeed = INITIAL_SEED_MODALITIES.map(seed => ({
+    id: Math.random().toString(36).substring(2, 9),
+    competitionId: id,
+    name: seed.name,
+    gender: seed.gender,
+    status: 'pending' as const
+  }));
+
+  const athleticsToSeedFinal = athleticsToSeed.map(seed => ({
+    id: Math.random().toString(36).substring(2, 9),
+    competitionId: id,
+    name: seed.name!,
+    logoUrl: seed.logoUrl || null
+  }));
 
   try {
     if (!quotaExceeded) {
@@ -512,25 +569,12 @@ export const createCompetition = async (name: string, year: number) => {
 
       batch.set(doc(db, 'competitions', id), newComp);
 
-      INITIAL_SEED_MODALITIES.forEach(seed => {
-        const modId = Math.random().toString(36).substring(2, 9);
-        batch.set(doc(db, 'modalities', modId), {
-          id: modId,
-          competitionId: id,
-          name: seed.name,
-          gender: seed.gender,
-          status: 'pending'
-        });
+      modalitiesToSeed.forEach(data => {
+        batch.set(doc(db, 'modalities', data.id), data);
       });
 
-      INITIAL_ATHLETICS.forEach(seed => {
-        const athleticId = Math.random().toString(36).substring(2, 9);
-        batch.set(doc(db, 'athletics', athleticId), {
-          id: athleticId,
-          competitionId: id,
-          name: seed.name,
-          logoUrl: seed.logoUrl
-        });
+      athleticsToSeedFinal.forEach(data => {
+        batch.set(doc(db, 'athletics', data.id), data);
       });
 
       await batch.commit();
@@ -541,7 +585,14 @@ export const createCompetition = async (name: string, year: number) => {
 
   // Update local state
   currentDb.competitions = currentDb.competitions.map(c => ({ ...c, isActive: false }));
-  currentDb.competitions.push(newComp);
+  if (!currentDb.competitions.some(c => c.id === id)) {
+    currentDb.competitions.push(newComp);
+  }
+
+  // Seed with consistent IDs
+  currentDb.modalities.push(...modalitiesToSeed);
+  currentDb.athletics.push(...athleticsToSeedFinal);
+
   localStorage.setItem(DB_KEY, safeStringify(currentDb));
   window.dispatchEvent(new Event('storage'));
   

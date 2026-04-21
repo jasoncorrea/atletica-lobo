@@ -20,7 +20,15 @@ export const AthleticsTab: React.FC<Props> = ({ comp }) => {
     setList(athletics);
   };
 
-  useEffect(() => { load(); }, [comp.id]);
+  useEffect(() => { 
+    const refreshList = () => {
+      const athletics = getDb().athletics.filter(a => a.competitionId === comp.id);
+      setList(athletics);
+    };
+    refreshList(); 
+    window.addEventListener('storage', refreshList);
+    return () => window.removeEventListener('storage', refreshList);
+  }, [comp.id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,10 +73,9 @@ export const AthleticsTab: React.FC<Props> = ({ comp }) => {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Tem certeza que deseja remover esta atlética? Isso pode afetar resultados passados.')) return;
+    // Removed confirm as it can be unreliable in iframes
     if (editingId === id) resetForm();
     await deleteItem('athletics', id);
-    setList(prev => prev.filter(a => a.id !== id));
   };
 
   return (

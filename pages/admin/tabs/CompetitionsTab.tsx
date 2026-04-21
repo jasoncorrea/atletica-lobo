@@ -10,8 +10,16 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
   const [name, setName] = useState('');
   const [year, setYear] = useState(new Date().getFullYear());
 
-  const load = () => setList(getDb().competitions);
-  useEffect(() => { load(); }, []);
+  const load = () => {
+    const competitions = getDb().competitions;
+    const unique = Array.from(new Map(competitions.map(c => [c.id, c])).values());
+    setList(unique);
+  };
+  useEffect(() => { 
+    load();
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
+  }, []);
 
   const add = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,9 +32,8 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Excluir esta competição apagará todas as modalidades e resultados vinculados. Continuar?')) return;
+    // Removed confirm as it can be unreliable in iframes
     await deleteItem('competitions', id);
-    setList(prev => prev.filter(c => c.id !== id));
     onUpdate();
   };
 
@@ -159,7 +166,7 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
                    <p className="text-sm font-black uppercase tracking-widest">Nenhuma história escrita ainda...</p>
                 </div>
               )}
-              {list.sort((a, b) => b.year - a.year).map((c, idx) => (
+              {[...list].sort((a, b) => b.year - a.year).map((c, idx) => (
                 <motion.div 
                   key={c.id}
                   initial={{ opacity: 0, scale: 0.95 }}

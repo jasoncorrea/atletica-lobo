@@ -37,11 +37,16 @@ export const InventoryTab: React.FC = () => {
   const [imgUrl, setImgUrl] = useState<string | null>(null);
 
   const load = () => {
-    const db = getDb();
-    setProducts(db.products || []);
+    const all = getDb().products || [];
+    const unique = Array.from(new Map(all.map(p => [p.id, p])).values());
+    setProducts(unique);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    load();
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
+  }, []);
 
   const resetForm = () => {
     setEditingId(null);
@@ -65,9 +70,8 @@ export const InventoryTab: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Deseja realmente excluir este produto?')) return;
+    // Removed confirm as it can be unreliable in iframes
     await deleteItem('products', id);
-    load();
   };
 
   const handleSave = async (e: React.FormEvent) => {

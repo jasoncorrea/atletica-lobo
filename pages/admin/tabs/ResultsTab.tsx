@@ -60,7 +60,9 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
     const db = getDb();
     setMods(db.modalities.filter(m => m.competitionId === comp.id));
     setAths(db.athletics.filter(a => a.competitionId === comp.id));
-    setResultsList(db.results.filter(r => r.competitionId === comp.id));
+    const rawResults = db.results.filter(r => r.competitionId === comp.id);
+    const uniqueResults = Array.from(new Map(rawResults.map(r => [r.id, r])).values());
+    setResultsList(uniqueResults);
   };
 
   const isCollective = (modId: string) => {

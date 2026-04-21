@@ -50,9 +50,18 @@ export const MarketingTab: React.FC = () => {
 
   const load = () => {
     const db = getDb();
-    setMembers(db.shareMembers || []);
-    setPosts(db.sharePosts || []);
-    setRecords(db.shareRecords || []);
+    
+    const rawMembers = db.shareMembers || [];
+    const uniqueMembers = Array.from(new Map(rawMembers.map(m => [m.id, m])).values());
+    setMembers(uniqueMembers);
+    
+    const rawPosts = db.sharePosts || [];
+    const uniquePosts = Array.from(new Map(rawPosts.map(p => [p.id, p])).values());
+    setPosts(uniquePosts);
+    
+    const rawRecords = db.shareRecords || [];
+    const uniqueRecords = Array.from(new Map(rawRecords.map(r => [r.id, r])).values());
+    setRecords(uniqueRecords);
   };
 
   useEffect(() => {
@@ -109,13 +118,13 @@ export const MarketingTab: React.FC = () => {
   };
 
   const removeMember = async (id: string) => {
-    if (!confirm('Deseja remover este membro?')) return;
+    // Removed confirm as it can be unreliable in iframes
     await deleteItem('shareMembers', id);
     load();
   };
 
   const removePost = async (id: string) => {
-    if (!confirm('Deseja remover este post?')) return;
+    // Removed confirm as it can be unreliable in iframes
     await deleteItem('sharePosts', id);
     load();
   };

@@ -93,6 +93,11 @@ service cloud.firestore {
       allow write: if isSignedIn();
     }
 
+    match /plannerEvents/{id} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
     match /shareMembers/{id} {
       allow read: if true;
       allow write: if isSignedIn();

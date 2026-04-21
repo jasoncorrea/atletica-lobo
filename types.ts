@@ -115,6 +115,15 @@ export interface Socio {
   expiryYear?: number;
 }
 
+export interface PlannerEvent {
+  id: string;
+  title: string;
+  date: number; // timestamp
+  category: 'REUNIÃO' | 'EVENTO' | 'COMPETIÇÃO' | 'PUBLICAÇÃO/POST' | 'PRAZO/ENTREGA' | 'AMISTOSO/ESPORTES' | 'PRODUTOS' | 'OUTRO';
+  description?: string;
+  location?: string;
+}
+
 export interface ShareMember {
   id: string;
   name: string;

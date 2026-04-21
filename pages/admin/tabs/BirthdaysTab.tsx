@@ -12,12 +12,15 @@ export const BirthdaysTab: React.FC = () => {
   const [date, setDate] = useState('');
   const [search, setSearch] = useState('');
 
-  const load = () => {
-    setMembers(getDb().birthdays || []);
-  };
-
   useEffect(() => {
-    load();
+    const refresh = () => {
+      const all = getDb().birthdays || [];
+      const unique = Array.from(new Map(all.map(m => [m.id, m])).values());
+      setMembers(unique);
+    };
+    refresh();
+    window.addEventListener('storage', refresh);
+    return () => window.removeEventListener('storage', refresh);
   }, []);
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -33,15 +36,14 @@ export const BirthdaysTab: React.FC = () => {
     setName('');
     setRole('');
     setDate('');
-    load();
   };
 
   const removeMember = async (id: string) => {
-    if (!confirm('Remover este membro da lista de aniversariantes?')) return;
+    // Removed confirm as it can be unreliable in iframes
     try {
       await deleteItem('birthdays', id);
-      load();
     } catch (err) {
+      console.error("Error deleting birthday member:", err);
       alert('Erro ao apagar membro. Tente novamente.');
     }
   };
@@ -182,7 +184,8 @@ export const BirthdaysTab: React.FC = () => {
 
                   <button 
                     onClick={() => removeMember(m.id)}
-                    className="p-2 text-zinc-200 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                    className="p-2.5 text-zinc-400 hover:text-red-500 hover:bg-red-50 bg-zinc-50 sm:bg-transparent rounded-xl transition-all sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center shadow-sm sm:shadow-none"
+                    title="Excluir Aniversariante"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

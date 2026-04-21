@@ -15,6 +15,7 @@ import { InventoryTab } from './tabs/InventoryTab';
 import { BirthdaysTab } from './tabs/BirthdaysTab';
 import { MarketingTab } from './tabs/MarketingTab';
 import { SociosTab } from './tabs/SociosTab';
+import { ScheduleTab } from './tabs/ScheduleTab';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Trophy, 
@@ -28,6 +29,7 @@ import {
   LayoutDashboard,
   ShieldCheck,
   Cake,
+  Calendar,
   Share2,
   UserCheck,
   Menu,
@@ -98,6 +100,9 @@ export const AdminDashboard: React.FC = () => {
       case 'finance':
         collections.push('transactions', 'financeCategories');
         break;
+      case 'schedule':
+        collections.push('plannerEvents');
+        break;
     }
 
     collections.forEach(startListener);
@@ -128,6 +133,7 @@ export const AdminDashboard: React.FC = () => {
 
   const navItems = [
     { id: 'dashboard', label: 'Início', icon: LayoutDashboard, color: 'bg-emerald-500' },
+    { id: 'schedule', label: 'Cronograma', icon: Calendar, color: 'bg-indigo-500' },
     { 
       id: 'competitions_group', 
       label: 'Competições', 
@@ -488,6 +494,7 @@ export const AdminDashboard: React.FC = () => {
               className="max-w-[1600px] mx-auto"
             >
               {activeTab === 'dashboard' && <DashboardTab activeComp={activeComp} />}
+              {activeTab === 'schedule' && <ScheduleTab />}
               {activeTab === 'competitions' && <CompetitionsTab onUpdate={refresh} />}
               {activeTab === 'athletics' && activeComp && <AthleticsTab comp={activeComp} />}
               {activeTab === 'birthdays' && <BirthdaysTab />}

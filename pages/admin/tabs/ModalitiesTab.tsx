@@ -11,7 +11,12 @@ export const ModalitiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   const [gender, setGender] = useState('M');
 
   const load = () => setList(getDb().modalities.filter(m => m.competitionId === comp.id));
-  useEffect(() => { load(); }, [comp]);
+  useEffect(() => { 
+    const refresh = () => setList(getDb().modalities.filter(m => m.competitionId === comp.id));
+    refresh();
+    window.addEventListener('storage', refresh);
+    return () => window.removeEventListener('storage', refresh);
+  }, [comp.id]);
 
   const add = async () => {
     if (!name.trim()) return;
@@ -26,9 +31,8 @@ export const ModalitiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Excluir esta modalidade removerá todos os resultados vinculados a ela. Continuar?')) return;
+    // Removed confirm as it can be unreliable in iframes
     await deleteItem('modalities', id);
-    setList(prev => prev.filter(m => m.id !== id));
   };
 
   const getGenderMeta = (g: string) => {
