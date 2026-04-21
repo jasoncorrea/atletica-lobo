@@ -28,9 +28,17 @@ export interface FirestoreErrorInfo {
   }
 }
 
+// Initializing Firebase
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+
 // State management
 let currentDbId = firebaseConfig.firestoreDatabaseId;
 const backupDatabaseIds: string[] = []; // You can add more IDs here manually if created
+let quotaExceeded = false;
+let isFirebaseReady = false;
+
+export const isQuotaExceeded = () => quotaExceeded;
 
 const getFirestoreInstance = (dbId: string) => {
   return getFirestore(app, dbId);
@@ -52,6 +60,23 @@ export const switchToNextDatabase = () => {
   return false;
 };
 
+// Test connection
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+    console.log("Firebase connection established.");
+    isFirebaseReady = true;
+  } catch (error: any) {
+    if (error.code === 'resource-exhausted' || error.message?.includes('Quota limit exceeded')) {
+      handleFirestoreError(error, 'test-connection');
+    }
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration.");
+    }
+  }
+}
+testConnection();
+
 export const handleFirestoreError = (error: any, op: string, path: string | null = null) => {
   if (error.code === 'resource-exhausted' || error.message?.includes('Quota limit exceeded')) {
     console.warn(`Quota limit exceeded for DB ${currentDbId} during ${op} at ${path}.`);
@@ -64,7 +89,6 @@ export const handleFirestoreError = (error: any, op: string, path: string | null
     }
     return true; 
   }
-  // ... rest existing
 
   if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
     const user = auth.currentUser;
