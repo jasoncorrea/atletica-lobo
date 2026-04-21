@@ -38,7 +38,7 @@ export const SettingsTab: React.FC = () => {
           </div>
 
           <header className="flex items-center space-x-3 mb-8 relative z-10">
-            <div className="p-3 bg-zinc-900 rounded-2xl text-white shadow-xl shadow-zinc-200">
+            <div className="p-3 bg-lobo-dark rounded-2xl text-white shadow-xl shadow-zinc-200">
               <Sparkles className="w-6 h-6" />
             </div>
             <div>
@@ -134,7 +134,7 @@ export const SettingsTab: React.FC = () => {
                 "w-full py-5 rounded-2xl font-black text-sm tracking-widest uppercase transition-all flex items-center justify-center space-x-3 shadow-xl",
                 status === 'saved' 
                   ? "bg-green-500 text-white shadow-green-100" 
-                  : "bg-zinc-900 text-white shadow-zinc-200 hover:bg-zinc-800"
+                  : "bg-lobo-dark text-white shadow-zinc-200 hover:bg-zinc-800"
               )}
             >
               {status === 'saved' ? (
@@ -155,7 +155,7 @@ export const SettingsTab: React.FC = () => {
 
       {/* Info Sidebar */}
       <div className="md:col-span-12 lg:col-span-4 flex flex-col gap-6">
-        <section className="bg-zinc-900 p-8 rounded-3xl border border-zinc-800 shadow-2xl relative overflow-hidden group">
+        <section className="bg-lobo-dark p-8 rounded-3xl border border-zinc-800 shadow-2xl relative overflow-hidden group">
           <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none group-hover:scale-110 group-hover:rotate-12 transition-transform duration-700">
             <Sliders className="w-32 h-32 text-white" />
           </div>

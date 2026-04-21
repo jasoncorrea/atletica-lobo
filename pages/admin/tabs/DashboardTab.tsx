@@ -119,7 +119,7 @@ export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
       {/* Header Overview */}
       <section className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div className="space-y-2">
-          <h2 className="text-4xl font-black text-lobo-secondary tracking-tighter uppercase leading-none">Visão Central</h2>
+          <h2 className="text-4xl font-black text-lobo-dark tracking-tighter uppercase leading-none">Visão Central</h2>
           <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest leading-none">Inteligência Operacional Atlética Lobo</p>
         </div>
         <div className="flex items-center gap-4">
@@ -132,7 +132,7 @@ export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
                 </div>
              </div>
            )}
-           <div className="bg-lobo-secondary px-6 py-3 rounded-2xl text-white shadow-xl flex items-center gap-3">
+           <div className="bg-lobo-dark px-6 py-3 rounded-2xl text-white shadow-xl flex items-center gap-3">
               <Calendar className="w-5 h-5 text-lobo-primary" />
               <div className="text-right">
                  <p className="text-[9px] font-black text-white/40 uppercase tracking-widest leading-none">Data Atual</p>
@@ -199,20 +199,20 @@ export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
 
       {/* Distribution & Lists */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-         <div className="bg-lobo-secondary rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden">
+         <div className="bg-lobo-dark rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden">
                <div className="relative z-10">
                   <h3 className="text-xl font-black uppercase tracking-tight mb-8">Saúde Social</h3>
                   <div className="space-y-6">
                      <div>
                         <div className="flex justify-between text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-3">
                            <span>Aderência do Plano</span>
-                           <span className="text-lobo-primary">{((activeSocios / (totalSocios || 1)) * 100).toFixed(0)}%</span>
+                           <span className="text-lobo-secondary">{((activeSocios / (totalSocios || 1)) * 100).toFixed(0)}%</span>
                         </div>
                         <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
                            <motion.div 
                               initial={{ width: 0 }}
                               animate={{ width: `${(activeSocios / (totalSocios || 1)) * 100}%` }}
-                              className="h-full bg-lobo-primary shadow-[0_0_15px_rgba(90,5,9,0.3)]" 
+                              className="h-full bg-lobo-secondary shadow-[0_0_15px_rgba(227,135,2,0.6)]" 
                            />
                         </div>
                      </div>
@@ -257,15 +257,15 @@ export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
                     <p className="text-center py-6 text-[10px] font-bold text-zinc-400 uppercase tracking-widest italic">Nenhuma competição</p>
                   )}
                </div>
-               <button className="w-full mt-6 py-4 rounded-2xl bg-zinc-50 text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] hover:bg-lobo-secondary hover:text-white transition-all">Ver Calendário Completo</button>
+               <button className="w-full mt-6 py-4 rounded-2xl bg-zinc-50 text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] hover:bg-lobo-dark hover:text-white transition-all">Ver Calendário Completo</button>
             </div>
       </section>
 
       {/* Featured Home Announcement Editor */}
-      <section className="bg-lobo-secondary rounded-[3rem] p-10 text-white relative overflow-hidden">
+      <section className="bg-lobo-dark rounded-[3rem] p-10 text-white relative overflow-hidden">
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-12">
           <div className="space-y-6">
-            <div className="inline-flex items-center gap-3 px-4 py-2 bg-lobo-primary/10 rounded-2xl text-lobo-primary">
+            <div className="inline-flex items-center gap-3 px-4 py-2 bg-lobo-secondary/10 rounded-2xl text-lobo-secondary">
               <FileText className="w-5 h-5" />
               <span className="text-[10px] font-black uppercase tracking-widest">Destaque da Home</span>
             </div>
@@ -345,10 +345,10 @@ export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
               <button 
                 onClick={handleSaveAnnouncement}
                 disabled={isSaving}
-                className="flex-grow bg-lobo-primary hover:bg-lobo-primary/90 disabled:opacity-50 text-white py-5 rounded-3xl font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all shadow-xl shadow-lobo-primary/20"
+                className="flex-grow bg-lobo-secondary hover:bg-lobo-secondary/90 disabled:opacity-50 text-lobo-dark py-5 rounded-3xl font-black uppercase tracking-widest flex items-center justify-center gap-3 transition-all shadow-xl shadow-lobo-primary/20"
               >
                 {isSaving ? (
-                  <div className="w-5 h-5 border-2 border-zinc-900/30 border-t-zinc-900 rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-lobo-dark/30 border-t-lobo-dark rounded-full animate-spin" />
                 ) : (
                   <Save className="w-5 h-5" />
                 )}

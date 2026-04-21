@@ -141,7 +141,7 @@ export const AthleticsTab: React.FC<Props> = ({ comp }) => {
           </div>
         </motion.form>
 
-        <div className="mt-6 p-6 bg-zinc-900 rounded-2xl text-white overflow-hidden relative grayscale opacity-40 select-none">
+        <div className="mt-6 p-6 bg-lobo-dark rounded-2xl text-white overflow-hidden relative grayscale opacity-40 select-none">
           <div className="absolute top-0 right-0 p-4 opacity-10">
             <Shield className="w-20 h-20 rotate-12" />
           </div>

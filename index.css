@@ -3,7 +3,8 @@
 
 @theme {
   --color-lobo-primary: #5a0509;
-  --color-lobo-secondary: #4a0407;
+  --color-lobo-secondary: #e38702;
+  --color-lobo-dark: #300305;
   --color-lobo-light: #fef2f2;
   
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;

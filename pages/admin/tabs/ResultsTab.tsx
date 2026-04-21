@@ -358,7 +358,7 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
                   ) : (
                     <motion.div 
                       layout
-                      className="bg-zinc-900 p-8 rounded-2xl border border-zinc-800 overflow-x-auto relative"
+                      className="bg-lobo-dark p-8 rounded-2xl border border-zinc-800 overflow-x-auto relative"
                     >
                       <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px]" />
                       
@@ -497,7 +497,7 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                     onClick={save} 
-                    className="w-full bg-lobo-secondary text-white py-5 rounded-2xl font-black text-lg shadow-xl shadow-lobo-secondary/20 mt-4 flex items-center justify-center space-x-3 transition-opacity hover:opacity-90"
+                    className="w-full bg-lobo-secondary text-lobo-dark py-5 rounded-2xl font-black text-lg shadow-xl shadow-lobo-secondary/20 mt-4 flex items-center justify-center space-x-3 transition-opacity hover:opacity-90"
                   >
                     <Save className="w-6 h-6" />
                     <span>PUBLICAR RESULTADOS</span>

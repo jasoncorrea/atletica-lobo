@@ -54,7 +54,7 @@ export const ModalitiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
       <div className="xl:col-span-4 sticky top-24">
         <div className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm space-y-5">
           <div className="flex items-center space-x-2 mb-2">
-            <div className="p-2 bg-zinc-900 rounded-lg text-white">
+            <div className="p-2 bg-lobo-dark rounded-lg text-white">
               <Layers className="w-5 h-5" />
             </div>
             <h3 className="font-black text-zinc-900 tracking-tight text-lg">Nova Modalidade</h3>
@@ -99,7 +99,7 @@ export const ModalitiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
 
             <button 
               onClick={add}
-              className="w-full bg-zinc-900 text-white py-3.5 rounded-xl font-black text-sm shadow-xl shadow-zinc-900/10 hover:bg-zinc-800 transition-all active:scale-95"
+              className="w-full bg-lobo-dark text-white py-3.5 rounded-xl font-black text-sm shadow-xl shadow-zinc-900/10 hover:bg-zinc-800 transition-all active:scale-95"
             >
               CADASTRAR MODALIDADE
             </button>

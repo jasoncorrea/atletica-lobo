@@ -82,10 +82,10 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
           animate={{ opacity: 1, x: 0 }}
           className="xl:col-span-4 sticky top-28"
         >
-          <div className="bg-lobo-secondary rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
+          <div className="bg-lobo-dark rounded-[2.5rem] p-10 text-white relative overflow-hidden shadow-2xl">
             <div className="relative z-10 space-y-8">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-lobo-primary rounded-2xl text-zinc-900">
+                <div className="p-3 bg-lobo-secondary rounded-2xl text-lobo-dark">
                   <Plus className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-black uppercase tracking-tight">Nova Competição</h3>
@@ -119,7 +119,7 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
 
                 <button 
                   type="submit" 
-                  className="w-full bg-lobo-primary text-zinc-900 py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-lobo-primary/20 hover:brightness-110 active:scale-95 transition-all"
+                  className="w-full bg-lobo-secondary text-lobo-dark py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-lobo-primary/20 hover:brightness-110 active:scale-95 transition-all"
                 >
                   Confirmar Inclusão
                 </button>

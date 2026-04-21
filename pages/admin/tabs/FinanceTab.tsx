@@ -202,7 +202,7 @@ export const FinanceTab: React.FC = () => {
           {/* Action Bar */}
           <section className="bg-zinc-100/50 border border-zinc-200 p-4 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
             <div className="flex items-center gap-2">
-              <button className="flex items-center gap-2 px-4 py-2 bg-lobo-secondary text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all">
+              <button className="flex items-center gap-2 px-4 py-2 bg-lobo-secondary text-lobo-dark rounded-xl text-[10px] font-black uppercase tracking-widest hover:brightness-110 transition-all">
                 <Download className="w-3.5 h-3.5" />
                 Exportar
               </button>
@@ -250,7 +250,7 @@ export const FinanceTab: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-zinc-900 text-white p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden">
+            <div className="bg-lobo-dark text-white p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden">
               <div className="relative z-10 h-full flex flex-col justify-between">
                 <div>
                   <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mb-6">
@@ -361,7 +361,7 @@ export const FinanceTab: React.FC = () => {
               </select>
               <button 
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 bg-lobo-secondary text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-lobo-primary/20"
+                className="flex items-center gap-2 bg-lobo-secondary text-lobo-dark px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-lobo-primary/20"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Novo Lançamento
@@ -447,7 +447,7 @@ export const FinanceTab: React.FC = () => {
                        required 
                     />
                  </div>
-                 <button className="w-full bg-zinc-900 text-white p-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-lobo-primary transition-all">
+                 <button className="w-full bg-lobo-dark text-white p-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-lobo-primary transition-all">
                     Criar Categoria
                  </button>
               </form>
@@ -487,7 +487,7 @@ export const FinanceTab: React.FC = () => {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   onClick={() => setShowAddModal(false)}
-                  className="absolute inset-0 bg-zinc-900/80 backdrop-blur-sm" 
+                  className="absolute inset-0 bg-lobo-dark/80 backdrop-blur-sm" 
                />
                <motion.div 
                   initial={{ scale: 0.9, opacity: 0, y: 20 }}
@@ -591,7 +591,7 @@ export const FinanceTab: React.FC = () => {
                            </button>
                            <button 
                               type="submit"
-                              className="flex-2 bg-lobo-secondary text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-lobo-primary/20 hover:brightness-110 transition-all"
+                              className="flex-2 bg-lobo-secondary text-lobo-dark py-5 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-lobo-primary/20 hover:brightness-110 transition-all"
                            >
                               Salvar Lançamento
                            </button>

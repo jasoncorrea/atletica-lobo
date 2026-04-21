@@ -286,7 +286,7 @@ export const ScheduleTab: React.FC = () => {
                   className={cn(
                     "px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center gap-2",
                     isSelected 
-                      ? "bg-zinc-900 text-white border-zinc-900 shadow-lg shadow-zinc-900/20" 
+                      ? "bg-lobo-dark text-white border-lobo-dark shadow-lg shadow-zinc-900/20" 
                       : "bg-white text-zinc-400 border-zinc-200 hover:border-zinc-300"
                   )}
                 >
@@ -324,7 +324,7 @@ export const ScheduleTab: React.FC = () => {
           </div>
           <button 
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-3 bg-lobo-secondary text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-black/10 hover:scale-105 active:scale-95 transition-all"
+            className="flex items-center gap-3 bg-lobo-dark text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-black/10 hover:scale-105 active:scale-95 transition-all"
           >
             <Plus className="w-4 h-4 text-lobo-primary" />
             Novo Evento
@@ -429,7 +429,7 @@ export const ScheduleTab: React.FC = () => {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg bg-white rounded-[3rem] shadow-2xl z-[110] overflow-hidden"
             >
-              <div className="bg-lobo-secondary p-8 text-white relative">
+              <div className="bg-lobo-dark p-8 text-white relative">
                 <div className="absolute top-0 right-0 p-8 opacity-10">
                    <Plus className="w-20 h-20 text-lobo-primary" />
                 </div>
@@ -494,7 +494,7 @@ export const ScheduleTab: React.FC = () => {
                   <button 
                     onClick={handleAddEvent}
                     disabled={isSaving || isQuotaExceeded()}
-                    className="flex-1 py-4 bg-lobo-secondary text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex-1 py-4 bg-lobo-secondary text-lobo-dark font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {isSaving ? 'Salvando...' : 'Salvar Compromisso'}
                   </button>

@@ -122,7 +122,7 @@ export const PenaltiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
           </div>
         </form>
 
-        <div className="mt-6 p-6 bg-zinc-900 rounded-2xl border border-zinc-800 relative group overflow-hidden">
+        <div className="mt-6 p-6 bg-lobo-dark rounded-2xl border border-zinc-800 relative group overflow-hidden">
           <History className="absolute -right-4 -bottom-4 w-24 h-24 text-zinc-700 opacity-20 group-hover:scale-110 transition-transform duration-500" />
           <h4 className="text-[10px] font-black text-zinc-500 uppercase tracking-widest mb-2 relative z-10">Compliance</h4>
           <p className="text-[10px] text-zinc-400 font-medium leading-relaxed relative z-10">

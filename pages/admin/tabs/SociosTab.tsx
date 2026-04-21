@@ -243,11 +243,11 @@ export const SociosTab: React.FC = () => {
 
       {/* Main Grid: Import & Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <section className="lg:col-span-2 bg-zinc-900 text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
+        <section className="lg:col-span-2 bg-lobo-dark text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden group">
           <div className="relative z-10 space-y-8">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center">
-                <FileSpreadsheet className="w-6 h-6 text-lobo-primary" />
+                <FileSpreadsheet className="w-6 h-6 text-lobo-secondary" />
               </div>
               <h3 className="text-2xl font-black tracking-tight">Importação Datletica</h3>
             </div>
@@ -270,10 +270,10 @@ export const SociosTab: React.FC = () => {
                   htmlFor="file-upload"
                   className={cn(
                     "flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-[2rem] cursor-pointer transition-all h-full aspect-video sm:aspect-square",
-                    isImporting ? "bg-white/5 border-white/10" : "bg-white/5 border-white/20 hover:border-lobo-primary hover:bg-white/[0.08]"
+                    isImporting ? "bg-white/5 border-white/10" : "bg-white/5 border-white/20 hover:border-lobo-secondary hover:bg-white/[0.08]"
                   )}
                 >
-                  <Upload className={cn("w-10 h-10 mb-4 transition-colors", isImporting ? "text-white/20" : "text-white/40 group-hover:text-lobo-primary")} />
+                  <Upload className={cn("w-10 h-10 mb-4 transition-colors", isImporting ? "text-white/20" : "text-white/40 group-hover:text-lobo-secondary")} />
                   <span className="text-xs font-black tracking-tight text-center px-4">
                     {isImporting ? 'Lendo planilha...' : 'Upload Planilha'}
                   </span>
@@ -286,7 +286,7 @@ export const SociosTab: React.FC = () => {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 onClick={confirmImport}
-                className="w-full bg-lobo-primary text-zinc-900 py-5 rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-lobo-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                className="w-full bg-lobo-secondary text-zinc-900 py-5 rounded-[1.5rem] font-black text-sm uppercase tracking-widest shadow-xl shadow-lobo-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
               >
                 Confirmar {importPreview.length} Sócios
                 <ArrowRight className="inline-block ml-2 w-4 h-4" />
@@ -378,7 +378,7 @@ export const SociosTab: React.FC = () => {
                 className={cn(
                   "px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all",
                   activeFilters.includes(filter)
-                    ? "bg-zinc-900 border-zinc-900 text-white shadow-xl shadow-black/10"
+                    ? "bg-lobo-dark border-lobo-dark text-white shadow-xl shadow-black/10"
                     : "bg-white border-zinc-200 text-zinc-400 hover:border-zinc-300 shadow-sm"
                 )}
               >
@@ -472,7 +472,7 @@ export const SociosTab: React.FC = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedSocio(null)}
-              className="absolute inset-0 bg-zinc-900/80 backdrop-blur-md"
+              className="absolute inset-0 bg-lobo-dark/80 backdrop-blur-md"
             />
             <motion.div 
               initial={{ opacity: 0, scale: 0.95, y: 30 }}
@@ -480,7 +480,7 @@ export const SociosTab: React.FC = () => {
               exit={{ opacity: 0, scale: 0.95, y: 30 }}
               className="relative w-full max-w-xl bg-white rounded-[3.5rem] shadow-2xl overflow-hidden"
             >
-              <div className="bg-zinc-900 p-12 text-white relative">
+              <div className="bg-lobo-dark p-12 text-white relative">
                  <div className="absolute top-0 right-0 p-8">
                     <button onClick={() => setSelectedSocio(null)} className="w-12 h-12 flex items-center justify-center bg-white/10 hover:bg-white/20 rounded-2xl transition-all">
                        <X className="w-6 h-6" />
@@ -558,7 +558,7 @@ export const SociosTab: React.FC = () => {
 
                  <div className="mt-12 pt-8 border-t border-zinc-100 flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                       <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-lobo-primary">
+                       <div className="w-12 h-12 rounded-2xl bg-lobo-dark border border-zinc-800 flex items-center justify-center text-lobo-secondary">
                           <Calendar className="w-6 h-6" />
                        </div>
                        <div>

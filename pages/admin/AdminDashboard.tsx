@@ -184,7 +184,7 @@ export const AdminDashboard: React.FC = () => {
               initial={{ x: -300 }}
               animate={{ x: 0 }}
               exit={{ x: -300 }}
-              className="fixed inset-y-0 left-0 w-80 bg-lobo-secondary text-white flex flex-col z-[70] lg:hidden shadow-2xl"
+              className="fixed inset-y-0 left-0 w-80 bg-lobo-dark text-white flex flex-col z-[70] lg:hidden shadow-2xl"
             >
               <div className="p-8 flex items-center justify-between border-b border-white/5">
                 <div className="flex flex-col">
@@ -269,7 +269,7 @@ export const AdminDashboard: React.FC = () => {
       </AnimatePresence>
 
       {/* Desktop Sidebar (Hidden on Mobile) */}
-      <aside className="hidden lg:flex w-72 bg-lobo-secondary text-white flex-col fixed inset-y-0 left-0 z-50 shadow-2xl">
+      <aside className="hidden lg:flex w-72 bg-lobo-dark text-white flex-col fixed inset-y-0 left-0 z-50 shadow-2xl">
         <div className="p-8 pb-4 flex flex-col items-center pt-12">
           <div 
             onClick={() => navigate('/')}
@@ -283,7 +283,7 @@ export const AdminDashboard: React.FC = () => {
           </div>
           <div className="mt-6 overflow-hidden">
             <h1 className="text-lg font-black uppercase tracking-tight truncate leading-none">Atlética Lobo</h1>
-            <p className="text-[10px] text-lobo-primary font-bold uppercase tracking-[0.3em] leading-none mt-3">Painel de Gestão</p>
+            <p className="text-[10px] text-lobo-secondary font-bold uppercase tracking-[0.3em] leading-none mt-3">Painel de Gestão</p>
           </div>
         </div>
 
@@ -398,7 +398,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden w-12 h-12 rounded-2xl bg-lobo-secondary flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform"
+              className="lg:hidden w-12 h-12 rounded-2xl bg-lobo-dark flex items-center justify-center text-white shadow-lg active:scale-90 transition-transform"
             >
               <Menu className="w-6 h-6" />
             </button>
@@ -431,7 +431,7 @@ export const AdminDashboard: React.FC = () => {
                  onClick={() => setShowDriveLinks(!showDriveLinks)}
                  className={cn(
                    "flex items-center justify-center w-12 h-12 md:w-auto md:px-6 md:py-2.5 rounded-2xl border transition-all shadow-sm active:scale-95 group",
-                   showDriveLinks ? "bg-lobo-secondary border-lobo-secondary text-white" : "bg-white border-zinc-100 text-zinc-600 hover:bg-zinc-50"
+                   showDriveLinks ? "bg-lobo-dark border-lobo-dark text-white" : "bg-white border-zinc-100 text-zinc-600 hover:bg-zinc-50"
                  )}
                >
                  <Cloud className={cn("w-5 h-5 md:w-4 md:h-4 transition-colors", showDriveLinks ? "text-lobo-primary" : "text-zinc-400 group-hover:text-lobo-primary")} />
@@ -474,7 +474,7 @@ export const AdminDashboard: React.FC = () => {
                <button 
                  onClick={() => navigate('/')}
                  title="Ver Site Público"
-                 className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-lobo-secondary flex items-center justify-center text-lobo-primary shadow-lg shadow-black/10 hover:scale-105 transition-transform group"
+                 className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-lobo-dark flex items-center justify-center text-lobo-secondary shadow-lg shadow-black/10 hover:scale-105 transition-transform group"
                >
                  <ExternalLink className="w-5 h-5 md:w-6 md:h-6 group-hover:text-white transition-colors" />
                </button>
@@ -515,7 +515,7 @@ export const AdminDashboard: React.FC = () => {
                   </p>
                   <button 
                     onClick={() => setActiveTab('competitions')}
-                    className="mt-8 bg-lobo-secondary text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl"
+                    className="mt-8 bg-lobo-dark text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl"
                   >
                     Ativar
                   </button>
@@ -551,7 +551,7 @@ export const AdminDashboard: React.FC = () => {
               >
                 <div className={cn(
                   "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
-                  isActive ? "bg-lobo-secondary text-white shadow-lg" : "text-zinc-400"
+                  isActive ? "bg-lobo-dark text-white shadow-lg" : "text-zinc-400"
                 )}>
                   <Icon className="w-5 h-5" />
                 </div>

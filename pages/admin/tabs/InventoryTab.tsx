@@ -138,7 +138,7 @@ export const InventoryTab: React.FC = () => {
             onClick={() => { setSubTab('list'); resetForm(); }}
             className={cn(
               "px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
-              subTab === 'list' ? "bg-lobo-secondary text-white shadow-xl" : "text-zinc-500 hover:text-zinc-800"
+              subTab === 'list' ? "bg-lobo-secondary text-lobo-dark shadow-xl" : "text-zinc-500 hover:text-zinc-800"
             )}
           >
             Estoque Atual
@@ -147,7 +147,7 @@ export const InventoryTab: React.FC = () => {
             onClick={() => setSubTab('add')}
             className={cn(
               "px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-              subTab === 'add' ? "bg-lobo-secondary text-white shadow-xl" : "text-zinc-500 hover:text-zinc-800"
+              subTab === 'add' ? "bg-lobo-secondary text-lobo-dark shadow-xl" : "text-zinc-500 hover:text-zinc-800"
             )}
           >
             <Plus className="w-3.5 h-3.5" />
@@ -187,7 +187,7 @@ export const InventoryTab: React.FC = () => {
                 <p className="text-xl font-black text-zinc-900 tabular-nums">{lowStock} <span className="text-xs font-bold text-zinc-400 ml-1">itens</span></p>
               </div>
             </div>
-            <div className="bg-zinc-900 text-white p-6 rounded-[2rem] shadow-xl flex items-center gap-4">
+            <div className="bg-lobo-dark text-white p-6 rounded-[2rem] shadow-xl flex items-center gap-4">
               <div className="w-12 h-12 rounded-2xl bg-lobo-primary flex items-center justify-center text-zinc-900">
                  <ShoppingCart className="w-6 h-6" />
               </div>

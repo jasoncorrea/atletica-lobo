@@ -157,18 +157,18 @@ export const MarketingTab: React.FC = () => {
 
       {/* Stats Summary Section */}
       <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1 bg-zinc-900 p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+        <div className="lg:col-span-1 bg-lobo-dark p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
           <div className="relative z-10">
             <h4 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mb-6">Eficiência de Campanha</h4>
             <div className="flex items-end gap-3 mb-4">
-              <h3 className="text-5xl font-black text-lobo-primary tracking-tighter">{healthRatio.toFixed(0)}%</h3>
+              <h3 className="text-5xl font-black text-lobo-secondary tracking-tighter">{healthRatio.toFixed(0)}%</h3>
               <p className="text-[10px] font-bold text-white/40 uppercase mb-2">Engajamento Real</p>
             </div>
             <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${healthRatio}%` }}
-                className="h-full bg-lobo-primary shadow-[0_0_15px_rgba(227,135,2,0.6)]" 
+                className="h-full bg-lobo-secondary shadow-[0_0_15px_rgba(227,135,2,0.6)]" 
               />
             </div>
             <p className="text-[9px] font-bold text-white/20 mt-4 uppercase tracking-widest">
