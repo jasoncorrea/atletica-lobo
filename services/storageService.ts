@@ -31,10 +31,9 @@ export interface FirestoreErrorInfo {
 // Initializing Firebase
 const app = initializeApp(firebaseConfig);
 
-// CRITICAL FIX: Use the EXACT database ID from config. 
-// Forcing (default) was causing sync splits between machines.
+// VOLTANDO PARA O ID DA IA: Usamos o ID automático provisionado (ai-studio-...)
 const firestoreDbId = firebaseConfig.firestoreDatabaseId || '(default)';
-console.log(`[LoboSync] USANDO DATABASE: ${firestoreDbId} no projeto ${firebaseConfig.projectId}`);
+console.log(`[LoboSync] USANDO CONFIG DA IA: ${firestoreDbId} no projeto ${firebaseConfig.projectId}`);
 
 export const db = getFirestore(app, firestoreDbId);
 export const auth = getAuth(app);
@@ -80,10 +79,6 @@ async function testConnection() {
       check,
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000))
     ]);
-    
-    // Additional check: Try to see if shareMembers is reachable
-    console.log("[LoboSync] Testando acesso à coleção shareMembers...");
-    const shareTest = await getDocFromServer(doc(db, 'shareMembers', 'health_check')).catch(() => null);
     
     console.log("[LoboSync] Firebase Online. DB: " + firestoreDbId);
     setConnectionStatus('online');
@@ -266,7 +261,7 @@ const startListener = (colName: string) => {
   const unsub = onSnapshot(collection(db, colName), (snapshot) => {
     const data = snapshot.docs.map(d => d.data());
     
-    console.log(`[LoboSync] Recebidos ${data.length} itens de ${colName}`);
+    console.log(`[LoboSync] +${data.length} itens de ${colName}:`, data.map((i:any) => i.id || 'sem-id').slice(0, 5).join(', ') + (data.length > 5 ? '...' : ''));
 
     // Update state with IMMUTABILITY to ensure React re-renders
     const nextDb = { ...currentDb };

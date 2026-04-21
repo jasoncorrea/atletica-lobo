@@ -43,7 +43,7 @@ export const SyncBadge: React.FC = () => {
     <div className="flex flex-col items-end gap-1">
       <button 
         onClick={retry}
-        title={`${lastError ? lastError + ' | ' : ''}DB: ${dbId}`}
+        title={`${lastError ? lastError + ' | ' : ''}Proj: ${firebaseConfig.projectId} | DB: ${dbId}`}
         className={cn(
           "flex items-center gap-2 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-transparent transition-all hover:scale-105 active:scale-95",
           current.color
