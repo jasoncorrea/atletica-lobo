@@ -31,13 +31,10 @@ export interface FirestoreErrorInfo {
 // Initializing Firebase
 const app = initializeApp(firebaseConfig);
 
-// Use defined database ID or fallback to (default)
-// Often in these environments, the explicitly provided ID might be invalid for remixed projects
-// We will try to prioritize (default) if the provided one is a long auto-generated string,
-// or at least make it easier to fallback.
-const firestoreDbId = (firebaseConfig.firestoreDatabaseId && firebaseConfig.firestoreDatabaseId.length > 20) 
-  ? '(default)' 
-  : (firebaseConfig.firestoreDatabaseId || '(default)');
+// CRITICAL FIX: Use the EXACT database ID from config. 
+// Forcing (default) was causing sync splits between machines.
+const firestoreDbId = firebaseConfig.firestoreDatabaseId || '(default)';
+console.log(`[LoboSync] USANDO DATABASE: ${firestoreDbId} no projeto ${firebaseConfig.projectId}`);
 
 export const db = getFirestore(app, firestoreDbId);
 export const auth = getAuth(app);
@@ -84,7 +81,11 @@ async function testConnection() {
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000))
     ]);
     
-    console.log("Firebase status: Connected to " + firebaseConfig.projectId + " db: " + firestoreDbId);
+    // Additional check: Try to see if shareMembers is reachable
+    console.log("[LoboSync] Testando acesso à coleção shareMembers...");
+    const shareTest = await getDocFromServer(doc(db, 'shareMembers', 'health_check')).catch(() => null);
+    
+    console.log("[LoboSync] Firebase Online. DB: " + firestoreDbId);
     setConnectionStatus('online');
     
     if (quotaErrorInterval) {
@@ -118,26 +119,6 @@ async function testConnection() {
     }
   }
 }
-
-// Ensure the test doc exists if we are admin
-onAuthStateChanged(auth, async (user) => {
-  if (user) {
-    try {
-      // Verificamos se o usuário realmente tem permissão antes de tentar o write
-      await setDoc(doc(db, 'test', 'connection'), { lastCheck: Date.now(), status: 'ok', project: firebaseConfig.projectId }, { merge: true });
-    } catch (e) {
-      console.warn("Could not update test doc (permissions):", e);
-    }
-    restrictedCollections.forEach(startListener);
-  } else {
-    restrictedCollections.forEach(colName => {
-      if (activeListeners[colName]) {
-        activeListeners[colName]();
-        delete activeListeners[colName];
-      }
-    });
-  }
-});
 
 testConnection();
 
@@ -280,11 +261,12 @@ const safeStringify = (obj: any): string => {
 const startListener = (colName: string) => {
   if (activeListeners[colName]) return;
   
+  console.log(`[LoboSync] Iniciando ouvinte para: ${colName}`);
+  
   const unsub = onSnapshot(collection(db, colName), (snapshot) => {
     const data = snapshot.docs.map(d => d.data());
     
-    // Save to local cache as fallback for quota
-    localStorage.setItem(`${DB_KEY}_cache_${colName}`, safeStringify(data));
+    console.log(`[LoboSync] Recebidos ${data.length} itens de ${colName}`);
 
     // Update state with IMMUTABILITY to ensure React re-renders
     const nextDb = { ...currentDb };
@@ -300,11 +282,15 @@ const startListener = (colName: string) => {
     
     currentDb = nextDb;
     setConnectionStatus('online');
-    window.dispatchEvent(new Event('storage'));
     window.dispatchEvent(new Event('lobo-db-sync'));
+    
+    // Save to local cache as secondary safety
+    localStorage.setItem(`${DB_KEY}_cache_${colName}`, safeStringify(data));
   }, (err) => {
+    console.error(`[LoboSync] Erro crítico em ${colName}:`, err.code, err.message);
+    
     if (err.message?.includes('quota') || err.code === 'resource-exhausted') {
-      console.warn(`Cota excedida ao sincronizar ${colName}. Usando cache local.`);
+      setConnectionStatus('offline');
       const cached = localStorage.getItem(`${DB_KEY}_cache_${colName}`);
       if (cached) {
         try {
@@ -318,23 +304,33 @@ const startListener = (colName: string) => {
             (nextDb as any)[colName] = data;
           }
           currentDb = nextDb;
-          window.dispatchEvent(new Event('storage'));
           window.dispatchEvent(new Event('lobo-db-sync'));
         } catch (e) {}
       }
-      handleFirestoreError(err, 'list', colName);
-    } else if (!err.message?.includes('insufficient permissions')) {
-      console.error(`Error syncing ${colName}:`, err);
     }
   });
   
   activeListeners[colName] = unsub;
 };
 
-// Start public listeners immediately
+// Start ALL public listeners immediately - absolutely NO auth dependency for public data
 publicCollections.forEach(startListener);
 
-// Manage restricted listeners based on Auth state removed from here (it's in the onAuthStateChanged above)
+// Manage restricted listeners based on Auth state
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    console.log("[LoboSync] Usuário autenticado. Iniciando coleções restritas.");
+    restrictedCollections.forEach(startListener);
+  } else {
+    console.log("[LoboSync] Usuário deslogado. Parando coleções restritas.");
+    restrictedCollections.forEach(colName => {
+      if (activeListeners[colName]) {
+        activeListeners[colName]();
+        delete activeListeners[colName];
+      }
+    });
+  }
+});
 
 
 // Syncing Config

@@ -4,9 +4,13 @@ import { Wifi, WifiOff, RefreshCw, AlertCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
+import firebaseConfig from '../firebase-applet-config.json';
+
 export const SyncBadge: React.FC = () => {
   const [status, setStatus] = useState<ConnectionStatus>(getConnectionStatus());
   const [lastError, setLastError] = useState<string | null>(null);
+
+  const dbId = firebaseConfig.firestoreDatabaseId || '(default)';
 
   useEffect(() => {
     const handleStatus = (e: any) => {
@@ -39,7 +43,7 @@ export const SyncBadge: React.FC = () => {
     <div className="flex flex-col items-end gap-1">
       <button 
         onClick={retry}
-        title={lastError || "Clique para tentar reconectar"}
+        title={`${lastError ? lastError + ' | ' : ''}DB: ${dbId}`}
         className={cn(
           "flex items-center gap-2 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-transparent transition-all hover:scale-105 active:scale-95",
           current.color
