@@ -91,11 +91,12 @@ async function testConnection() {
     const isQuota = error.code === 'resource-exhausted' || error.message?.includes('quota');
     if (isQuota) {
       setConnectionStatus('offline');
-      if (!quotaErrorInterval) {
-        quotaErrorInterval = setInterval(testConnection, 60000); // Check every 1m
-      }
-      return;
     }
+    
+    if (!quotaErrorInterval) {
+      quotaErrorInterval = setInterval(testConnection, 60000); // Check every 1m
+    }
+    
     if (error instanceof Error && error.message.includes('the client is offline')) {
       console.warn("Firebase: Conexão offline ou bloqueada (pode ser o ID do banco de dados).");
     } else {
