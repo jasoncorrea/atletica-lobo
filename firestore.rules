@@ -15,6 +15,11 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    // Test connection
+    match /test/connection {
+      allow read: if true;
+    }
+
     // Public readable but admin writable
     match /competitions/{id} {
       allow read: if true;
@@ -109,7 +114,7 @@ service cloud.firestore {
     }
 
     match /managementEvents/{id} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isSignedIn();
     }
   }

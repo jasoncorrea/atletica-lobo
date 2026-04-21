@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, saveDb, deleteItem } from '../../../services/storageService';
+import { getDb, updateItem, deleteItem } from '../../../services/storageService';
 import { Competition, Modality } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Target, Trash2, Layers, Search, Ghost, User, UserCheck, Users } from 'lucide-react';
@@ -13,22 +13,22 @@ export const ModalitiesTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   const load = () => setList(getDb().modalities.filter(m => m.competitionId === comp.id));
   useEffect(() => {
     load();
-    window.addEventListener('storage', load);
-    return () => window.removeEventListener('storage', load);
+    window.addEventListener('lobo-db-sync', load);
+    return () => window.removeEventListener('lobo-db-sync', load);
   }, [comp.id]);
 
-  const add = () => {
+  const add = async () => {
     if (!name.trim()) return;
-    const db = getDb();
-    db.modalities.push({ 
+    
+    const newModality: Modality = { 
       id: Math.random().toString(36).substr(2, 9), 
       competitionId: comp.id, 
       name, 
       gender: gender as any, 
       status: 'pending' 
-    });
-    saveDb(db);
-    window.dispatchEvent(new Event('storage'));
+    };
+
+    await updateItem('modalities', newModality);
     load(); 
     setName('');
   };

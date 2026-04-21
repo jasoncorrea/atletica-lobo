@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDb, getConfig } from '../../services/storageService';
+import { getDb, getConfig, refreshAuth } from '../../services/storageService';
 import { Competition, Role, AppConfig } from '../../types';
 import { DashboardTab } from './tabs/DashboardTab';
 import { CompetitionsTab } from './tabs/CompetitionsTab';
@@ -72,10 +72,15 @@ export const AdminDashboard: React.FC = () => {
     const savedRole = localStorage.getItem('lobo_role') as Role;
     if (savedRole) setRole(savedRole);
 
-    const updateConfig = () => setConfig(getConfig());
-    window.addEventListener('storage', updateConfig);
+    const onSync = () => {
+      setConfig(getConfig());
+      refresh();
+    };
+    
+    window.addEventListener('lobo-db-sync', onSync);
     refresh();
-    return () => window.removeEventListener('storage', updateConfig);
+    refreshAuth();
+    return () => window.removeEventListener('lobo-db-sync', onSync);
   }, []);
 
   const refresh = () => {

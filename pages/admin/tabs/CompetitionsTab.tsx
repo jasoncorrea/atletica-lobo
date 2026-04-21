@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, saveDb, createCompetition, deleteItem } from '../../../services/storageService';
+import { getDb, updateItem, createCompetition, deleteItem } from '../../../services/storageService';
 import { Competition } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Trophy, Trash2, CheckCircle2, Calendar, Target, Flag, Sparkles, LayoutGrid, Clock } from 'lucide-react';
@@ -13,15 +13,14 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
   const load = () => setList(getDb().competitions);
   useEffect(() => {
     load();
-    window.addEventListener('storage', load);
-    return () => window.removeEventListener('storage', load);
+    window.addEventListener('lobo-db-sync', load);
+    return () => window.removeEventListener('lobo-db-sync', load);
   }, []);
 
   const add = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     createCompetition(name, year);
-    window.dispatchEvent(new Event('storage'));
     load(); 
     onUpdate(); 
     setName('');
@@ -39,13 +38,21 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
     }
   };
 
-  const setActive = (id: string) => {
-    const db = getDb();
-    db.competitions.forEach(c => c.isActive = c.id === id);
-    saveDb(db);
-    window.dispatchEvent(new Event('storage'));
-    load(); 
-    onUpdate();
+  const setActive = async (id: string) => {
+    try {
+      const db = getDb();
+      // Em um ambiente Firestore, desativar os outros um por um ou via batch
+      // Como o storageService já tem o db na memória, podemos iterar
+      const updates = db.competitions.map(async c => {
+        const updated = { ...c, isActive: c.id === id };
+        await updateItem('competitions', updated);
+      });
+      await Promise.all(updates);
+      load(); 
+      onUpdate();
+    } catch (err) {
+      alert('Erro ao ativar competição.');
+    }
   };
 
   return (

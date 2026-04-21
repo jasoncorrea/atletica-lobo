@@ -4,10 +4,14 @@ import { Layout } from './components/Layout';
 import { PublicDashboard } from './pages/PublicDashboard';
 import { AdminLogin } from './pages/AdminLogin';
 import { AdminDashboard } from './pages/admin/AdminDashboard';
-import { getConfig } from './services/storageService';
+import { getConfig, refreshAuth } from './services/storageService';
 
 const App: React.FC = () => {
   const [config, setConfig] = useState(getConfig());
+
+  useEffect(() => {
+    refreshAuth();
+  }, []);
 
   const createCircularIcon = (url: string): Promise<string> => {
     return new Promise((resolve) => {
@@ -34,7 +38,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     const updateConfig = () => setConfig(getConfig());
-    window.addEventListener('storage', updateConfig);
+    window.addEventListener('lobo-db-sync', updateConfig);
     
     // Favicon Sync
     if (config.logoUrl) {
@@ -49,7 +53,7 @@ const App: React.FC = () => {
       });
     }
 
-    return () => window.removeEventListener('storage', updateConfig);
+    return () => window.removeEventListener('lobo-db-sync', updateConfig);
   }, [config.logoUrl]);
 
   return (

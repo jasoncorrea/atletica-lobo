@@ -2,21 +2,21 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getConfig, isOnline } from '../services/storageService';
 import { cn } from '../lib/utils';
+import { QuotaAlert } from './QuotaAlert';
+import { SyncBadge } from './SyncBadge';
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [config, setConfig] = useState(getConfig());
-  const [cloudActive, setCloudActive] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
     const update = () => {
       setConfig(getConfig());
-      setCloudActive(isOnline());
     };
     update();
-    window.addEventListener('storage', update);
-    return () => window.removeEventListener('storage', update);
+    window.addEventListener('lobo-db-sync', update);
+    return () => window.removeEventListener('lobo-db-sync', update);
   }, []);
 
   const isAdmin = location.pathname.startsWith('/admin');
@@ -37,7 +37,9 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
                  <span className="text-xs font-bold uppercase tracking-widest opacity-90">Central de Jogos</span>
                </div>
             </div>
-            <div>
+            
+            <div className="flex items-center gap-4">
+              <SyncBadge />
               {!isAdmin ? (
                  <button onClick={() => navigate('/login')} className="text-sm bg-white/20 hover:bg-white/30 px-3 py-1 rounded transition">Admin</button>
               ) : (
@@ -55,15 +57,13 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
         {children}
       </main>
 
+      <QuotaAlert />
+
       {!isAdmin && (
         <footer className="bg-gray-900 text-gray-500 py-6 text-center text-xs">
           <p>© 2026 Atlética Lobo. O maior do sul.</p>
-          <div className="flex justify-center items-center mt-2 space-x-2">
-             {cloudActive ? (
-               <span className="text-green-500 font-bold">● Cloud Online</span>
-             ) : (
-               <span className="text-gray-600">● Modo Local</span>
-             )}
+          <div className="flex justify-center items-center mt-2">
+             <SyncBadge />
           </div>
         </footer>
       )}

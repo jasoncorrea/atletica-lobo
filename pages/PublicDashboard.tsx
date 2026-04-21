@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { getDb, calculateLeaderboard, saveDb, deleteItem } from '../services/storageService';
-import { Competition, LeaderboardEntry, BirthdayMember, ShareMember, SharePost, ShareRecord, Socio } from '../types';
+import { getDb, calculateLeaderboard, updateItem, deleteItem } from '../services/storageService';
+import { Competition, LeaderboardEntry, BirthdayMember, ShareMember, SharePost, ShareRecord, Socio, ManagementEvent } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Medal, AlertCircle, ChevronDown, Award, Cake, Calendar, Star, Users, Share2, CheckCircle2, Circle, BarChart2, UserCheck, Search } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -15,6 +15,7 @@ export const PublicDashboard: React.FC = () => {
   const [sharePosts, setSharePosts] = useState<SharePost[]>([]);
   const [shareRecords, setShareRecords] = useState<ShareRecord[]>([]);
   const [socios, setSocios] = useState<Socio[]>([]);
+  const [managementEvents, setManagementEvents] = useState<ManagementEvent[]>([]);
   const [activeTab, setActiveTab] = useState<'leaderboard' | 'birthdays' | 'marketing' | 'socios'>('leaderboard');
   const [sociosSearch, setSociosSearch] = useState('');
   const [activeFilters, setActiveFilters] = useState<string[]>(['Ativo', '2026']);
@@ -32,15 +33,18 @@ export const PublicDashboard: React.FC = () => {
       setSharePosts(db.sharePosts || []);
       setShareRecords(db.shareRecords || []);
       setSocios(db.socios || []);
+      setManagementEvents(db.managementEvents || []);
       
-      if (comps.length > 0 && !selectedCompId) {
+      if (comps.length > 0) {
         const active = comps.find(c => c.isActive) || comps[0];
-        setSelectedCompId(active.id);
+        const newSelectedId = selectedCompId || active.id;
+        if (!selectedCompId) setSelectedCompId(active.id);
+        setLeaderboard(calculateLeaderboard(newSelectedId));
       }
     };
     load();
-    window.addEventListener('storage', load);
-    return () => window.removeEventListener('storage', load);
+    window.addEventListener('lobo-db-sync', load);
+    return () => window.removeEventListener('lobo-db-sync', load);
   }, [selectedCompId]);
 
   const toggleShare = async (memberId: string, postId: string) => {
@@ -52,10 +56,8 @@ export const PublicDashboard: React.FC = () => {
     if (exists) {
       await deleteItem('shareRecords', recordId);
     } else {
-      const db = getDb();
       const newRecord: ShareRecord = { id: recordId, memberId, postId, shared: true };
-      db.shareRecords = [...(db.shareRecords || []), newRecord];
-      await saveDb(db);
+      await updateItem('shareRecords', newRecord);
     }
   };
 

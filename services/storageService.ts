@@ -1,4 +1,3 @@
-
 import { 
   Competition, Athletic, Modality, Result, Penalty, 
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry,
@@ -9,7 +8,8 @@ import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES,
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, onSnapshot, doc, setDoc, getDoc, 
-  writeBatch, query, deleteDoc, getDocFromServer
+  writeBatch, query, deleteDoc, getDocFromServer,
+  enableIndexedDbPersistence, collectionGroup
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import firebaseConfig from '../firebase-applet-config.json';
@@ -33,46 +33,155 @@ const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
+// Enable Offline Persistence
+if (typeof window !== 'undefined') {
+  enableIndexedDbPersistence(db).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.warn("Múltiplas abas abertas. Persistência desativada nesta aba.");
+    } else if (err.code === 'unimplemented') {
+      console.warn("Navegador não suporta persistência offline.");
+    }
+  });
+}
+
 let isFirebaseReady = false;
+let quotaErrorInterval: any = null;
+let lastQuotaCheckTime = 0;
+
+export type ConnectionStatus = 'connecting' | 'online' | 'offline' | 'error';
+let connectionStatus: ConnectionStatus = 'connecting';
+
+const setConnectionStatus = (s: ConnectionStatus) => {
+  if (connectionStatus !== s) {
+    connectionStatus = s;
+    window.dispatchEvent(new CustomEvent('lobo-connection-changed', { detail: s }));
+  }
+};
+
+export const getConnectionStatus = () => connectionStatus;
 
 // Test connection
 async function testConnection() {
+  const now = Date.now();
+  if (quotaErrorInterval && now - lastQuotaCheckTime < 55000) return;
+  
+  lastQuotaCheckTime = now;
+  
   try {
+    // Tenta ler uma coleção pública que sempre deve existir ou o path de teste
     await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log("Firebase connection established.");
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
+    
+    console.log("Firebase connection established successfully.");
+    setConnectionStatus('online');
+    
+    if (quotaErrorInterval) {
+      clearInterval(quotaErrorInterval);
+      quotaErrorInterval = null;
+    }
+    
+    window.dispatchEvent(new CustomEvent('lobo-quota-resolved'));
+    
+    // Restart listeners if they were in error state
+    Object.keys(activeListeners).forEach(col => {
+      const unsub = activeListeners[col];
+      unsub();
+      delete activeListeners[col];
+      startListener(col);
+    });
+    
+  } catch (error: any) {
+    console.warn("Firebase Connection Check Detail:", error.code, error.message);
+    
+    const isQuota = error.code === 'resource-exhausted' || error.message?.includes('quota');
+    if (isQuota) {
+      setConnectionStatus('offline');
+    } else {
+      setConnectionStatus('error');
+    }
+    
+    if (!quotaErrorInterval) {
+      quotaErrorInterval = setInterval(testConnection, 30000); // Check every 30s
+    }
+    
+    if (error.message?.includes('the client is offline')) {
+      console.warn("Firebase: Conexão offline ou bloqueada (ID do banco pode estar errado).");
     }
   }
 }
+
+// Ensure the test doc exists if we are admin
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    try {
+      await setDoc(doc(db, 'test', 'connection'), { lastCheck: Date.now(), status: 'ok' }, { merge: true });
+    } catch (e) {}
+    restrictedCollections.forEach(startListener);
+  } else {
+    restrictedCollections.forEach(colName => {
+      if (activeListeners[colName]) {
+        activeListeners[colName]();
+        delete activeListeners[colName];
+      }
+    });
+  }
+});
+
 testConnection();
+
+// Manual Sync Trigger
+if (typeof window !== 'undefined') {
+  window.addEventListener('lobo-force-sync', () => {
+    console.log("Forcing cloud sync recheck...");
+    testConnection();
+  });
+}
 
 export const handleFirestoreError = (error: any, op: string, path: string | null = null) => {
   if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
-    const user = auth.currentUser;
     const info: FirestoreErrorInfo = {
-      error: error.message || 'Unknown Firestore Error',
+      error: error.message || 'Sem permissão para esta operação.',
       operationType: op as any,
       path,
-      authInfo: {
-        userId: user?.uid || 'anonymous',
-        email: user?.email || '',
-        emailVerified: user?.emailVerified || false,
-        isAnonymous: user?.isAnonymous || true,
-        providerInfo: user?.providerData.map(p => ({
-          providerId: p.providerId,
-          displayName: p.displayName || '',
-          email: p.email || ''
-        })) || []
-      }
+      authInfo: getAuthInfo()
     };
+    // Don't throw for read operations to avoid crashing UI
+    if (op === 'list' || op === 'get') {
+      console.warn("Acesso negado (Firestore):", path || op);
+      return;
+    }
     throw new Error(safeStringify(info));
+  }
+  
+  const isQuotaError = error.code === 'resource-exhausted' || error.message?.includes('quota');
+  if (isQuotaError) {
+    const info: FirestoreErrorInfo = {
+      error: 'Cota de Leitura excedida no Firebase.',
+      operationType: op as any,
+      path,
+      authInfo: getAuthInfo()
+    };
+    window.dispatchEvent(new CustomEvent('lobo-quota-exceeded', { detail: info }));
+    return;
   }
   throw error;
 };
 
-interface DatabaseSchema {
+const getAuthInfo = () => {
+  const user = auth.currentUser;
+  return {
+    userId: user?.uid || 'anonymous',
+    email: user?.email || '',
+    emailVerified: user?.emailVerified || false,
+    isAnonymous: user?.isAnonymous || true,
+    providerInfo: user?.providerData.map(p => ({
+      providerId: p.providerId,
+      displayName: p.displayName || '',
+      email: p.email || ''
+    })) || []
+  };
+};
+
+export interface DatabaseSchema {
   competitions: Competition[];
   athletics: Athletic[];
   modalities: Modality[];
@@ -120,11 +229,12 @@ let currentConfig: AppConfig = {
 const publicCollections = [
   'competitions', 'athletics', 'modalities', 'results', 
   'penalties', 'products', 'birthdays', 'scoreRules',
-  'shareMembers', 'sharePosts', 'shareRecords', 'socios'
+  'socios', 'shareMembers', 'sharePosts', 'shareRecords',
+  'managementEvents'
 ];
 
 const restrictedCollections = [
-  'transactions', 'financeCategories', 'managementEvents'
+  'transactions', 'financeCategories'
 ];
 
 const activeListeners: Record<string, () => void> = {};
@@ -150,18 +260,48 @@ const startListener = (colName: string) => {
   
   const unsub = onSnapshot(collection(db, colName), (snapshot) => {
     const data = snapshot.docs.map(d => d.data());
+    
+    // Save to local cache as fallback for quota
+    localStorage.setItem(`${DB_KEY}_cache_${colName}`, safeStringify(data));
+
+    // Update state with IMMUTABILITY to ensure React re-renders
+    const nextDb = { ...currentDb };
     if (colName === 'scoreRules') {
       const map: any = {};
       data.forEach((item: any) => {
         if (item.id) map[item.id] = item.rule;
       });
-      currentDb.scoreRules = map;
+      nextDb.scoreRules = map;
     } else {
-      (currentDb as any)[colName] = data;
+      (nextDb as any)[colName] = data;
     }
+    
+    currentDb = nextDb;
+    setConnectionStatus('online');
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   }, (err) => {
-    if (!err.message?.includes('insufficient permissions')) {
+    if (err.message?.includes('quota') || err.code === 'resource-exhausted') {
+      console.warn(`Cota excedida ao sincronizar ${colName}. Usando cache local.`);
+      const cached = localStorage.getItem(`${DB_KEY}_cache_${colName}`);
+      if (cached) {
+        try {
+          const data = JSON.parse(cached);
+          const nextDb = { ...currentDb };
+          if (colName === 'scoreRules') {
+            const map: any = {};
+            data.forEach((item: any) => { if (item.id) map[item.id] = item.rule; });
+            nextDb.scoreRules = map;
+          } else {
+            (nextDb as any)[colName] = data;
+          }
+          currentDb = nextDb;
+          window.dispatchEvent(new Event('storage'));
+          window.dispatchEvent(new Event('lobo-db-sync'));
+        } catch (e) {}
+      }
+      handleFirestoreError(err, 'list', colName);
+    } else if (!err.message?.includes('insufficient permissions')) {
       console.error(`Error syncing ${colName}:`, err);
     }
   });
@@ -172,37 +312,55 @@ const startListener = (colName: string) => {
 // Start public listeners immediately
 publicCollections.forEach(startListener);
 
-// Manage restricted listeners based on Auth state
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    restrictedCollections.forEach(startListener);
-  } else {
-    restrictedCollections.forEach(colName => {
-      if (activeListeners[colName]) {
-        activeListeners[colName]();
-        delete activeListeners[colName];
-      }
-    });
-  }
-});
+// Manage restricted listeners based on Auth state removed from here (it's in the onAuthStateChanged above)
+
 
 // Syncing Config
 onSnapshot(doc(db, 'config', 'global'), (snapshot) => {
   if (snapshot.exists()) {
     currentConfig = snapshot.data() as AppConfig;
+    localStorage.setItem(APP_CONFIG_KEY, safeStringify(currentConfig));
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   }
-}, (err) => console.error("Error syncing config:", err));
+}, (err) => {
+  if (err.message?.includes('quota') || err.code === 'resource-exhausted') {
+    console.warn("Cota excedida ao sincronizar config. Usando cache local.");
+    const cached = localStorage.getItem(APP_CONFIG_KEY);
+    if (cached) {
+      try {
+        currentConfig = JSON.parse(cached);
+        window.dispatchEvent(new Event('storage'));
+        window.dispatchEvent(new Event('lobo-db-sync'));
+      } catch (e) {
+        console.error("Erro ao carregar cache de config:", e);
+      }
+    }
+  } else {
+    console.error("Error syncing config:", err);
+  }
+});
 
-// Auto-seed athletics if empty in Firestore
+// Auto-seed athletics if empty in Firestore - use localStorage to avoid re-run spam
 async function seedInitialData() {
-  const athleticsSnap = await getDoc(doc(db, 'athletics', INITIAL_ATHLETICS[0].id));
-  if (!athleticsSnap.exists()) {
-    const batch = writeBatch(db);
-    INITIAL_ATHLETICS.forEach(a => {
-      batch.set(doc(db, 'athletics', a.id), a);
-    });
-    await batch.commit();
+  const currentProjectId = firebaseConfig.projectId;
+  const lastSeededProject = localStorage.getItem('lobo-last-seeded-project');
+  
+  if (lastSeededProject === currentProjectId) return;
+
+  try {
+    const athleticsSnap = await getDoc(doc(db, 'athletics', INITIAL_ATHLETICS[0].id));
+    if (!athleticsSnap.exists()) {
+      const batch = writeBatch(db);
+      INITIAL_ATHLETICS.forEach(a => {
+        batch.set(doc(db, 'athletics', a.id), a);
+      });
+      await batch.commit();
+    }
+    localStorage.setItem('lobo-last-seeded-project', currentProjectId);
+    localStorage.setItem('lobo-initial-seeded', 'true');
+  } catch (e) {
+    console.warn("Could not seed data:", e);
   }
 }
 seedInitialData();
@@ -211,14 +369,30 @@ export const getDb = (): DatabaseSchema => {
   return currentDb;
 };
 
+// targeted save to avoid massive writes
+export const updateItem = async (collectionName: keyof DatabaseSchema, item: any) => {
+  if (!item.id) throw new Error("Item must have an ID");
+  try {
+    await setDoc(doc(db, collectionName as string, item.id), item);
+    // Local update to trigger UI immediately if needed
+    if (Array.isArray((currentDb as any)[collectionName])) {
+      const idx = (currentDb as any)[collectionName].findIndex((i: any) => i.id === item.id);
+      if (idx > -1) (currentDb as any)[collectionName][idx] = item;
+      else (currentDb as any)[collectionName].push(item);
+    }
+  } catch (err) {
+    handleFirestoreError(err, 'write', `${collectionName}/${item.id}`);
+  }
+};
+
 export const saveDb = async (dbUpdate: DatabaseSchema) => {
   try {
-    // Helper to clean undefined values recursively (Firestore fails on undefined)
+    // Only save what's necessary if we have targeted updates
+    // For legacy support, we still implement the batch save but with size check
     const cleanObject = (obj: any): any => {
       if (obj === null || typeof obj !== 'object') return obj;
       if (Array.isArray(obj)) return obj.map(cleanObject);
       
-      // If it's a Firestore-like object (with parent/db refs), don't recurse deep
       if (obj.constructor && (obj.constructor.name === 'DocumentReference' || obj.constructor.name === 'Firestore')) {
         return obj.path || '[Complex Object]';
       }
@@ -234,22 +408,29 @@ export const saveDb = async (dbUpdate: DatabaseSchema) => {
     const cleanedDb = cleanObject(dbUpdate);
     const operations: { ref: any, data: any }[] = [];
 
-    // Map all collections to operations
+    // Map all collections - but compare with currentDb to only write changes
     (Object.keys(cleanedDb) as Array<keyof DatabaseSchema>).forEach(key => {
       if (Array.isArray(cleanedDb[key])) {
         (cleanedDb[key] as any[]).forEach(item => {
           if (item.id) {
-            operations.push({ ref: doc(db, key as string, item.id), data: item });
+            const currentItem = (currentDb[key] as any[])?.find((i: any) => i.id === item.id);
+            // Simple stringify comparison to see if write is needed
+            if (!currentItem || JSON.stringify(currentItem) !== JSON.stringify(item)) {
+              operations.push({ ref: doc(db, key as string, item.id), data: item });
+            }
           }
         });
       } else if (key === 'scoreRules') {
         Object.entries(cleanedDb.scoreRules).forEach(([modId, rule]) => {
-          operations.push({ ref: doc(db, 'scoreRules', modId), data: { id: modId, rule } });
+          if (JSON.stringify(currentDb.scoreRules[modId]) !== JSON.stringify(rule)) {
+            operations.push({ ref: doc(db, 'scoreRules', modId), data: { id: modId, rule } });
+          }
         });
       }
     });
 
-    // Execute in batches of 400 (Stay safe below 500 limit)
+    if (operations.length === 0) return;
+
     const BATCH_SIZE = 400;
     for (let i = 0; i < operations.length; i += BATCH_SIZE) {
       const batch = writeBatch(db);
@@ -259,7 +440,9 @@ export const saveDb = async (dbUpdate: DatabaseSchema) => {
     }
 
     localStorage.setItem(DB_KEY, safeStringify(dbUpdate));
+    currentDb = { ...dbUpdate };
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   } catch (err) {
     handleFirestoreError(err, 'write');
   }
@@ -271,8 +454,11 @@ export const getConfig = (): AppConfig => {
 
 export const saveConfig = async (config: AppConfig) => {
   try {
+    currentConfig = { ...config };
     await setDoc(doc(db, 'config', 'global'), config);
     localStorage.setItem(APP_CONFIG_KEY, safeStringify(config));
+    window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   } catch (err) {
     handleFirestoreError(err, 'write', 'config/global');
   }
@@ -280,10 +466,26 @@ export const saveConfig = async (config: AppConfig) => {
 
 export const isOnline = () => true; // Always online with managed Firebase
 
+export const refreshAuth = async () => {
+  if (!auth.currentUser) {
+    try {
+      await signInAnonymously(auth);
+    } catch (err: any) {
+      if (err.code === 'auth/admin-restricted-operation') {
+        // Silently ignore if anonymous auth is not enabled, 
+        // as public listeners work without it anyway.
+        return;
+      }
+      console.warn("Firebase Auth (Auto):", err.code || err.message);
+    }
+  }
+};
+
 export const deleteItem = async (collectionName: keyof DatabaseSchema, id: string) => {
   try {
     await deleteDoc(doc(db, collectionName as string, id));
     window.dispatchEvent(new Event('storage'));
+    window.dispatchEvent(new Event('lobo-db-sync'));
   } catch (err) {
     handleFirestoreError(err, 'delete', `${collectionName}/${id}`);
     throw err;
@@ -366,9 +568,6 @@ export const createCompetition = async (name: string, year: number) => {
     throw err;
   }
 };
-
-// ... remaining functions kept similarly or slightly updated for cloud performance
-// ... (omitting full repetition of calculated logic as it uses getDb which is now reactive)
 
 export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] => {
   const db_local = currentDb;
