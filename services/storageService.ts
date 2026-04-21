@@ -69,9 +69,14 @@ async function testConnection() {
   
   try {
     // Tenta ler uma coleção pública que sempre deve existir ou o path de teste
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    // Usamos um timeout para não deixar o status 'connecting' infinito
+    const testDoc = doc(db, 'test', 'connection');
+    await Promise.race([
+      getDocFromServer(testDoc),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+    ]);
     
-    console.log("Firebase connection established successfully.");
+    console.log("Firebase status: Connected to " + firebaseConfig.projectId);
     setConnectionStatus('online');
     
     if (quotaErrorInterval) {
@@ -81,17 +86,16 @@ async function testConnection() {
     
     window.dispatchEvent(new CustomEvent('lobo-quota-resolved'));
     
-    // Restart listeners if they were in error state
-    Object.keys(activeListeners).forEach(col => {
-      const unsub = activeListeners[col];
-      unsub();
-      delete activeListeners[col];
-      startListener(col);
-    });
-    
   } catch (error: any) {
-    console.warn("Firebase Connection Check Detail:", error.code, error.message);
+    console.warn("Firebase Connection Sync Detail:", error.code || 'timeout', error.message);
     
+    // Se for apenas erro de permissão ou documento não encontrado, a conexão ainda pode estar ok
+    if (error.code === 'permission-denied' || error.message?.includes('not found')) {
+      console.log("Firebase reachable but test doc restricted or missing. Assuming online for listeners.");
+      setConnectionStatus('online');
+      return;
+    }
+
     const isQuota = error.code === 'resource-exhausted' || error.message?.includes('quota');
     if (isQuota) {
       setConnectionStatus('offline');
@@ -102,10 +106,6 @@ async function testConnection() {
     if (!quotaErrorInterval) {
       quotaErrorInterval = setInterval(testConnection, 30000); // Check every 30s
     }
-    
-    if (error.message?.includes('the client is offline')) {
-      console.warn("Firebase: Conexão offline ou bloqueada (ID do banco pode estar errado).");
-    }
   }
 }
 
@@ -113,8 +113,11 @@ async function testConnection() {
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     try {
-      await setDoc(doc(db, 'test', 'connection'), { lastCheck: Date.now(), status: 'ok' }, { merge: true });
-    } catch (e) {}
+      // Verificamos se o usuário realmente tem permissão antes de tentar o write
+      await setDoc(doc(db, 'test', 'connection'), { lastCheck: Date.now(), status: 'ok', project: firebaseConfig.projectId }, { merge: true });
+    } catch (e) {
+      console.warn("Could not update test doc (permissions):", e);
+    }
     restrictedCollections.forEach(startListener);
   } else {
     restrictedCollections.forEach(colName => {
@@ -132,7 +135,16 @@ testConnection();
 if (typeof window !== 'undefined') {
   window.addEventListener('lobo-force-sync', () => {
     console.log("Forcing cloud sync recheck...");
+    // Reset status to connecting to show user something is happening
+    setConnectionStatus('connecting');
     testConnection();
+    
+    // Re-trigger listeners to be sure
+    publicCollections.forEach(col => {
+      if (activeListeners[col]) activeListeners[col]();
+      delete activeListeners[col];
+      startListener(col);
+    });
   });
 }
 

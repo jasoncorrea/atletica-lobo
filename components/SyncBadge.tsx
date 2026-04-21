@@ -6,9 +6,17 @@ import { motion, AnimatePresence } from 'motion/react';
 
 export const SyncBadge: React.FC = () => {
   const [status, setStatus] = useState<ConnectionStatus>(getConnectionStatus());
+  const [lastError, setLastError] = useState<string | null>(null);
 
   useEffect(() => {
-    const handleStatus = (e: any) => setStatus(e.detail);
+    const handleStatus = (e: any) => {
+      setStatus(e.detail);
+      if (e.detail === 'error') {
+        setLastError('A conexão com o banco de dados falhou. Verifique as configurações do Firebase.');
+      } else {
+        setLastError(null);
+      }
+    };
     window.addEventListener('lobo-connection-changed', handleStatus);
     return () => window.removeEventListener('lobo-connection-changed', handleStatus);
   }, []);
@@ -28,16 +36,23 @@ export const SyncBadge: React.FC = () => {
   const Icon = current.icon;
 
   return (
-    <button 
-      onClick={retry}
-      title="Clique para tentar reconectar"
-      className={cn(
-        "flex items-center gap-2 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-transparent transition-all hover:scale-105 active:scale-95",
-        current.color
+    <div className="flex flex-col items-end gap-1">
+      <button 
+        onClick={retry}
+        title={lastError || "Clique para tentar reconectar"}
+        className={cn(
+          "flex items-center gap-2 px-3 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest border border-transparent transition-all hover:scale-105 active:scale-95",
+          current.color
+        )}
+      >
+        <Icon className={cn("w-3 h-3", current.animate && "animate-spin")} />
+        <span>{current.text}</span>
+      </button>
+      {lastError && (
+        <span className="text-[7px] font-bold text-red-400 uppercase tracking-tighter mr-2">
+          Verifique o Console ou Configurações do Firebase
+        </span>
       )}
-    >
-      <Icon className={cn("w-3 h-3", current.animate && "animate-spin")} />
-      <span>{current.text}</span>
-    </button>
+    </div>
   );
 };
