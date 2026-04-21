@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, updateItem, deleteItem } from '../../../services/storageService';
+import { getDb, saveDb, deleteItem } from '../../../services/storageService';
 import { FinanceCategory, Transaction, PaymentAccount, TransactionType } from '../../../types';
 import { 
   DollarSign, 
@@ -49,11 +49,11 @@ export const FinanceTab: React.FC = () => {
 
   useEffect(() => {
     load();
-    window.addEventListener('lobo-db-sync', load);
-    return () => window.removeEventListener('lobo-db-sync', load);
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
   }, []);
 
-  const addTransaction = async (e: React.FormEvent) => {
+  const addTransaction = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || !desc) return;
     if (type === 'expense' && !catId) {
@@ -67,6 +67,7 @@ export const FinanceTab: React.FC = () => {
       return;
     }
 
+    const db = getDb();
     const newTx: Transaction = {
       id: Math.random().toString(36).substr(2, 9),
       type,
@@ -78,15 +79,14 @@ export const FinanceTab: React.FC = () => {
       createdAt: Date.now()
     };
 
-    try {
-      await updateItem('transactions', newTx);
-      setAmount('');
-      setDesc('');
-      setShowAddModal(false);
-      load();
-    } catch (err) {
-      alert('Erro ao salvar transação.');
-    }
+    db.transactions.push(newTx);
+    saveDb(db);
+    window.dispatchEvent(new Event('storage'));
+    
+    setAmount('');
+    setDesc('');
+    setShowAddModal(false);
+    load();
   };
 
   const deleteTransaction = async (id: string) => {
@@ -99,23 +99,19 @@ export const FinanceTab: React.FC = () => {
     }
   };
 
-  const addCategory = async (e: React.FormEvent) => {
+  const addCategory = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName) return;
-    
-    const newCat: FinanceCategory = {
+    const db = getDb();
+    db.financeCategories.push({
       id: Math.random().toString(36).substr(2, 9),
       name: newCatName.toUpperCase(),
       isDefault: false
-    };
-
-    try {
-      await updateItem('financeCategories', newCat);
-      setNewCatName('');
-      load();
-    } catch (err) {
-      alert('Erro ao salvar categoria.');
-    }
+    });
+    saveDb(db);
+    window.dispatchEvent(new Event('storage'));
+    setNewCatName('');
+    load();
   };
 
   const formatCurrency = (val: number) => {

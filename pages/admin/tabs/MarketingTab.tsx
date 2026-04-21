@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, updateItem, deleteItem } from '../../../services/storageService';
+import { getDb, saveDb, deleteItem } from '../../../services/storageService';
 import { ShareMember, SharePost, ShareRecord } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -43,12 +43,10 @@ export const MarketingTab: React.FC = () => {
   
   // Member Form
   const [memberName, setMemberName] = useState('');
-
+  
   // Post Form
   const [postTitle, setPostTitle] = useState('');
   const [postLink, setPostLink] = useState('');
-  const [loading, setLoading] = useState(false);
-  
 
   const load = () => {
     const db = getDb();
@@ -60,8 +58,8 @@ export const MarketingTab: React.FC = () => {
   useEffect(() => {
     load();
     const handleStorage = () => load();
-    window.addEventListener('lobo-db-sync', handleStorage);
-    return () => window.removeEventListener('lobo-db-sync', handleStorage);
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   // Stats Calculations
@@ -86,44 +84,36 @@ export const MarketingTab: React.FC = () => {
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!memberName) return;
-    setLoading(true);
     
-    try {
-      const newMember: ShareMember = {
-        id: Math.random().toString(36).substr(2, 9),
-        name: memberName.toUpperCase()
-      };
-      
-      await updateItem('shareMembers', newMember);
-      setMemberName('');
-    } catch (err) {
-      alert('Erro ao salvar membro no banco de dados.');
-    } finally {
-      setLoading(false);
-    }
+    const db = getDb();
+    const newMember: ShareMember = {
+      id: Math.random().toString(36).substr(2, 9),
+      name: memberName.toUpperCase()
+    };
+    
+    db.shareMembers = [...(db.shareMembers || []), newMember];
+    saveDb(db);
+    window.dispatchEvent(new Event('storage'));
+    setMemberName('');
   };
 
   const handleAddPost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!postTitle) return;
-    setLoading(true);
     
-    try {
-      const newPost: SharePost = {
-        id: Math.random().toString(36).substr(2, 9),
-        title: postTitle.toUpperCase(),
-        link: postLink || undefined,
-        date: Date.now()
-      };
-      
-      await updateItem('sharePosts', newPost);
-      setPostTitle('');
-      setPostLink('');
-    } catch (err) {
-      alert('Erro ao salvar publicação no banco de dados.');
-    } finally {
-      setLoading(false);
-    }
+    const db = getDb();
+    const newPost: SharePost = {
+      id: Math.random().toString(36).substr(2, 9),
+      title: postTitle.toUpperCase(),
+      link: postLink || undefined,
+      date: Date.now()
+    };
+    
+    db.sharePosts = [...(db.sharePosts || []), newPost];
+    saveDb(db);
+    window.dispatchEvent(new Event('storage'));
+    setPostTitle('');
+    setPostLink('');
   };
 
   const removeMember = async (id: string) => {

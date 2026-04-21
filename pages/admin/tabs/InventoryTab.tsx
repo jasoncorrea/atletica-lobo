@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, updateItem, handleImageUpload, deleteItem } from '../../../services/storageService';
+import { getDb, saveDb, handleImageUpload, deleteItem } from '../../../services/storageService';
 import { Product } from '../../../types';
 import { 
   Package, 
@@ -43,8 +43,8 @@ export const InventoryTab: React.FC = () => {
 
   useEffect(() => {
     load();
-    window.addEventListener('lobo-db-sync', load);
-    return () => window.removeEventListener('lobo-db-sync', load);
+    window.addEventListener('storage', load);
+    return () => window.removeEventListener('storage', load);
   }, []);
 
   const resetForm = () => {
@@ -78,10 +78,11 @@ export const InventoryTab: React.FC = () => {
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !qty || !priceMember || !priceNonMember) return;
 
+    const db = getDb();
     const newProduct: Product = {
       id: editingId || Math.random().toString(36).substr(2, 9),
       name: name.toUpperCase(),
@@ -92,14 +93,18 @@ export const InventoryTab: React.FC = () => {
       imageUrl: imgUrl
     };
 
-    try {
-      await updateItem('products', newProduct);
-      resetForm();
-      setSubTab('list');
-      load();
-    } catch (err) {
-      alert('Erro ao salvar produto no estoque.');
+    if (editingId) {
+      const idx = db.products.findIndex(p => p.id === editingId);
+      if (idx !== -1) db.products[idx] = newProduct;
+    } else {
+      db.products.push(newProduct);
     }
+
+    saveDb(db);
+    window.dispatchEvent(new Event('storage'));
+    resetForm();
+    setSubTab('list');
+    load();
   };
 
   const handleUpload = async (file: File) => {

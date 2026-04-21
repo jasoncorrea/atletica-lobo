@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { getDb, updateItem, deleteItem } from '../../../services/storageService';
+import { getDb, saveDb, deleteItem } from '../../../services/storageService';
 import { Competition, Modality, Athletic, Result } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -55,8 +55,8 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
 
   useEffect(() => {
     loadData();
-    window.addEventListener('lobo-db-sync', loadData);
-    return () => window.removeEventListener('lobo-db-sync', loadData);
+    window.addEventListener('storage', loadData);
+    return () => window.removeEventListener('storage', loadData);
   }, [comp.id]);
 
   const loadData = () => {
@@ -145,7 +145,7 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
     return r;
   };
 
-  const save = async () => {
+  const save = () => {
     if (!selMod) return;
     let finalRanking = rankings;
     if (inputMode === 'bracket') {
@@ -163,14 +163,13 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
       modalityId: selMod, 
       ranking: finalRanking 
     };
-    try {
-      await updateItem('results', newResult);
-      loadData();
-      if (inputMode === 'bracket') resetBracket();
-      else setRankings({});
-    } catch (err) {
-      alert('Erro ao salvar resultado.');
-    }
+    if (existingIdx >= 0) db.results[existingIdx] = newResult;
+    else db.results.push(newResult);
+    saveDb(db);
+    window.dispatchEvent(new Event('storage'));
+    loadData();
+    if (inputMode === 'bracket') resetBracket();
+    else setRankings({});
   };
 
   const deleteResult = async (id: string) => {

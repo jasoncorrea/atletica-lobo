@@ -134,17 +134,13 @@ export interface ShareRecord {
   shared: boolean;
 }
 
-// --- NOVO TIPO: CRONOGRAMA ---
-
-export type ManagementEventType = 'REUNIAO' | 'EVENTO' | 'COMPROMISSO' | 'OUTRO';
+export type ManagementEventType = 'reuniao' | 'evento' | 'competicao' | 'prazo' | 'post' | 'outro';
 
 export interface ManagementEvent {
   id: string;
   title: string;
-  type: ManagementEventType;
-  date: string; // ISO format YYYY-MM-DD
-  time?: string;
-  location?: string;
   description?: string;
-  isImportant: boolean;
+  date: string; // ISO YYYY-MM-DD
+  type: ManagementEventType;
+  createdBy?: string;
 }

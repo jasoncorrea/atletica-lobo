@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, LogIn, Lock, User, AlertCircle, ShieldCheck } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, signInAnonymously } from 'firebase/auth';
 
 export const AdminLogin: React.FC = () => {
   const [user, setUser] = useState('');
@@ -18,26 +18,27 @@ export const AdminLogin: React.FC = () => {
     setLoading(true);
     
     try {
-      // Firebase Auth login to enable cloud writes
-      const auth = getAuth();
-      
-      // Auto-map simple names to emails for Firebase compatibility
-      const email = user.includes('@') ? user : `${user}@lobo.com`;
-      
-      await signInWithEmailAndPassword(auth, email, pass);
+      // Artificial delay for feel
+      await new Promise(r => setTimeout(r, 600));
 
-      const role = user === 'dev' ? 'SUPER_ADMIN' : 'DIRETORIA';
-      localStorage.setItem('lobo_auth', 'true');
-      localStorage.setItem('lobo_role', role);
-      navigate('/admin/dashboard');
-    } catch (err: any) {
-      if (err.code === 'auth/configuration-not-found') {
-        setError('O login por E-mail/Senha não está ativado no seu novo projeto do Firebase. Ative-o no console (Authentication > Sign-in method).');
-      } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-        setError('Usuário ou senha incorretos para o novo projeto.');
+      // Reset login antigo
+      localStorage.removeItem('lobo_role');
+
+      if ((user === 'admin' && pass === 'lobo123') || (user === 'dev' && pass === 'jason123')) {
+        // Firebase Auth login to enable cloud writes
+        const auth = getAuth();
+        await signInAnonymously(auth);
+
+        const role = user === 'dev' ? 'SUPER_ADMIN' : 'DIRETORIA';
+        localStorage.setItem('lobo_auth', 'true');
+        localStorage.setItem('lobo_role', role);
+        navigate('/admin/dashboard');
       } else {
-        setError('Erro de conexão: ' + err.message);
+        setError('Credenciais inválidas. Verifique seu acesso.');
+        setLoading(false);
       }
+    } catch (err: any) {
+      setError('Erro de conexão: ' + err.message);
       setLoading(false);
     }
   };
