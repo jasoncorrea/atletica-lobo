@@ -39,8 +39,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   'COMPETIÇÃO': 'bg-amber-500',
   'PUBLICAÇÃO/POST': 'bg-cyan-500',
   'PRAZO/ENTREGA': 'bg-red-500',
-  'AMISTOSO/ESPORTES': 'bg-rose-500',
-  'PRODUTOS': 'bg-emerald-500',
+  'AMISTOSO/ESPORTES': 'bg-green-500',
+  'PRODUTOS': 'bg-pink-500',
   'OUTRO': 'bg-zinc-500',
 };
 
@@ -50,8 +50,8 @@ const CATEGORY_BG: Record<string, string> = {
   'COMPETIÇÃO': 'bg-amber-50',
   'PUBLICAÇÃO/POST': 'bg-cyan-50',
   'PRAZO/ENTREGA': 'bg-red-50',
-  'AMISTOSO/ESPORTES': 'bg-rose-50',
-  'PRODUTOS': 'bg-emerald-50',
+  'AMISTOSO/ESPORTES': 'bg-green-50',
+  'PRODUTOS': 'bg-pink-50',
   'OUTRO': 'bg-zinc-50',
 };
 
@@ -61,8 +61,8 @@ const CATEGORY_TEXT: Record<string, string> = {
   'COMPETIÇÃO': 'text-amber-600',
   'PUBLICAÇÃO/POST': 'text-cyan-600',
   'PRAZO/ENTREGA': 'text-red-600',
-  'AMISTOSO/ESPORTES': 'text-rose-600',
-  'PRODUTOS': 'text-emerald-600',
+  'AMISTOSO/ESPORTES': 'text-green-600',
+  'PRODUTOS': 'text-pink-600',
   'OUTRO': 'text-zinc-600',
 };
 
