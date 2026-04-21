@@ -189,8 +189,8 @@ const loadInitialConfig = (): AppConfig => {
     }
   }
   return {
-    primaryColor: '#e38702',
-    secondaryColor: '#5a0509',
+    primaryColor: '#5a0509',
+    secondaryColor: '#000000',
     logoUrl: null
   };
 };

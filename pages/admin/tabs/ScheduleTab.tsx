@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { getDb, addItem, deleteItem, updateItem, isQuotaExceeded } from '../../../services/storageService';
-import { PlannerEvent } from '../../../types';
+import { getDb, addItem, deleteItem, updateItem, isQuotaExceeded, getConfig, saveConfig } from '../../../services/storageService';
+import { PlannerEvent, AppConfig } from '../../../types';
 import { 
   getDaysInMonth, 
   startOfMonth, 
@@ -68,6 +68,7 @@ const CATEGORY_TEXT: Record<string, string> = {
 
 export const ScheduleTab: React.FC = () => {
   const [events, setEvents] = useState<PlannerEvent[]>([]);
+  const [config, setConfig] = useState<AppConfig>(getConfig());
   const [showModal, setShowModal] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: string, title: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -87,11 +88,23 @@ export const ScheduleTab: React.FC = () => {
         return true;
       });
       setEvents(uniqueEvents);
+      setConfig(getConfig());
     };
     refresh();
     window.addEventListener('storage', refresh);
     return () => window.removeEventListener('storage', refresh);
   }, []);
+
+  const togglePublicCategory = async (category: string) => {
+    const currentCategories = config.publicEventCategories || [];
+    const newCategories = currentCategories.includes(category)
+      ? currentCategories.filter(c => c !== category)
+      : [...currentCategories, category];
+    
+    const newConfig = { ...config, publicEventCategories: newCategories };
+    setConfig(newConfig);
+    await saveConfig(newConfig);
+  };
 
   const handleAddEvent = async () => {
     if (isSaving) return;
@@ -247,6 +260,45 @@ export const ScheduleTab: React.FC = () => {
 
   return (
     <div className="space-y-10 pb-20">
+      {/* Settings Section */}
+      <div className="bg-white rounded-[2.5rem] border border-zinc-100 shadow-sm p-8 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-8 opacity-[0.03]">
+          <Bell className="w-24 h-24 text-lobo-primary" />
+        </div>
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2.5 bg-lobo-light rounded-2xl text-lobo-primary">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-sm font-black text-zinc-900 uppercase tracking-widest">Feed Público na Home</h3>
+              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Selecione quais categorias aparecerão na faixa da página inicial</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            {Object.keys(CATEGORY_COLORS).map(cat => {
+              const isSelected = config.publicEventCategories?.includes(cat);
+              return (
+                <button
+                  key={cat}
+                  onClick={() => togglePublicCategory(cat)}
+                  className={cn(
+                    "px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 border flex items-center gap-2",
+                    isSelected 
+                      ? "bg-zinc-900 text-white border-zinc-900 shadow-lg shadow-zinc-900/20" 
+                      : "bg-white text-zinc-400 border-zinc-200 hover:border-zinc-300"
+                  )}
+                >
+                  <div className={cn("w-2 h-2 rounded-full", isSelected ? "bg-lobo-primary" : "bg-zinc-200")} />
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-6">

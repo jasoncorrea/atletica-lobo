@@ -59,7 +59,7 @@ export const AdminDashboard: React.FC = () => {
 
   const driveFolders = [
     { name: 'Geral (Minha Unidade)', icon: FolderOpen, color: 'text-zinc-600', bg: 'bg-zinc-100', link: 'https://drive.google.com/drive/folders/1zs49o7pf-xjI4RfhnGpqf4UGXcEEAYRL?usp=sharing' },
-    { name: 'Marketing / Comunicação', icon: Megaphone, color: 'text-lobo-primary', bg: 'bg-orange-50', link: 'https://drive.google.com/drive/folders/1ktlXSzMT-ZdgNA3b3onIlBeLQyM4KbPd?usp=sharing' },
+    { name: 'Marketing / Comunicação', icon: Megaphone, color: 'text-lobo-primary', bg: 'bg-lobo-light', link: 'https://drive.google.com/drive/folders/1ktlXSzMT-ZdgNA3b3onIlBeLQyM4KbPd?usp=sharing' },
     { name: 'Produtos / Comercial', icon: Tag, color: 'text-emerald-500', bg: 'bg-emerald-50', link: 'https://drive.google.com/drive/folders/1yKJq2iMJx6htQlFT3-k3c-UGXQFhbUW1?usp=sharing' },
     { name: 'Diretoria de Esportes', icon: Gamepad, color: 'text-blue-500', bg: 'bg-blue-50', link: 'https://drive.google.com/drive/folders/1e8ye8kdNDrx6Nq2WbZLwOBbl99nWjW0t?usp=sharing' },
     { name: 'Secretaria / Atas', icon: History, color: 'text-purple-500', bg: 'bg-purple-50', link: 'https://drive.google.com/drive/folders/1P8WuOtIXnhFNi2ixVHTvs1KMSwol_FMM?usp=sharing' },
@@ -138,9 +138,9 @@ export const AdminDashboard: React.FC = () => {
       id: 'competitions_group', 
       label: 'Competições', 
       icon: Trophy, 
-      color: 'bg-amber-500',
+      color: 'bg-lobo-primary',
       children: [
-        { id: 'competitions', label: 'Todas Competições', icon: Trophy, color: 'bg-amber-500' },
+        { id: 'competitions', label: 'Todas Competições', icon: Trophy, color: 'bg-lobo-primary' },
         { id: 'athletics', label: 'Atléticas', icon: Users, color: 'bg-blue-500' },
         { id: 'modalities', label: 'Modalidades', icon: Layers, color: 'bg-purple-500' },
         { id: 'results', label: 'Resultados', icon: CheckSquare, color: 'bg-green-500' },
@@ -149,7 +149,7 @@ export const AdminDashboard: React.FC = () => {
     },
     { id: 'socios', label: 'Sócios', icon: UserCheck, color: 'bg-lobo-secondary' },
     { id: 'birthdays', label: 'Aniversariantes', icon: Cake, color: 'bg-pink-500' },
-    { id: 'inventory', label: 'Estoque', icon: Package, color: 'bg-orange-500' },
+    { id: 'inventory', label: 'Estoque', icon: Package, color: 'bg-lobo-primary' },
     { id: 'marketing', label: 'Marketing', icon: Share2, color: 'bg-cyan-500' },
     { id: 'settings', label: 'Configurações', icon: Settings, color: 'bg-zinc-500' }
   ];

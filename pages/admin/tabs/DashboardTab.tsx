@@ -122,8 +122,8 @@ export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
              label: 'Estoque Crítico', 
              value: lowStock, 
              icon: Package, 
-             color: 'text-orange-500', 
-             bg: 'bg-orange-500/10',
+             color: 'text-lobo-primary', 
+             bg: 'bg-lobo-primary/10',
              trend: 'Atenção',
              positive: lowStock === 0
            },

@@ -54,6 +54,7 @@ export interface AppConfig {
   primaryColor: string;
   secondaryColor: string;
   logoUrl: string | null;
+  publicEventCategories?: string[];
 }
 
 // --- TIPOS FINANCEIROS E RBAC ---

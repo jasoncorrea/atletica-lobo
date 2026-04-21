@@ -2,9 +2,9 @@
 @import "tailwindcss";
 
 @theme {
-  --color-lobo-primary: #e38702;
-  --color-lobo-secondary: #5a0509;
-  --color-lobo-light: #fdf6ec;
+  --color-lobo-primary: #5a0509;
+  --color-lobo-secondary: #000000;
+  --color-lobo-light: #fef2f2;
   
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
@@ -31,6 +31,15 @@
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   @apply bg-zinc-300 rounded-full;
+}
+
+@keyframes scroll-ticker {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-scroll-ticker {
+  animation: scroll-ticker 40s linear infinite;
 }
 
 @keyframes fade-in {

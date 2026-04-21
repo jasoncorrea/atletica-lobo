@@ -127,7 +127,7 @@ export const InventoryTab: React.FC = () => {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div>
           <h2 className="text-2xl font-black text-zinc-900 tracking-tight flex items-center gap-3">
-            <Package className="w-8 h-8 text-orange-500" />
+            <Package className="w-8 h-8 text-lobo-primary" />
             Gestão de Estoque
           </h2>
           <p className="text-sm font-bold text-zinc-400 mt-1 uppercase tracking-widest">Produtos, Uniformes e Acessórios</p>
@@ -161,7 +161,7 @@ export const InventoryTab: React.FC = () => {
           {/* Quick Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white border border-zinc-200 p-6 rounded-[2rem] shadow-sm flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-orange-500/10 flex items-center justify-center text-orange-500">
+              <div className="w-12 h-12 rounded-2xl bg-lobo-primary/10 flex items-center justify-center text-lobo-primary">
                  <Box className="w-6 h-6" />
               </div>
               <div>
