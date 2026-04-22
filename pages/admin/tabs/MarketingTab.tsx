@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDb, addItem, deleteItem } from '../../../services/storageService';
+import { getDb, addItem, deleteItem, updateItem } from '../../../services/storageService';
 import { ShareMember, SharePost, ShareRecord } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -108,7 +108,7 @@ export const MarketingTab: React.FC = () => {
     
     await addItem('sharePosts', {
       title: postTitle.toUpperCase(),
-      link: postLink || undefined,
+      link: postLink || null,
       date: Date.now()
     });
     
@@ -126,6 +126,27 @@ export const MarketingTab: React.FC = () => {
   const removePost = async (id: string) => {
     // Removed confirm as it can be unreliable in iframes
     await deleteItem('sharePosts', id);
+    load();
+  };
+
+  const toggleShare = async (memberId: string, postId: string) => {
+    const recordId = `${memberId}_${postId}`;
+    const existingRecord = records.find(r => r.id === recordId || (r.memberId === memberId && r.postId === postId));
+    
+    if (existingRecord) {
+      if (existingRecord.shared) {
+         await deleteItem('shareRecords', existingRecord.id);
+      } else {
+         await updateItem('shareRecords', existingRecord.id, { shared: true });
+      }
+    } else {
+      await addItem('shareRecords', {
+        id: recordId,
+        memberId,
+        postId,
+        shared: true
+      }, recordId);
+    }
     load();
   };
 
@@ -290,7 +311,7 @@ export const MarketingTab: React.FC = () => {
           <div className="bg-zinc-50 border border-zinc-100 rounded-[2.5rem] p-10">
             <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight mb-8 flex items-center gap-3">
               <UserPlus className="w-6 h-6 text-lobo-primary" />
-              Recrutamento Fiscal
+              ADICIONAR MEMBRO
             </h3>
             <form onSubmit={handleAddMember} className="flex gap-3">
               <div className="relative flex-1">
@@ -353,7 +374,7 @@ export const MarketingTab: React.FC = () => {
           <div className="bg-zinc-50 border border-zinc-100 rounded-[2.5rem] p-10">
             <h3 className="text-xl font-black text-zinc-900 uppercase tracking-tight mb-8 flex items-center gap-3">
               <FileText className="w-6 h-6 text-cyan-500" />
-              Arsenal de Conteúdo
+              ADICIONAR PUBLICAÇÃO
             </h3>
             <form onSubmit={handleAddPost} className="space-y-4">
               <div className="relative">
@@ -427,6 +448,59 @@ export const MarketingTab: React.FC = () => {
           </div>
         </section>
       </div>
+
+      {/* Matrix Section */}
+      {members.length > 0 && posts.length > 0 && (
+        <section className="bg-white border border-zinc-100 rounded-[3rem] overflow-hidden shadow-sm mt-12 pb-6">
+          <div className="px-8 py-6 border-b border-zinc-50 bg-zinc-50/50 flex items-center justify-between">
+            <h3 className="text-sm font-black uppercase tracking-widest text-zinc-900 flex items-center gap-3">
+              <Check className="w-5 h-5 text-emerald-500" />
+              Controle de Compartilhamento
+            </h3>
+          </div>
+          <div className="overflow-x-auto w-full custom-scrollbar">
+            <table className="w-full text-left border-collapse min-w-max">
+              <thead>
+                <tr>
+                  <th className="px-8 py-6 text-[10px] font-black uppercase tracking-widest text-zinc-400 border-b border-zinc-100 bg-zinc-50/30 sticky left-0 z-20 backdrop-blur-md shadow-[10px_0_15px_-10px_rgba(0,0,0,0.05)]">Fiscal</th>
+                  {posts.map(p => (
+                    <th key={p.id} className="px-4 py-6 text-[10px] font-black uppercase tracking-widest text-zinc-400 border-b border-zinc-100 text-center relative max-w-[150px] group">
+                      <div className="w-full truncate mx-auto transition-all group-hover:bg-zinc-100 group-hover:p-1 rounded" title={p.title}>{p.title}</div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-50">
+                {members.map(m => (
+                  <tr key={m.id} className="hover:bg-zinc-50/50 transition-colors group">
+                    <td className="px-8 py-5 text-xs font-black text-zinc-800 uppercase tracking-tighter sticky left-0 z-10 bg-white shadow-[10px_0_15px_-10px_rgba(0,0,0,0.05)] group-hover:bg-zinc-50/50 transition-colors">
+                      {m.name}
+                    </td>
+                    {posts.map(p => {
+                      const isShared = records.some(r => (r.id === `${m.id}_${p.id}` || (r.memberId === m.id && r.postId === p.id)) && r.shared !== false);
+                      return (
+                        <td key={p.id} className="px-4 py-5 text-center">
+                          <button 
+                            onClick={() => toggleShare(m.id, p.id)}
+                            className={cn(
+                              "w-10 h-10 rounded-2xl flex items-center justify-center transition-all mx-auto active:scale-95 duration-300",
+                              isShared 
+                                ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 hover:bg-emerald-600 scale-110" 
+                                : "bg-zinc-100 text-zinc-300 hover:bg-zinc-200 hover:text-zinc-500"
+                            )}
+                          >
+                            <Check className={cn("w-5 h-5 transition-transform", isShared ? "scale-100" : "scale-75 opacity-50")} />
+                          </button>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
     </div>
   );
 };

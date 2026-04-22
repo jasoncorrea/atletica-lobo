@@ -137,7 +137,7 @@ export interface ShareMember {
 export interface SharePost {
   id: string;
   title: string;
-  link?: string;
+  link: string | null;
   date: number;
 }
 
