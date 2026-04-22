@@ -49,30 +49,31 @@ export const SecretariaTab: React.FC = () => {
 
   const handleDownload = async () => {
     if (!certificateRef.current) {
-      alert('Erro: Elemento do certificado não encontrado.');
+      alert('Erro: O modelo do certificado ainda não foi carregado.');
       return;
     }
     
     setIsGenerating(true);
 
     try {
-      console.log('Iniciando captura do certificado...');
+      console.log('Iniciando captura de alta fidelidade...');
       
-      // html2canvas can sometimes fail if images aren't fully loaded
-      // We give a small delay just in case of pending paints
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Wait for any pending renders/images
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       const canvas = await html2canvas(certificateRef.current, {
-        scale: 3, 
+        scale: 2, 
         useCORS: true,
-        allowTaint: true,
         backgroundColor: '#ffffff',
         logging: true,
         windowWidth: 1123,
-        windowHeight: 794
+        windowHeight: 794,
+        onclone: (clonedDoc) => {
+          // You can modify the clone here if needed
+          console.log('Documento clonado para captura.');
+        }
       });
 
-      console.log('Canvas gerado com sucesso.');
       const imgData = canvas.toDataURL('image/png', 1.0);
       
       const pdf = new jsPDF({
@@ -82,18 +83,23 @@ export const SecretariaTab: React.FC = () => {
         compress: true
       });
 
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.addImage(imgData, 'PNG', 0, 0, 297, 210); // A4 Landscape size in mm
       
       const fileName = `certificado_${data.recipientName.toLowerCase().replace(/\s+/g, '_')}.pdf`;
       pdf.save(fileName);
       
-      console.log(`PDF "${fileName}" salvo com sucesso.`);
+      console.log('PDF gerado com sucesso.');
     } catch (error) {
-      console.error('Erro ao gerar certificado:', error);
-      alert('Não foi possível gerar o PDF. Verifique se há algum problema com a conexão ou imagens.');
+      console.error('Erro crítico na geração do PDF:', error);
+      const msg = error instanceof Error ? error.message : 'Erro técnico desconhecido';
+      
+      let hint = '\n\nDica: Isso geralmente ocorre quando a logo configurada não permite ser baixada diretamente por segurança (CORS). Tente remover a logo nas configurações de marca para confirmar.';
+      
+      if (msg.includes('oklch')) {
+        hint = '\n\nDica: Detectado erro de cor incompatível. Tente atualizar a página.';
+      }
+
+      alert(`Não foi possível gerar o PDF.\n\nDetalhes: ${msg}${hint}`);
     } finally {
       setIsGenerating(false);
     }
@@ -155,6 +161,7 @@ export const SecretariaTab: React.FC = () => {
                {config.logoUrl ? (
                  <img 
                   src={config.logoUrl} 
+                  crossOrigin="anonymous"
                   style={{
                     width: '600px',
                     height: '600px',
