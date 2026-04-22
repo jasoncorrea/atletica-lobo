@@ -16,6 +16,7 @@ import { BirthdaysTab } from './tabs/BirthdaysTab';
 import { MarketingTab } from './tabs/MarketingTab';
 import { SociosTab } from './tabs/SociosTab';
 import { ScheduleTab } from './tabs/ScheduleTab';
+import { SecretariaTab } from './tabs/SecretariaTab';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Trophy, 
@@ -44,7 +45,9 @@ import {
   Tag,
   Megaphone,
   ExternalLink,
-  ShieldAlert
+  ShieldAlert,
+  Archive,
+  BadgeCheck
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -148,6 +151,7 @@ export const AdminDashboard: React.FC = () => {
       ]
     },
     { id: 'socios', label: 'Sócios', icon: UserCheck, color: 'bg-lobo-secondary' },
+    { id: 'secretaria', label: 'Secretaria', icon: BadgeCheck, color: 'bg-purple-500' },
     { id: 'birthdays', label: 'Aniversariantes', icon: Cake, color: 'bg-pink-500' },
     { id: 'inventory', label: 'Estoque', icon: Package, color: 'bg-lobo-primary' },
     { id: 'marketing', label: 'Marketing', icon: Share2, color: 'bg-cyan-500' },
@@ -499,6 +503,7 @@ export const AdminDashboard: React.FC = () => {
               {activeTab === 'athletics' && activeComp && <AthleticsTab comp={activeComp} />}
               {activeTab === 'birthdays' && <BirthdaysTab />}
               {activeTab === 'socios' && <SociosTab />}
+              {activeTab === 'secretaria' && <SecretariaTab />}
               {activeTab === 'marketing' && <MarketingTab />}
               {activeTab === 'settings' && <SettingsTab />}
               {activeTab === 'finance' && role === 'SUPER_ADMIN' && <FinanceTab />}
