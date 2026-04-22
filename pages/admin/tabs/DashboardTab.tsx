@@ -133,7 +133,7 @@ export const DashboardTab: React.FC<Props> = ({ activeComp }) => {
              </div>
            )}
            <div className="bg-lobo-dark px-6 py-3 rounded-2xl text-white shadow-xl flex items-center gap-3">
-              <Calendar className="w-5 h-5 text-lobo-primary" />
+              <Calendar className="w-5 h-5 text-lobo-secondary" />
               <div className="text-right">
                  <p className="text-[9px] font-black text-white/40 uppercase tracking-widest leading-none">Data Atual</p>
                  <p className="text-xs font-black leading-none mt-1">{new Date().toLocaleDateString('pt-BR')}</p>

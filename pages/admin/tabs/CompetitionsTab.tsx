@@ -68,8 +68,8 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
              <p className="text-[10px] font-black text-zinc-400 uppercase tracking-widest leading-none mb-1">Total Registradas</p>
              <p className="text-xl font-black text-zinc-900 leading-none">{list.length}</p>
           </div>
-          <div className="bg-lobo-primary px-6 py-4 rounded-3xl shadow-xl shadow-lobo-primary/20 text-zinc-900">
-             <p className="text-[10px] font-black text-zinc-900/60 uppercase tracking-widest leading-none mb-1">Ano Corrente</p>
+          <div className="bg-lobo-primary px-6 py-4 rounded-3xl shadow-xl shadow-lobo-primary/20 text-lobo-secondary">
+             <p className="text-[10px] font-black text-lobo-secondary/60 uppercase tracking-widest leading-none mb-1">Ano Corrente</p>
              <p className="text-xl font-black leading-none">{new Date().getFullYear()}</p>
           </div>
         </div>
@@ -175,7 +175,7 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
                   className={cn(
                     "relative p-8 rounded-[2.5rem] border transition-all duration-500 group overflow-hidden",
                     c.isActive 
-                      ? "bg-zinc-900 text-white border-zinc-900 shadow-2xl shadow-lobo-primary/10" 
+                      ? "bg-lobo-secondary text-lobo-primary border-lobo-secondary shadow-2xl shadow-lobo-primary/10" 
                       : "bg-white text-zinc-900 border-zinc-200 hover:border-lobo-primary hover:shadow-xl group"
                   )}
                 >
@@ -183,7 +183,7 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
                     <div className="flex items-center justify-between">
                        <div className={cn(
                          "flex items-center gap-2 px-3 py-1.5 rounded-full",
-                         c.isActive ? "bg-lobo-primary text-zinc-900" : "bg-zinc-100 text-zinc-400"
+                         c.isActive ? "bg-lobo-primary text-white" : "bg-zinc-100 text-zinc-400"
                        )}>
                           <Calendar className="w-3.5 h-3.5" />
                           <span className="text-[10px] font-black uppercase tracking-tighter">{c.year}</span>
@@ -191,7 +191,7 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
                        {c.isActive && (
                          <div className="flex items-center gap-2 text-lobo-primary">
                             <span className="text-[10px] font-black uppercase tracking-widest">Ativo no Comando</span>
-                            <CheckCircle2 className="w-4 h-4 fill-lobo-primary text-zinc-900" />
+                            <CheckCircle2 className="w-4 h-4 fill-lobo-primary text-lobo-primary" />
                          </div>
                        )}
                     </div>
@@ -199,13 +199,13 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
                     <div className="space-y-1">
                       <h4 className={cn(
                         "text-2xl font-black tracking-tighter uppercase leading-tight",
-                        c.isActive ? "text-white" : "text-zinc-900 group-hover:text-lobo-primary transition-colors"
+                        c.isActive ? "text-lobo-primary" : "text-zinc-900 group-hover:text-lobo-primary transition-colors"
                       )}>
                         {c.name}
                       </h4>
                       <p className={cn(
                         "text-[10px] font-black uppercase tracking-widest",
-                        c.isActive ? "text-white/40" : "text-zinc-400"
+                        c.isActive ? "text-lobo-primary/40" : "text-zinc-400"
                       )}>
                         Identificador: {c.id.slice(0, 8)}
                       </p>
@@ -222,8 +222,8 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
                             Assumir Controle
                           </button>
                         ) : (
-                          <div className="flex-grow flex items-center justify-center gap-3 bg-white/10 text-lobo-primary py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-white/5 backdrop-blur-sm shadow-inner">
-                            <Sparkles className="w-4 h-4 animate-pulse text-lobo-primary" />
+                          <div className="flex-grow flex items-center justify-center gap-3 bg-lobo-primary text-lobo-secondary py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-inner">
+                            <Sparkles className="w-4 h-4 animate-pulse text-lobo-secondary" />
                             Sistema Operacional
                           </div>
                         )}
@@ -232,7 +232,7 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
                           onClick={() => remove(c.id)}
                           className={cn(
                             "w-14 h-14 flex items-center justify-center rounded-2xl transition-all active:scale-90 shadow-lg",
-                            c.isActive ? "bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white" : "bg-red-50 text-red-500 hover:bg-red-500 hover:text-white"
+                            c.isActive ? "bg-red-600 text-white hover:bg-red-700" : "bg-red-50 text-red-500 hover:bg-red-500 hover:text-white"
                           )}
                         >
                           <Trash2 className="w-5 h-5 transition-transform group-hover:scale-110" />

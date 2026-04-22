@@ -326,7 +326,7 @@ export const ScheduleTab: React.FC = () => {
             onClick={() => setShowModal(true)}
             className="flex items-center gap-3 bg-lobo-dark text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-black/10 hover:scale-105 active:scale-95 transition-all"
           >
-            <Plus className="w-4 h-4 text-lobo-primary" />
+            <Plus className="w-4 h-4 text-lobo-secondary" />
             Novo Evento
           </button>
         </div>

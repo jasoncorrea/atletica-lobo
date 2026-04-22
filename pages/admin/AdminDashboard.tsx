@@ -356,7 +356,7 @@ export const AdminDashboard: React.FC = () => {
                           className={cn(
                             "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group relative",
                             isSubActive 
-                              ? "bg-white text-lobo-secondary shadow-lg" 
+                              ? "bg-white text-lobo-primary shadow-lg" 
                               : "text-white/30 hover:text-white hover:bg-white/5"
                           )}
                         >
@@ -404,11 +404,11 @@ export const AdminDashboard: React.FC = () => {
             </button>
 
             <div className="flex flex-col">
-               <h2 className="text-xl md:text-2xl font-black text-lobo-secondary tracking-tighter uppercase leading-none">
+               <h2 className="text-xl md:text-2xl font-black text-lobo-primary tracking-tighter uppercase leading-none">
                  {activeTabLabel}
                </h2>
                <div className="flex items-center gap-2 mt-1 md:mt-2">
-                  <span className="text-[8px] md:text-[10px] font-black text-lobo-secondary uppercase tracking-widest">Gestão Lobo</span>
+                  <span className="text-[8px] md:text-[10px] font-black text-lobo-primary uppercase tracking-widest">Gestão Lobo</span>
                   <div className="w-1 h-1 rounded-full bg-zinc-200" />
                   <span className="text-[8px] md:text-[10px] font-bold text-zinc-400">V. 3.0</span>
                </div>

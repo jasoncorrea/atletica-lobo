@@ -188,7 +188,7 @@ export const InventoryTab: React.FC = () => {
               </div>
             </div>
             <div className="bg-lobo-dark text-white p-6 rounded-[2rem] shadow-xl flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-lobo-primary flex items-center justify-center text-zinc-900">
+              <div className="w-12 h-12 rounded-2xl bg-lobo-primary flex items-center justify-center text-lobo-secondary">
                  <ShoppingCart className="w-6 h-6" />
               </div>
               <div>
