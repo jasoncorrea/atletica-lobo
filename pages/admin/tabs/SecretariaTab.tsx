@@ -65,12 +65,25 @@ export const SecretariaTab: React.FC = () => {
         scale: 2, 
         useCORS: true,
         backgroundColor: '#ffffff',
-        logging: true,
+        logging: false,
         windowWidth: 1123,
         windowHeight: 794,
         onclone: (clonedDoc) => {
-          // You can modify the clone here if needed
-          console.log('Documento clonado para captura.');
+          // CRITICAL: Remove all style/link tags from the clone to prevent html2canvas 
+          // from failing due to Tailwind 4's modern color functions (oklch)
+          const styles = Array.from(clonedDoc.getElementsByTagName('style'));
+          const links = Array.from(clonedDoc.getElementsByTagName('link'));
+          
+          styles.forEach(s => s.remove());
+          links.forEach(l => l.remove());
+          
+          // Clear inherited variables and oklch colors from root/body
+          clonedDoc.documentElement.removeAttribute('style');
+          clonedDoc.documentElement.className = '';
+          clonedDoc.body.removeAttribute('style');
+          clonedDoc.body.className = '';
+          
+          console.log('Ambiente de captura isolado (estilos globais e variáveis removidos).');
         }
       });
 
@@ -121,8 +134,8 @@ export const SecretariaTab: React.FC = () => {
              display: 'flex',
              flexDirection: 'column',
              alignItems: 'center',
-             justifyContent: 'space-between',
-             padding: '64px',
+             justifyContent: 'center',
+             padding: '80px 64px',
              width: '1123px',
              height: '794px',
              fontFamily: "'Times New Roman', serif",
@@ -155,7 +168,7 @@ export const SecretariaTab: React.FC = () => {
                 justifyContent: 'center',
                 zIndex: 0,
                 overflow: 'hidden',
-                opacity: 0.1
+                opacity: 0.08
               }}
             >
                {config.logoUrl ? (
@@ -163,10 +176,10 @@ export const SecretariaTab: React.FC = () => {
                   src={config.logoUrl} 
                   crossOrigin="anonymous"
                   style={{
-                    width: '600px',
-                    height: '600px',
+                    width: '740px',
+                    height: '740px',
                     objectFit: 'contain',
-                    filter: 'grayscale(100%)'
+                    mixBlendMode: 'multiply'
                   }}
                   referrerPolicy="no-referrer"
                   alt="Lobo"
@@ -186,23 +199,26 @@ export const SecretariaTab: React.FC = () => {
                 alignItems: 'center',
                 textAlign: 'center',
                 flexGrow: 1,
-                justifyContent: 'center'
+                justifyContent: 'center',
+                paddingTop: '20px',
+                paddingBottom: '40px'
               }}
             >
-               <h1 style={{ fontSize: '128px', marginBottom: '48px', letterSpacing: '0.12em', fontFamily: 'serif', textTransform: 'uppercase', fontWeight: 400 }}>CERTIFICADO</h1>
+               <h1 style={{ fontSize: '96px', marginBottom: '12px', marginTop: '0px', letterSpacing: '0.12em', fontFamily: 'serif', textTransform: 'uppercase', fontWeight: 400 }}>CERTIFICADO</h1>
                
-               <div style={{ display: 'flex', flexDirection: 'column', gap: '40px', maxWidth: '90%' }}>
-                  <p style={{ fontSize: '30px', fontFamily: 'serif' }}>
+               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '85%' }}>
+                  <p style={{ fontSize: '24px', fontFamily: 'serif' }}>
                     Certificamos para os devidos fins que o Acadêmico
                   </p>
 
                   <h2 
                     style={{
-                      fontSize: '48px',
-                      fontWeight: 900,
+                      fontSize: '56px',
+                      fontWeight: 'normal',
+                      fontFamily: 'cursive',
                       fontStyle: 'italic',
-                      paddingTop: '16px',
-                      paddingBottom: '16px',
+                      paddingTop: '8px',
+                      paddingBottom: '8px',
                       display: 'inline-block',
                       minWidth: '400px',
                       borderBottom: '2px solid rgba(0,0,0,0.1)'
@@ -211,7 +227,7 @@ export const SecretariaTab: React.FC = () => {
                     {data.recipientName}
                   </h2>
 
-                  <p style={{ fontSize: '24px', lineHeight: '1.7', textAlign: 'justify', fontFamily: 'serif' }}>
+                  <p style={{ fontSize: '20px', lineHeight: '1.6', textAlign: 'justify', fontFamily: 'serif' }}>
                     Inscrito no RG: <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>{data.rg}</span> RA: <span style={{ fontWeight: 'bold', textDecoration: 'underline' }}>{data.ra}</span>, participou como <span style={{ fontWeight: 'bold' }}>{data.role}</span> da Associação Atlética Acadêmica de Engenharias – <span style={{ fontWeight: 'bold' }}>{data.location}</span> nos <span style={{ fontWeight: 'bold' }}>{data.eventName}</span> realizado na cidade de Ponta Grossa-PR nos dias {data.dates}.
                   </p>
                </div>
@@ -225,24 +241,25 @@ export const SecretariaTab: React.FC = () => {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '48px',
-                marginTop: '48px'
+                gap: '8px',
+                marginTop: '0px',
+                paddingBottom: '0px'
               }}
             >
-               <p style={{ fontSize: '24px', fontFamily: 'serif' }}>
+               <p style={{ fontSize: '20px', fontFamily: 'serif' }}>
                 {data.issueCity}, {data.issueDate}.
                </p>
 
                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ position: 'relative', marginBottom: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                     <span style={{ fontSize: '48px', fontFamily: 'cursive', fontStyle: 'italic', color: 'rgba(24, 24, 27, 0.8)', marginBottom: '-24px', position: 'relative', zIndex: 20 }}>
+                  <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '60px', justifyContent: 'flex-end' }}>
+                     <span style={{ fontSize: '40px', fontFamily: 'cursive', fontStyle: 'italic', color: 'rgba(24, 24, 27, 0.8)', position: 'relative', zIndex: 20, transform: 'translateY(12px)' }}>
                         {data.signatureName}
                      </span>
-                     <div style={{ width: '450px', height: '1.5px', backgroundColor: '#0f172a' }} />
+                     <div style={{ width: '450px', height: '1.5px', backgroundColor: '#0f172a', zIndex: 10 }} />
                   </div>
-                  <div style={{ textAlign: 'center' }}>
-                    <p style={{ fontSize: '20px', fontWeight: 900, textTransform: 'uppercase' }}>{data.signatureName}</p>
-                    <p style={{ fontSize: '18px', fontFamily: 'serif', fontStyle: 'italic', color: '#52525b', marginTop: '4px' }}>{data.signatureTitle}</p>
+                  <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                    <p style={{ fontSize: '18px', fontWeight: 900, textTransform: 'uppercase' }}>{data.signatureName}</p>
+                    <p style={{ fontSize: '16px', fontFamily: 'serif', fontStyle: 'italic', color: '#52525b', marginTop: '2px' }}>{data.signatureTitle}</p>
                   </div>
                </div>
             </div>
@@ -448,8 +465,8 @@ export const SecretariaTab: React.FC = () => {
                            display: 'flex',
                            flexDirection: 'column',
                            alignItems: 'center',
-                           justifyContent: 'space-between',
-                           padding: '64px',
+                           justifyContent: 'center',
+                           padding: '80px 64px',
                            width: '1123px',
                            height: '794px',
                            fontFamily: "'Times New Roman', serif",
@@ -494,10 +511,10 @@ export const SecretariaTab: React.FC = () => {
                                <img 
                                 src={config.logoUrl} 
                                 style={{
-                                  width: '600px',
-                                  height: '600px',
+                                  width: '740px',
+                                  height: '740px',
                                   objectFit: 'contain',
-                                  filter: 'grayscale(100%)'
+                                  mixBlendMode: 'multiply'
                                 }}
                                 referrerPolicy="no-referrer"
                                 alt="Lobo"
@@ -534,24 +551,27 @@ export const SecretariaTab: React.FC = () => {
                               alignItems: 'center',
                               textAlign: 'center',
                               flexGrow: 1,
-                              justifyContent: 'center'
+                              justifyContent: 'center',
+                              paddingTop: '20px',
+                              paddingBottom: '40px'
                             }}
                           >
-                             <h1 style={{ fontSize: '128px', marginBottom: '48px', letterSpacing: '0.12em', fontFamily: 'serif', textTransform: 'uppercase', fontWeight: 400 }}>CERTIFICADO</h1>
+                             <h1 style={{ fontSize: '96px', marginBottom: '12px', marginTop: '0px', letterSpacing: '0.12em', fontFamily: 'serif', textTransform: 'uppercase', fontWeight: 400 }}>CERTIFICADO</h1>
                              
-                             <div style={{ display: 'flex', flexDirection: 'column', gap: '40px', maxWidth: '90%' }}>
-                                <p style={{ fontSize: '30px', fontFamily: 'serif' }}>
+                             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '85%' }}>
+                                <p style={{ fontSize: '24px', fontFamily: 'serif' }}>
                                   Certificamos para os devidos fins que o Acadêmico
                                 </p>
 
                                 <h2 
                                   style={{
-                                    fontSize: '48px',
-                                    fontWeight: 900,
+                                    fontSize: '56px',
+                                    fontWeight: 'normal',
+                                    fontFamily: 'cursive',
                                     fontStyle: 'italic',
                                     letterSpacing: '-0.02em',
-                                    paddingTop: '16px',
-                                    paddingBottom: '16px',
+                                    paddingTop: '8px',
+                                    paddingBottom: '8px',
                                     display: 'inline-block',
                                     minWidth: '400px',
                                     borderBottom: '2px solid rgba(0,0,0,0.1)'
@@ -560,7 +580,7 @@ export const SecretariaTab: React.FC = () => {
                                   {data.recipientName}
                                 </h2>
 
-                                <p style={{ fontSize: '24px', lineHeight: '1.7', textAlign: 'justify', fontFamily: 'serif' }}>
+                                <p style={{ fontSize: '20px', lineHeight: '1.6', textAlign: 'justify', fontFamily: 'serif' }}>
                                   Inscrito no RG: <span style={{ fontWeight: 'bold', textDecoration: 'underline', textUnderlineOffset: '4px', textDecorationColor: '#d1d5db' }}>{data.rg}</span> RA: <span style={{ fontWeight: 'bold', textDecoration: 'underline', textUnderlineOffset: '4px', textDecorationColor: '#d1d5db' }}>{data.ra}</span>, participou como <span style={{ fontWeight: 'bold' }}>{data.role}</span> da Associação Atlética Acadêmica de Engenharias – <span style={{ fontWeight: 'bold' }}>{data.location}</span> nos <span style={{ fontWeight: 'bold' }}>{data.eventName}</span> realizado na cidade de Ponta Grossa-PR nos dias {data.dates}.
                                 </p>
                              </div>
@@ -574,35 +594,36 @@ export const SecretariaTab: React.FC = () => {
                               display: 'flex',
                               flexDirection: 'column',
                               alignItems: 'center',
-                              gap: '48px',
-                              marginTop: '48px'
+                              gap: '8px',
+                              marginTop: '0px',
+                              paddingBottom: '0px'
                             }}
                           >
-                             <p style={{ fontSize: '24px', fontFamily: 'serif' }}>
+                             <p style={{ fontSize: '20px', fontFamily: 'serif' }}>
                               {data.issueCity}, {data.issueDate}.
                              </p>
 
                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                 {/* Formal Signature Area */}
-                                <div style={{ position: 'relative', marginBottom: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '60px', justifyContent: 'flex-end' }}>
                                    <span 
                                       style={{
-                                        fontSize: '48px',
+                                        fontSize: '40px',
                                         fontFamily: 'cursive',
                                         fontStyle: 'italic',
                                         color: 'rgba(24, 24, 27, 0.8)',
-                                        marginBottom: '-24px',
                                         position: 'relative',
-                                        zIndex: 20
+                                        zIndex: 20,
+                                        transform: 'translateY(12px)'
                                       }}
                                    >
                                       {data.signatureName}
                                    </span>
-                                   <div style={{ width: '450px', height: '1.5px', backgroundColor: '#0f172a' }} />
+                                   <div style={{ width: '450px', height: '1.5px', backgroundColor: '#0f172a', zIndex: 10 }} />
                                 </div>
-                                <div style={{ textAlign: 'center' }}>
-                                  <p style={{ fontSize: '20px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.05em', lineHeight: 1 }}>{data.signatureName}</p>
-                                  <p style={{ fontSize: '18px', fontFamily: 'serif', fontStyle: 'italic', color: '#52525b', marginTop: '4px' }}>{data.signatureTitle}</p>
+                                <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                                  <p style={{ fontSize: '18px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.05em', lineHeight: 1 }}>{data.signatureName}</p>
+                                  <p style={{ fontSize: '16px', fontFamily: 'serif', fontStyle: 'italic', color: '#52525b', marginTop: '2px' }}>{data.signatureTitle}</p>
                                 </div>
                              </div>
                           </div>
