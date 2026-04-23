@@ -3,7 +3,8 @@ import {
   Competition, Athletic, Modality, Result, Penalty, 
   DEFAULT_SCORE_RULE, AppConfig, LeaderboardEntry,
   Transaction, FinanceCategory, Product, BirthdayMember,
-  ShareMember, SharePost, ShareRecord, Socio, PlannerEvent
+  ShareMember, SharePost, ShareRecord, Socio, PlannerEvent,
+  Declaration
 } from '../types';
 import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES, DB_KEY, APP_CONFIG_KEY } from '../constants';
 import { initializeApp } from 'firebase/app';
@@ -144,6 +145,7 @@ interface DatabaseSchema {
   shareRecords: ShareRecord[];
   socios: Socio[];
   plannerEvents: PlannerEvent[];
+  declaracoes: Declaration[];
 }
 
 const initialDb: DatabaseSchema = {
@@ -161,7 +163,8 @@ const initialDb: DatabaseSchema = {
   sharePosts: [],
   shareRecords: [],
   socios: [],
-  plannerEvents: []
+  plannerEvents: [],
+  declaracoes: []
 };
 
 // State management
@@ -202,7 +205,7 @@ let currentConfig: AppConfig = loadInitialConfig();
 const publicCollections = [
   'competitions', 'athletics', 'modalities', 'results', 
   'penalties', 'products', 'birthdays', 'scoreRules',
-  'shareMembers', 'sharePosts', 'shareRecords', 'socios', 'plannerEvents'
+  'shareMembers', 'sharePosts', 'shareRecords', 'socios', 'plannerEvents', 'declaracoes'
 ];
 
 const restrictedCollections = [
@@ -217,20 +220,22 @@ export const startListener = (colName: string) => {
     return;
   }
   
-  const unsub = onSnapshot(collection(db, colName), (snapshot) => {
-    const data = snapshot.docs.map(d => d.data());
-    if (colName === 'scoreRules') {
-      const map: any = {};
-      data.forEach((item: any) => {
-        if (item.id) map[item.id] = item.rule;
-      });
-      currentDb.scoreRules = map;
-    } else {
-      (currentDb as any)[colName] = data;
-    }
-    localStorage.setItem(DB_KEY, safeStringify(currentDb));
-    window.dispatchEvent(new Event('storage'));
-  }, (err) => {
+    const unsub = onSnapshot(collection(db, colName), (snapshot) => {
+      const cloudData = snapshot.docs.map(d => ({ ...(d.data() as any), id: d.id }));
+      
+      if (colName === 'scoreRules') {
+        const map: any = {};
+        cloudData.forEach((item: any) => {
+          if (item.id) map[item.id] = item.rule;
+        });
+        currentDb.scoreRules = map;
+      } else {
+        (currentDb as any)[colName] = cloudData;
+      }
+      
+      localStorage.setItem(DB_KEY, safeStringify(currentDb));
+      window.dispatchEvent(new Event('storage'));
+    }, (err) => {
     if (!err.message?.includes('insufficient permissions') && !err.message?.includes('Quota limit exceeded')) {
       console.error(`Error syncing ${colName}:`, err);
     }
@@ -316,15 +321,13 @@ export const addItem = async <K extends keyof DatabaseSchema>(collectionName: K,
   }
   
   // Always update local state even if quota exceeded
-  if (Array.isArray((currentDb as any)[collectionName])) {
-    const list = (currentDb as any)[collectionName];
+  const list = (currentDb as any)[collectionName];
+  if (Array.isArray(list)) {
     const itemExists = list.some((i: any) => i.id === id);
     if (!itemExists) {
-      list.push(data);
+      (currentDb as any)[collectionName] = [...list, data];
     } else {
-      // If it exists, update it instead of pushing
-      const idx = list.findIndex((i: any) => i.id === id);
-      list[idx] = data;
+      (currentDb as any)[collectionName] = list.map((i: any) => i.id === id ? data : i);
     }
   }
   localStorage.setItem(DB_KEY, safeStringify(currentDb));
@@ -344,10 +347,9 @@ export const updateItem = async <K extends keyof DatabaseSchema>(collectionName:
   // Update local state and trigger storage event
   const list = (currentDb as any)[collectionName];
   if (Array.isArray(list)) {
-    const idx = list.findIndex((i: any) => i.id === id);
-    if (idx !== -1) {
-      list[idx] = { ...list[idx], ...updates };
-    }
+    (currentDb as any)[collectionName] = list.map((i: any) => 
+      i.id === id ? { ...i, ...updates } : i
+    );
   }
   localStorage.setItem(DB_KEY, safeStringify(currentDb));
   window.dispatchEvent(new Event('storage'));

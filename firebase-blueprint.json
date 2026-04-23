@@ -177,6 +177,34 @@
         "shared": { "type": "boolean" }
       },
       "required": ["id", "memberId", "postId", "shared"]
+    },
+    "plannerEvent": {
+      "title": "PlannerEvent",
+      "description": "Event in the athletics calendar",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "type": { "type": "string", "enum": ["meeting", "training", "event", "other"] },
+        "description": { "type": "string" },
+        "location": { "type": "string" }
+      },
+      "required": ["id", "title", "date", "type"]
+    },
+    "declaration": {
+      "title": "Declaration",
+      "description": "Information extracted from student declarations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "fullName": { "type": "string" },
+        "course": { "type": "string" },
+        "document": { "type": "string" },
+        "issueDate": { "type": "string" },
+        "extractedAt": { "type": "integer" }
+      },
+      "required": ["id", "fullName", "course", "document", "issueDate", "extractedAt"]
     }
   },
   "firestore": {
@@ -231,6 +259,14 @@
     "/shareRecords/{recordId}": {
       "schema": "shareRecord",
       "description": "Marketing share logs"
+    },
+    "/plannerEvents/{eventId}": {
+      "schema": "plannerEvent",
+      "description": "Calendar events"
+    },
+    "/declaracoes/{declarationId}": {
+      "schema": "declaration",
+      "description": "Student declarations"
     },
     "/scoreRules/{ruleId}": {
       "schema": "scoreRule",

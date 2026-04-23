@@ -1,11 +1,21 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Download, FileText, CheckCircle2, User, Hash, Calendar, MapPin, BadgeCheck, Eye, Trash2, Sliders } from 'lucide-react';
+import { Download, FileText, CheckCircle2, User, Hash, Calendar, MapPin, BadgeCheck, Eye, Trash2, Sliders, Upload, Search, ShieldCheck, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+// @ts-ignore
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+// @ts-ignore
+import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { cn } from '../../../lib/utils';
-import { getConfig } from '../../../services/storageService';
+import { collection, getDocs } from 'firebase/firestore';
+import { getConfig, getDb, addItem, deleteItem, startListener, stopListener, db } from '../../../services/storageService';
+import { extractDeclarationInfo } from '../../../services/declaracaoService';
+import { Declaration } from '../../../types';
+
+// Set up pdfjs worker using the local build handled by Vite
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 interface CertificateData {
   recipientName: string;
@@ -35,16 +45,89 @@ const DEFAULT_DATA: CertificateData = {
   signatureTitle: 'Presidente da A.A.A.E UTFPR-GP'
 };
 
+const DeclarationsHeader: React.FC<{
+  isUploading: boolean;
+  onUploadClick: () => void;
+}> = ({ isUploading, onUploadClick }) => (
+  <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+    <div>
+      <h2 className="text-4xl font-black text-zinc-900 tracking-tighter uppercase leading-none flex items-center gap-4">
+        <div className="w-12 h-12 bg-[#5a0509] rounded-2xl flex items-center justify-center text-white shadow-xl shadow-[#5a0509]/20">
+          <FileText className="w-7 h-7" />
+        </div>
+        Declarações de Atletas
+      </h2>
+      <p className="text-sm font-bold text-zinc-400 uppercase tracking-widest mt-4">Gestão e Extração Inteligente de Dados</p>
+    </div>
+
+    <div className="flex items-center gap-4">
+      <button 
+        id="upload-declaration-btn"
+        type="button"
+        onClick={onUploadClick}
+        disabled={isUploading}
+        className={cn(
+          "relative px-10 py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] shadow-2xl flex items-center gap-4 transition-all duration-300 active:scale-95 group z-[100]",
+          isUploading 
+            ? "bg-zinc-200 text-zinc-400 cursor-not-allowed" 
+            : "bg-[#5a0509] text-white hover:bg-[#3d0306] hover:-translate-y-1 shadow-[#5a0509]/30"
+        )}
+      >
+        <div className={cn(
+          "w-8 h-8 rounded-xl flex items-center justify-center transition-colors shadow-sm",
+          isUploading ? "bg-zinc-300" : "bg-white/10 group-hover:bg-white/20"
+        )}>
+          <Upload className="w-4 h-4 group-hover:scale-110 transition-transform" />
+        </div>
+        <span className="font-black text-xs">
+          {isUploading ? 'PROCESSANDO...' : 'ADICIONAR DECLARAÇÃO'}
+        </span>
+      </button>
+    </div>
+  </div>
+);
+
 export const SecretariaTab: React.FC = () => {
+  const [activeSubTab, setActiveSubTab] = useState<'certificados' | 'declaracoes'>('certificados');
   const [data, setData] = useState<CertificateData>(DEFAULT_DATA);
   const [isGenerating, setIsGenerating] = useState(false);
   const [config, setConfig] = useState(getConfig());
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const [declaracoes, setDeclaracoes] = useState<Declaration[]>(getDb().declaracoes || []);
+  const [searchQuery, setSearchQuery] = useState('');
+  
   const certificateRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const handleStorage = () => setConfig(getConfig());
+    console.log('Mounting SecretariaTab, initialized with', declaracoes.length, 'declarations');
+    const handleStorage = () => {
+      const freshDb = getDb();
+      console.log('Storage event received, new count:', freshDb.declaracoes?.length);
+      setDeclaracoes([...(freshDb.declaracoes || [])]);
+    };
     window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
+    startListener('declaracoes');
+    
+    // Initial fetch from server just in case listener is slow
+    const fetchInitial = async () => {
+      try {
+        const snap = await getDocs(collection(db, 'declaracoes'));
+        const data = snap.docs.map(d => ({ ...d.data(), id: d.id })) as Declaration[];
+        if (data.length > 0) {
+          setDeclaracoes(data);
+        }
+      } catch (e) {
+        console.warn('Initial fetch error:', e);
+      }
+    };
+    fetchInitial();
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      stopListener('declaracoes');
+    };
   }, []);
 
   const handleDownload = async () => {
@@ -122,8 +205,148 @@ export const SecretariaTab: React.FC = () => {
     setData(prev => ({ ...prev, [field]: value }));
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('File selection event triggered');
+    const file = event.target.files?.[0];
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
+    console.log('File selected:', file.name, file.type, file.size);
+    
+    if (file.type !== 'application/pdf') {
+      alert('Por favor, selecione um arquivo PDF válido.');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadStatus('Lendo arquivo...');
+    try {
+      console.log('Reading file as arrayBuffer...');
+      const arrayBuffer = await file.arrayBuffer();
+      
+      setUploadStatus('Iniciando motor de PDF...');
+      console.log('Initialing PDF.js GetDocument...');
+      const loadingTask = pdfjsLib.getDocument({ 
+        data: arrayBuffer,
+        // Increase tolerance for malformed PDFs
+        stopAtErrors: false 
+      });
+      
+      // Implement timeout for PDF loading
+      const pdf = await Promise.race([
+        loadingTask.promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo esgotado ao carregar o PDF.')), 10000))
+      ]) as any;
+
+      console.log('PDF loaded, pages:', pdf.numPages);
+      
+      let fullText = '';
+      const maxPages = Math.min(pdf.numPages, 3); // Declarations are usually short
+      
+      for (let i = 1; i <= maxPages; i++) {
+        setUploadStatus(`Extraindo texto da página ${i} de ${maxPages}...`);
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map((item: any) => {
+          if ('str' in item) return item.str;
+          return '';
+        }).join(' ');
+        fullText += pageText + '\n';
+      }
+
+      if (!fullText.trim()) {
+        throw new Error('Nenhum texto pôde ser extraído do PDF. O arquivo pode ser uma imagem escaneada sem OCR.');
+      }
+
+      setUploadStatus('IA analisando documento...');
+      console.log('PDF Text extracted (length):', fullText.length, 'sending to Gemini...');
+      
+      // Call frontend SDK directly (per gemini-api skill)
+      const extracted = await extractDeclarationInfo(fullText);
+      
+      setUploadStatus('Salvando dados...');
+      const newDeclaration: Omit<Declaration, 'id'> = {
+        fullName: extracted.nome_completo || 'Não identificado',
+        course: extracted.curso || 'Não identificado',
+        document: extracted.documento || 'Não identificado',
+        issueDate: extracted.data_emissao || 'Não identificado',
+        extractedAt: Date.now()
+      };
+
+      const savedItem = await addItem('declaracoes', newDeclaration);
+      
+      // Force local state update immediately to avoid reliance on slow Firestore snapshots
+      setDeclaracoes(prev => {
+        const exists = prev.some(d => d.id === savedItem.id);
+        if (exists) return prev.map(d => d.id === savedItem.id ? savedItem : d);
+        return [savedItem, ...prev].sort((a, b) => b.extractedAt - a.extractedAt);
+      });
+
+      alert('Declaração processada e salva com sucesso!');
+    } catch (error: any) {
+      console.error('Error processing PDF:', error);
+      alert(`Ocorreu um problema: ${error.message || 'Erro desconhecido ao processar o PDF.'}`);
+    } finally {
+      setIsUploading(false);
+      if (event.target) event.target.value = '';
+    }
+  };
+
+  const filteredDeclaracoes = declaracoes.filter(d => 
+    d.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    d.course.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    d.document.toLowerCase().includes(searchQuery.toLowerCase())
+  ).sort((a, b) => b.extractedAt - a.extractedAt);
+
   return (
     <div className="space-y-12 animate-fade-in pb-20">
+      {/* Hidden File Input for Declarations (Root level for ref reliability) */}
+      <input 
+        id="pdf-upload-input"
+        type="file" 
+        ref={fileInputRef}
+        accept="application/pdf" 
+        className="hidden" 
+        onChange={handleFileUpload} 
+        onClick={(e) => { (e.target as any).value = null; }}
+      />
+
+      {/* Sub-tab Switcher */}
+      <div className="flex bg-zinc-100 p-1.5 rounded-2xl w-fit">
+        <button
+          onClick={() => setActiveSubTab('certificados')}
+          className={cn(
+            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+            activeSubTab === 'certificados' 
+              ? "bg-white text-[#5a0509] shadow-sm" 
+              : "text-zinc-400 hover:text-zinc-600"
+          )}
+        >
+          Certificados
+        </button>
+        <button
+          onClick={() => setActiveSubTab('declaracoes')}
+          className={cn(
+            "px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all",
+            activeSubTab === 'declaracoes' 
+              ? "bg-white text-[#5a0509] shadow-sm" 
+              : "text-zinc-400 hover:text-zinc-600"
+          )}
+        >
+          Declarações
+        </button>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {activeSubTab === 'certificados' ? (
+          <motion.div
+            key="certificados"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-12"
+          >
       {/* Hidden Certificate for Capture (No Transforms) */}
       <div style={{ position: 'absolute', left: '-9999px', top: '0', pointerEvents: 'none' }}>
          <div 
@@ -646,6 +869,174 @@ export const SecretariaTab: React.FC = () => {
            </div>
         </div>
       </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="declaracoes"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-12"
+          >
+            <DeclarationsHeader 
+              isUploading={isUploading} 
+              onUploadClick={() => fileInputRef.current?.click()} 
+            />
+
+            {/* Content Section: List */}
+            <div className="space-y-8">
+              {/* Search Bar */}
+              <div className="relative group max-w-md">
+                <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400 group-focus-within:text-[#5a0509] transition-colors" />
+                <input 
+                  type="text"
+                  placeholder="Pesquisar por nome, curso ou documento..."
+                  className="w-full bg-white border border-zinc-100 rounded-3xl pl-14 pr-8 py-5 text-sm font-bold shadow-sm focus:ring-4 focus:ring-[#5a0509]/10 outline-none transition-all placeholder:text-zinc-300"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+
+              {/* Declarations List/Table */}
+              <div className="bg-white border border-zinc-100 rounded-[2.5rem] shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b border-zinc-50">
+                        <th className="px-8 py-6 text-left">
+                          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Atleta / Beneficiário</span>
+                        </th>
+                        <th className="px-8 py-6 text-left">
+                          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Curso Acadêmico</span>
+                        </th>
+                        <th className="px-8 py-6 text-left">
+                          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Documento / ID</span>
+                        </th>
+                        <th className="px-8 py-6 text-left">
+                          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Emissão</span>
+                        </th>
+                        <th className="px-8 py-6 text-right">
+                          <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Ações</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-50">
+                      {filteredDeclaracoes.length > 0 ? (
+                        filteredDeclaracoes.map((decl) => (
+                          <motion.tr 
+                            layout
+                            key={decl.id}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="group hover:bg-zinc-50/50 transition-colors"
+                          >
+                            <td className="px-8 py-6">
+                              <div className="flex items-center gap-4">
+                                <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-black text-xs">
+                                  {decl.fullName.charAt(0)}
+                                </div>
+                                <div>
+                                  <p className="text-sm font-black text-zinc-900">{decl.fullName}</p>
+                                  <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-tighter">Verificado em {new Date(decl.extractedAt).toLocaleDateString()}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-8 py-6">
+                              <span className="px-3 py-1.5 bg-zinc-100 rounded-lg text-[10px] font-black text-zinc-600 uppercase tracking-wider">
+                                {decl.course}
+                              </span>
+                            </td>
+                            <td className="px-8 py-6">
+                              <p className="text-sm font-mono font-bold text-zinc-500">{decl.document}</p>
+                            </td>
+                            <td className="px-8 py-6">
+                              <div className="flex items-center gap-2 text-zinc-500 font-bold text-xs">
+                                <Calendar className="w-3.5 h-3.5" />
+                                {decl.issueDate}
+                              </div>
+                            </td>
+                            <td className="px-8 py-6 text-right">
+                              <button 
+                                onClick={() => deleteItem('declaracoes', decl.id)}
+                                className="p-2.5 rounded-xl text-zinc-300 hover:text-red-500 hover:bg-red-50 transition-all active:scale-90"
+                              >
+                                <Trash2 className="w-5 h-5" />
+                              </button>
+                            </td>
+                          </motion.tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={5} className="px-8 py-20 text-center">
+                            <div className="flex flex-col items-center gap-3">
+                              <div className="w-16 h-16 rounded-3xl bg-zinc-50 flex items-center justify-center text-zinc-200">
+                                <ShieldCheck className="w-8 h-8" />
+                              </div>
+                              <h4 className="text-sm font-black text-zinc-400 uppercase tracking-widest">Nenhuma declaração encontrada</h4>
+                              <p className="text-xs text-zinc-400 font-bold max-w-xs leading-relaxed opacity-60">
+                                Faça o upload de um arquivo PDF para extrair as informações automaticamente.
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Info Banner */}
+              <div className="bg-zinc-50 border border-zinc-100 p-8 rounded-[2.5rem] flex items-start gap-6">
+                <div className="w-14 h-14 rounded-2xl bg-[#5a0509] flex items-center justify-center text-white shrink-0 shadow-xl shadow-[#5a0509]/20">
+                  <ShieldCheck className="w-7 h-7" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black text-[#5a0509] uppercase tracking-[0.2em] mb-2">Processamento com Inteligência Artificial</h4>
+                  <p className="text-sm text-zinc-600 font-medium leading-relaxed max-w-2xl">
+                    Utilizamos modelos avançados de IA para ler seus documentos. Embora altamente precisos, recomendamos validar as informações extraídas. O sistema identifica automaticamente o layout de diferentes instituições acadêmicas.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Full screen loading for extraction */}
+      <AnimatePresence>
+        {isUploading && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-zinc-950/80 backdrop-blur-md z-[999] flex flex-col items-center justify-center p-6 text-center"
+          >
+            <div className="w-24 h-24 rounded-[2rem] bg-lobo-primary flex items-center justify-center mb-8 shadow-2xl shadow-lobo-primary/50 relative">
+              <div className="absolute inset-0 rounded-[2rem] border-4 border-lobo-secondary/20 border-t-lobo-secondary animate-spin" />
+              <FileText className="w-10 h-10 text-lobo-secondary" />
+            </div>
+            
+            <h3 className="text-3xl font-black text-white uppercase tracking-tighter mb-4 leading-none">
+              Lendo sua Declaração
+            </h3>
+            <p className="text-lobo-secondary font-black text-xs uppercase tracking-[0.3em] mb-8 animate-pulse">
+              {uploadStatus || 'Iniciando processamento...'}
+            </p>
+            
+            <div className="max-w-md w-full bg-white/5 border border-white/10 rounded-3xl p-6">
+              <div className="flex items-center gap-4 text-left">
+                <div className="w-10 h-10 rounded-xl bg-green-500/20 text-green-400 flex items-center justify-center shrink-0">
+                  <BadgeCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-white uppercase tracking-widest leading-tight">Análise em tempo real</p>
+                  <p className="text-[10px] text-zinc-400 font-bold uppercase mt-1">Isso pode levar de 5 a 10 segundos dependendo do documento.</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

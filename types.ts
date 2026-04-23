@@ -147,3 +147,13 @@ export interface ShareRecord {
   postId: string;
   shared: boolean;
 }
+
+export interface Declaration {
+  id: string;
+  fullName: string;
+  course: string;
+  document: string;
+  issueDate: string;
+  pdfUrl?: string;
+  extractedAt: number;
+}
