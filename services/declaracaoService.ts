@@ -1,12 +1,15 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 export async function extractDeclarationInfo(text?: string, images?: string[]) {
-  // Em ambientes AI Studio Build, usamos process.env.GEMINI_API_KEY no Frontend
-  const apiKey = process.env.GEMINI_API_KEY;
+  // Priorizamos a chave do ambiente (Backend ou Injetada pelo Vite no Frontend)
+  let apiKey = process.env.GEMINI_API_KEY;
   
   if (!apiKey) {
-    throw new Error('Chave da IA não encontrada no ambiente do navegador.');
+    throw new Error('Chave da IA não encontrada. Verifique se a GEMINI_API_KEY está configurada.');
   }
+
+  // Limpeza de segurança
+  apiKey = apiKey.trim().replace(/^["']|["']$/g, '');
 
   const ai = new GoogleGenAI({ apiKey });
 

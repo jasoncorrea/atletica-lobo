@@ -30,12 +30,32 @@ export interface FirestoreErrorInfo {
 }
 
 // Initializing Firebase
-const app = initializeApp(firebaseConfig);
+const getFinalConfig = () => {
+  // Prefer environment variables (Vercel)
+  // Suporte tanto para nomes em Inglês quanto para os nomes traduzidos que apareceram no seu painel
+  const env = import.meta.env;
+  if (env.VITE_FIREBASE_API_KEY) {
+    return {
+      apiKey: env.VITE_FIREBASE_API_KEY,
+      authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
+      projectId: env.VITE_FIREBASE_PROJECT_ID || env.ID_DO_PROJETO_VITE_FIREBASE,
+      storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || env.BALDE_DE_ARMAZENAMENTO_VITE_FIREBASE_DE_,
+      messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+      appId: env.VITE_FIREBASE_APP_ID || env.ID_DO_APLICATIVO_VITE_FIREBASE,
+      firestoreDatabaseId: env.VITE_FIREBASE_DATABASE_ID || env.ID_DO_BANCO_DE_DADOS_VITE_FIREBASE || '(default)'
+    };
+  }
+  // Fallback to local config (AI Studio Build)
+  return firebaseConfig;
+};
+
+const finalConfig = getFinalConfig();
+const app = initializeApp(finalConfig);
 export const auth = getAuth(app);
 
 // State management
-let currentDbId = firebaseConfig.firestoreDatabaseId;
-const backupDatabaseIds: string[] = []; // You can add more IDs here manually if created
+let currentDbId = (finalConfig as any).firestoreDatabaseId || '(default)';
+const backupDatabaseIds: string[] = []; 
 let quotaExceeded = false;
 let isFirebaseReady = false;
 

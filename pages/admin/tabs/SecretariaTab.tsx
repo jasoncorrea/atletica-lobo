@@ -280,10 +280,32 @@ export const SecretariaTab: React.FC = () => {
       }
 
       setUploadStatus('IA analisando documento...');
-      console.log('PDF Content ready:', fullText ? 'Text extracted' : 'Using images', 'sending to Gemini...');
       
-      // Chamada direta pelo Frontend (conforme normas do AI Studio Build)
-      const extracted = await extractDeclarationInfo(fullText, images);
+      let extracted;
+      // Estratégia Híbrida:
+      // 1. Tenta usar a chave do sistema no Frontend (Funciona no AI Studio Build)
+      if (process.env.GEMINI_API_KEY) {
+        console.log('AI Studio Build detectado: Usando chave direta do sistema no Frontend.');
+        const { extractDeclarationInfo } = await import('../../../services/declaracaoService');
+        extracted = await extractDeclarationInfo(fullText, images);
+      } else {
+        // 2. Fallback para Ponte de API (Para o site real no Vercel)
+        console.log('Ambiente de Hospedagem detectado: Usando ponte de API segura.');
+        const response = await fetch('/api/extract-declaration', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            text: fullText,
+            images: images 
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Erro na comunicação com o servidor de IA.');
+        }
+        extracted = await response.json();
+      }
       
       setUploadStatus('Salvando dados...');
       const newDeclaration: Omit<Declaration, 'id'> = {
