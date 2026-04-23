@@ -260,10 +260,21 @@ export const SecretariaTab: React.FC = () => {
       }
 
       setUploadStatus('IA analisando documento...');
-      console.log('PDF Text extracted (length):', fullText.length, 'sending to Gemini...');
+      console.log('PDF Text extracted (length):', fullText.length, 'sending to API...');
       
-      // Call frontend SDK directly (per gemini-api skill)
-      const extracted = await extractDeclarationInfo(fullText);
+      // Chamada via Servidor (funciona no Vercel e outros hosts)
+      const response = await fetch('/api/extract-declaration', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: fullText })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro na comunicação com o servidor de IA.');
+      }
+
+      const extracted = await response.json();
       
       setUploadStatus('Salvando dados...');
       const newDeclaration: Omit<Declaration, 'id'> = {

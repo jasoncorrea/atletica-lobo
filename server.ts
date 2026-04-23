@@ -19,6 +19,23 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
+  app.post("/api/extract-declaration", async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (!text) {
+        return res.status(400).json({ error: "Texto não fornecido" });
+      }
+
+      // Dynamic import to handle the service inside the server context
+      const { extractDeclarationInfo } = await import("./services/declaracaoService.js");
+      const result = await extractDeclarationInfo(text);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Extraction error:", error);
+      res.status(500).json({ error: error.message || "Erro na extração" });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
