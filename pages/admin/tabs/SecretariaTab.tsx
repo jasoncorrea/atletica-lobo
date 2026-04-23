@@ -242,39 +242,48 @@ export const SecretariaTab: React.FC = () => {
       console.log('PDF loaded, pages:', pdf.numPages);
       
       let fullText = '';
-      const maxPages = Math.min(pdf.numPages, 3); // Declarations are usually short
+      let images: string[] = [];
+      const maxPages = Math.min(pdf.numPages, 2); // Limit to 2 pages for performance
       
       for (let i = 1; i <= maxPages; i++) {
-        setUploadStatus(`Extraindo texto da página ${i} de ${maxPages}...`);
+        setUploadStatus(`Extraindo conteúdo da página ${i}...`);
         const page = await pdf.getPage(i);
+        
+        // Try text extraction first
         const textContent = await page.getTextContent();
         const pageText = textContent.items.map((item: any) => {
           if ('str' in item) return item.str;
           return '';
         }).join(' ');
-        fullText += pageText + '\n';
+        
+        if (pageText.trim().length > 10) {
+          fullText += pageText + '\n';
+        } else {
+          // If no text, extract as image
+          setUploadStatus(`Processando página ${i} como imagem...`);
+          const viewport = page.getViewport({ scale: 2.0 });
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          
+          if (context) {
+            await page.render({ canvasContext: context, viewport }).promise;
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            images.push(imageData.split(',')[1]); // Only base64 part
+          }
+        }
       }
 
-      if (!fullText.trim()) {
-        throw new Error('Nenhum texto pôde ser extraído do PDF. O arquivo pode ser uma imagem escaneada sem OCR.');
+      if (!fullText.trim() && images.length === 0) {
+        throw new Error('Nenhum conteúdo pôde ser lido do PDF. O arquivo pode estar corrompido.');
       }
 
       setUploadStatus('IA analisando documento...');
-      console.log('PDF Text extracted (length):', fullText.length, 'sending to API...');
+      console.log('PDF Content ready:', fullText ? 'Text extracted' : 'Using images', 'sending to Gemini...');
       
-      // Chamada via Servidor (funciona no Vercel e outros hosts)
-      const response = await fetch('/api/extract-declaration', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: fullText })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erro na comunicação com o servidor de IA.');
-      }
-
-      const extracted = await response.json();
+      // Chamada direta pelo Frontend (conforme normas do AI Studio Build)
+      const extracted = await extractDeclarationInfo(fullText, images);
       
       setUploadStatus('Salvando dados...');
       const newDeclaration: Omit<Declaration, 'id'> = {

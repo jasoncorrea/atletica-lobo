@@ -1,36 +1,40 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-export async function extractDeclarationInfo(text: string) {
+export async function extractDeclarationInfo(text?: string, images?: string[]) {
+  // Em ambientes AI Studio Build, usamos process.env.GEMINI_API_KEY no Frontend
   const apiKey = process.env.GEMINI_API_KEY;
   
   if (!apiKey) {
-    throw new Error('Chave da IA não encontrada. Certifique-se de que "GEMINI_API_KEY" está configurada no painel de Secrets.');
-  }
-
-  // Debug (safe)
-  console.log('Gemini API Key detected. Length:', apiKey?.length);
-  if (apiKey.includes(' ') || apiKey.length < 20) {
-    console.warn('Gemini API Key looks suspicious (too short or contains spaces).');
+    throw new Error('Chave da IA não encontrada no ambiente do navegador.');
   }
 
   const ai = new GoogleGenAI({ apiKey });
 
-  if (!text || text.trim().length < 10) {
-    throw new Error('Texto insuficiente extraído do PDF.');
+  const parts: any[] = [
+    { text: `Analise as imagens ou texto da declaração acadêmica e extraia as seguintes informações: 
+        nome_completo, curso, documento, data_emissao. 
+        Se não encontrar algum dado, use "Não identificado".` }
+  ];
+
+  if (text) {
+    parts.push({ text: `Texto extraído:\n---\n${text}\n---` });
+  }
+
+  if (images && images.length > 0) {
+    images.forEach(imgBase64 => {
+      parts.push({
+        inlineData: {
+          mimeType: "image/jpeg",
+          data: imgBase64
+        }
+      });
+    });
   }
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `
-        Analise o texto da declaração acadêmica e extraia as seguintes informações: 
-        nome_completo, curso, documento, data_emissao. 
-        Se não encontrar algum dado, use "Não identificado".
-        Texto:
-        ---
-        ${text}
-        ---
-      `,
+      contents: [{ parts }],
       config: {
         responseMimeType: "application/json",
         responseSchema: {
