@@ -33,7 +33,7 @@ export interface FirestoreErrorInfo {
 const getFinalConfig = () => {
   // Prefer environment variables (Vercel)
   // Suporte tanto para nomes em Inglês quanto para os nomes traduzidos que apareceram no seu painel
-  const env = import.meta.env;
+  const env = (import.meta as any).env || {};
   if (env.VITE_FIREBASE_API_KEY) {
     return {
       apiKey: env.VITE_FIREBASE_API_KEY,

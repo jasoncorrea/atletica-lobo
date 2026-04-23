@@ -284,7 +284,10 @@ export const SecretariaTab: React.FC = () => {
       let extracted;
       // Estratégia Híbrida:
       // 1. Tenta usar a chave do sistema no Frontend (Funciona no AI Studio Build)
-      if (process.env.GEMINI_API_KEY) {
+      // Usamos typeof process para evitar erro de "process is not defined" no Vercel.
+      const hasLocalKey = typeof process !== 'undefined' && process.env && process.env.GEMINI_API_KEY;
+      
+      if (hasLocalKey) {
         console.log('AI Studio Build detectado: Usando chave direta do sistema no Frontend.');
         const { extractDeclarationInfo } = await import('../../../services/declaracaoService');
         extracted = await extractDeclarationInfo(fullText, images);
