@@ -74,7 +74,7 @@ export const AdminDashboard: React.FC = () => {
     
     switch (activeTab) {
       case 'dashboard':
-        collections.push('athletics', 'results', 'modalities');
+        collections.push('athletics', 'results', 'modalities', 'socios', 'products', 'plannerEvents');
         break;
       case 'athletics':
         collections.push('athletics');
