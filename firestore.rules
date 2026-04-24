@@ -95,14 +95,12 @@ service cloud.firestore {
 
     match /plannerEvents/{id} {
       allow read: if true;
-      allow create, update: if isSignedIn() && isValidPlannerEvent(incoming());
-      allow delete: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /declaracoes/{id} {
       allow read: if true;
-      allow create, update: if isSignedIn() && isValidDeclaration(incoming());
-      allow delete: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /shareMembers/{id} {
@@ -126,24 +124,6 @@ service cloud.firestore {
     // Validation Helpers
     function incoming() {
       return request.resource.data;
-    }
-
-    function isValidPlannerEvent(data) {
-      return data.keys().hasAll(['id', 'title', 'date', 'type']) &&
-             data.id is string && isValidId(data.id) &&
-             data.title is string && data.title.size() <= 200 &&
-             data.date is string &&
-             data.type in ['meeting', 'training', 'event', 'other'];
-    }
-
-    function isValidDeclaration(data) {
-      return data.keys().hasAll(['id', 'fullName', 'course', 'document', 'issueDate', 'extractedAt']) &&
-             data.id is string && isValidId(data.id) &&
-             data.fullName is string && data.fullName.size() <= 1000 &&
-             data.course is string && data.course.size() <= 1000 &&
-             data.document is string && data.document.size() <= 1000 &&
-             data.issueDate is string &&
-             data.extractedAt is number;
     }
   }
 }
