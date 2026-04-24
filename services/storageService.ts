@@ -554,6 +554,46 @@ export const saveConfig = async (config: AppConfig) => {
 
 export const isOnline = () => true; // Always online with managed Firebase
 
+export const forceSyncToCloud = async () => {
+  if (localStorage.getItem('lobo_auth') === 'true' && !auth.currentUser) {
+    try {
+      await signInAnonymously(auth);
+    } catch (e) {
+      console.warn("Auto-signin failed:", e);
+    }
+  }
+  
+  if (!auth.currentUser) {
+    alert("Erro de autenticação com a nuvem.");
+    return;
+  }
+
+  let totalItems = 0;
+  for (const colName of Object.keys(currentDb)) {
+    const list = (currentDb as any)[colName];
+    if (Array.isArray(list) && list.length > 0) {
+      try {
+        const batch = writeBatch(db);
+        let count = 0;
+        list.forEach((item: any) => {
+          if (item && item.id) {
+            batch.set(doc(db, colName, item.id.toString()), item);
+            count++;
+            totalItems++;
+          }
+        });
+        if (count > 0) {
+          await batch.commit();
+          console.log(`Synced ${count} items to ${colName}`);
+        }
+      } catch (e) {
+        console.error(`Failed to sync collection ${colName}`, e);
+      }
+    }
+  }
+  alert(`Sincronização concluída! ${totalItems} itens enviados.`);
+};
+
 export const deleteItem = async (collectionName: keyof DatabaseSchema, id: string) => {
   if (localStorage.getItem('lobo_auth') === 'true' && !auth.currentUser) {
     await signInAnonymously(auth).catch(e => console.warn("Auto-signin failed:", e));
