@@ -31,22 +31,17 @@ export interface FirestoreErrorInfo {
 
 // Initializing Firebase
 const getFinalConfig = () => {
-  // Prefer environment variables (Vercel)
-  // Suporte tanto para nomes em Inglês quanto para os nomes traduzidos que apareceram no seu painel
   const env = (import.meta as any).env || {};
-  if (env.VITE_FIREBASE_API_KEY) {
-    return {
-      apiKey: env.VITE_FIREBASE_API_KEY,
-      authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfig.authDomain,
-      projectId: env.VITE_FIREBASE_PROJECT_ID || env.ID_DO_PROJETO_VITE_FIREBASE || firebaseConfig.projectId,
-      storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || env.BALDE_DE_ARMAZENAMENTO_VITE_FIREBASE_DE_ || firebaseConfig.storageBucket,
-      messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfig.messagingSenderId,
-      appId: env.VITE_FIREBASE_APP_ID || env.ID_DO_APLICATIVO_VITE_FIREBASE || firebaseConfig.appId,
-      firestoreDatabaseId: env.VITE_FIREBASE_DATABASE_ID || env.ID_DO_BANCO_DE_DADOS_VITE_FIREBASE || firebaseConfig.firestoreDatabaseId || '(default)'
-    };
-  }
-  // Fallback to local config (AI Studio Build)
-  return firebaseConfig;
+  return {
+    apiKey: env.VITE_FIREBASE_API_KEY || firebaseConfig.apiKey,
+    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfig.authDomain,
+    projectId: env.VITE_FIREBASE_PROJECT_ID || env.ID_DO_PROJETO_VITE_FIREBASE || firebaseConfig.projectId,
+    storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || env.BALDE_DE_ARMAZENAMENTO_VITE_FIREBASE_DE_ || firebaseConfig.storageBucket,
+    messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfig.messagingSenderId,
+    appId: env.VITE_FIREBASE_APP_ID || env.ID_DO_APLICATIVO_VITE_FIREBASE || firebaseConfig.appId,
+    // Always use firebaseConfig's DB ID if available to override stale env vars
+    firestoreDatabaseId: firebaseConfig.firestoreDatabaseId || env.VITE_FIREBASE_DATABASE_ID || env.ID_DO_BANCO_DE_DADOS_VITE_FIREBASE || '(default)'
+  };
 };
 
 const finalConfig = getFinalConfig();

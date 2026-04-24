@@ -5,8 +5,11 @@
       "rules": "firestore.rules"
     },
     {
-      "database": "meu-novo-banco",
+      "database": "ai-studio-04964b0d-6494-445a-984d-ea654c674f3d",
       "rules": "firestore.rules"
     }
   ]
 }
+
+
+
