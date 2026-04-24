@@ -271,7 +271,10 @@ export const SecretariaTab: React.FC = () => {
           canvas.width = viewport.width;
           
           if (context) {
-            await page.render({ canvasContext: context, viewport }).promise;
+            await Promise.race([
+              page.render({ canvasContext: context, viewport }).promise,
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Tempo limite de renderização de PDF esgotado.')), 8000))
+            ]);
             const imageData = canvas.toDataURL('image/jpeg', 0.8);
             images.push(imageData.split(',')[1]); // Only base64 part
           }
@@ -297,20 +300,34 @@ export const SecretariaTab: React.FC = () => {
       } else {
         // 2. Fallback para Ponte de API (Para o site real no Vercel)
         console.log('Ambiente de Hospedagem detectado: Usando ponte de API segura.');
-        const response = await fetch('/api/extract-declaration', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            text: fullText,
-            images: images 
-          })
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for Vercel
+        
+        try {
+          const response = await fetch('/api/extract-declaration', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              text: fullText,
+              images: images 
+            }),
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Erro na comunicação com o servidor de IA.');
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || `Erro na comunicação com o servidor de IA. (Status: ${response.status})`);
+          }
+          extracted = await response.json();
+        } catch (fetchError: any) {
+          clearTimeout(timeoutId);
+          if (fetchError.name === 'AbortError') {
+            throw new Error('A resposta do servidor demorou muito. Tente novamente.');
+          }
+          throw fetchError;
         }
-        extracted = await response.json();
       }
       
       setUploadStatus('Salvando dados...');
@@ -322,7 +339,10 @@ export const SecretariaTab: React.FC = () => {
         extractedAt: Date.now()
       };
 
-      const savedItem = await addItem('declaracoes', newDeclaration);
+      const savedItem = await Promise.race([
+        addItem('declaracoes', newDeclaration),
+        new Promise<Declaration>((_, reject) => setTimeout(() => reject(new Error('Tempo limite excedido ao salvar dados. Verifique a conexão.')), 10000))
+      ]);
       
       // Force local state update immediately to avoid reliance on slow Firestore snapshots
       setDeclaracoes(prev => {
