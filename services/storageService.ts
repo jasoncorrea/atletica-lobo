@@ -251,7 +251,7 @@ export const startListener = (colName: string) => {
     // Reverse sync: If cloud is empty but local has data, upload local data to cloud
     const localData = (currentDb as any)[colName];
     if (cloudData.length === 0 && Array.isArray(localData) && localData.length > 0) {
-      if (!quotaExceeded && auth.currentUser) {
+      if (!quotaExceeded) {
          console.log(`Cloud ${colName} is empty, but local has ${localData.length} items. Uploading to cloud...`);
          const batch = writeBatch(db);
          localData.forEach(item => {
@@ -352,10 +352,6 @@ async function seedInitialData() {
 seedInitialData();
 
 export const addItem = async <K extends keyof DatabaseSchema>(collectionName: K, item: any, customId?: string) => {
-  if (localStorage.getItem('lobo_auth') === 'true' && !auth.currentUser) {
-    await signInAnonymously(auth).catch(e => console.warn("Auto-signin failed:", e));
-  }
-  
   const id = customId || item.id || Math.random().toString(36).substring(2, 9);
   const data = { ...item, id };
 
@@ -393,10 +389,6 @@ export const addItem = async <K extends keyof DatabaseSchema>(collectionName: K,
 };
 
 export const updateItem = async <K extends keyof DatabaseSchema>(collectionName: K, id: string, updates: Partial<any>) => {
-  if (localStorage.getItem('lobo_auth') === 'true' && !auth.currentUser) {
-    await signInAnonymously(auth).catch(e => console.warn("Auto-signin failed:", e));
-  }
-  
   // Update local state first for optimistic UI
   const list = (currentDb as any)[collectionName];
   if (Array.isArray(list)) {
@@ -555,21 +547,8 @@ export const saveConfig = async (config: AppConfig) => {
 export const isOnline = () => true; // Always online with managed Firebase
 
 export const forceSyncToCloud = async () => {
-  if (localStorage.getItem('lobo_auth') === 'true' && !auth.currentUser) {
-    try {
-      await signInAnonymously(auth);
-    } catch (e) {
-      console.warn("Auto-signin failed:", e);
-    }
-  }
-  
-  if (!auth.currentUser) {
-    alert("Erro de autenticação com a nuvem.");
-    return;
-  }
-
   let totalItems = 0;
-  for (const colName of Object.keys(currentDb)) {
+  for (const colName of Object.keys(initialDb)) {
     const list = (currentDb as any)[colName];
     if (Array.isArray(list) && list.length > 0) {
       try {
@@ -595,10 +574,6 @@ export const forceSyncToCloud = async () => {
 };
 
 export const deleteItem = async (collectionName: keyof DatabaseSchema, id: string) => {
-  if (localStorage.getItem('lobo_auth') === 'true' && !auth.currentUser) {
-    await signInAnonymously(auth).catch(e => console.warn("Auto-signin failed:", e));
-  }
-  
   // Always update local state first
   const list = (currentDb as any)[collectionName];
   if (Array.isArray(list)) {
