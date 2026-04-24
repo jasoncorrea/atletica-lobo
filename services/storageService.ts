@@ -352,7 +352,10 @@ export const addItem = async <K extends keyof DatabaseSchema>(collectionName: K,
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
     ]).catch((err: any) => {
       if (err.message !== 'timeout') {
-        try { handleFirestoreError(err, 'create', collectionName as string); } catch(e) {}
+        console.error('Firestore save error:', err);
+        try { handleFirestoreError(err, 'create', collectionName as string); } catch(e) {
+          console.error('Handled error thrown:', e);
+        }
       } else {
         console.warn(`Firestore save timeout for ${collectionName}/${id}. Saved locally.`);
       }

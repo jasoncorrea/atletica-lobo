@@ -109,20 +109,6 @@ export const SecretariaTab: React.FC = () => {
     };
     window.addEventListener('storage', handleStorage);
     startListener('declaracoes');
-    
-    // Initial fetch from server just in case listener is slow
-    const fetchInitial = async () => {
-      try {
-        const snap = await getDocs(collection(db, 'declaracoes'));
-        const data = snap.docs.map(d => ({ ...d.data(), id: d.id })) as Declaration[];
-        if (data.length > 0) {
-          setDeclaracoes(data);
-        }
-      } catch (e) {
-        console.warn('Initial fetch error:', e);
-      }
-    };
-    fetchInitial();
 
     return () => {
       window.removeEventListener('storage', handleStorage);
