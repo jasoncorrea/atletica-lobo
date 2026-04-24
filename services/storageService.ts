@@ -10,7 +10,7 @@ import { INITIAL_SEED_MODALITIES, INITIAL_ATHLETICS, DEFAULT_FINANCE_CATEGORIES,
 import { initializeApp } from 'firebase/app';
 import { 
   getFirestore, collection, onSnapshot, doc, setDoc, getDoc, 
-  writeBatch, query, deleteDoc, getDocFromServer, getDocs
+  writeBatch, query, deleteDoc, getDocFromServer, getDocs, disableNetwork
 } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import firebaseConfig from '../firebase-applet-config.json';
@@ -122,6 +122,7 @@ export const handleFirestoreError = (error: any, op: string, path: string | null
     if (!switched) {
       quotaExceeded = true;
       console.warn("No more cloud databases available. Local Mode active.");
+      disableNetwork(db).catch(console.error);
     }
     return true; 
   }
@@ -169,7 +170,15 @@ interface DatabaseSchema {
 }
 
 const initialDb: DatabaseSchema = {
-  competitions: [],
+  competitions: [
+    {
+      id: 'default-comp',
+      name: 'JOIA PG 2026',
+      year: 2026,
+      isActive: true,
+      createdAt: Date.now(),
+    }
+  ],
   athletics: INITIAL_ATHLETICS,
   modalities: [],
   results: [],
@@ -254,7 +263,7 @@ export const startListener = (colName: string) => {
          localData.forEach(item => {
             if (item && item.id) batch.set(doc(db, colName, item.id.toString()), item);
          });
-         batch.commit().catch(e => console.error(`Sync fail for ${colName}`, e));
+         batch.commit().catch(e => handleFirestoreError(e, 'write', colName));
       }
       return; // Keep local data intact!
     }
@@ -556,8 +565,9 @@ export const forceSyncToCloud = async () => {
           await batch.commit();
           console.log(`Synced ${count} items to ${colName}`);
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error(`Failed to sync collection ${colName}`, e);
+        handleFirestoreError(e, 'write', colName);
       }
     }
   }
