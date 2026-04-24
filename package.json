@@ -43,7 +43,12 @@
     "@types/react-dom": "^18.2.22",
     "@vercel/node": "^5.7.13",
     "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^10.2.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.5.0",
     "typescript": "^5.2.2",
+    "typescript-eslint": "^8.59.0",
     "vite": "^5.2.0"
   }
 }

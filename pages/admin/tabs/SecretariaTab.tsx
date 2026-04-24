@@ -233,6 +233,9 @@ export const SecretariaTab: React.FC = () => {
         stopAtErrors: false 
       });
       
+      // Prevent unhandled rejections if it finishes after timeout
+      loadingTask.promise.catch(() => {});
+      
       // Implement timeout for PDF loading
       const pdf = await Promise.race([
         loadingTask.promise,
@@ -1049,13 +1052,9 @@ export const SecretariaTab: React.FC = () => {
       </AnimatePresence>
 
       {/* Full screen loading for extraction */}
-      <AnimatePresence>
-        {isUploading && (
-          <motion.div 
-            key="upload-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+      {isUploading && (
+          <div 
+            id="upload-overlay"
             className="fixed inset-0 bg-zinc-950/80 backdrop-blur-md z-[999] flex flex-col items-center justify-center p-6 text-center"
           >
             <div className="w-24 h-24 rounded-[2rem] bg-lobo-primary flex items-center justify-center mb-8 shadow-2xl shadow-lobo-primary/50 relative">
@@ -1081,9 +1080,8 @@ export const SecretariaTab: React.FC = () => {
                 </div>
               </div>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+      )}
     </div>
   );
 };
