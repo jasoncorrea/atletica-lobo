@@ -235,27 +235,50 @@ const restrictedCollections = [
 const activeListeners: Record<string, { unsub: () => void, count: number }> = {};
 
 export const startListener = (colName: string) => {
+  // Ensure user is signed in if they have auth logic to avoid permission denied on writes
+  if (localStorage.getItem('lobo_auth') === 'true' && !auth.currentUser) {
+    signInAnonymously(auth).catch(e => console.warn("Auto-signin failed:", e));
+  }
+
   if (activeListeners[colName]) {
     activeListeners[colName].count++;
     return;
   }
   
-    const unsub = onSnapshot(collection(db, colName), (snapshot) => {
-      const cloudData = snapshot.docs.map(d => ({ ...(d.data() as any), id: d.id }));
-      
-      if (colName === 'scoreRules') {
-        const map: any = {};
-        cloudData.forEach((item: any) => {
-          if (item.id) map[item.id] = item.rule;
-        });
-        currentDb.scoreRules = map;
-      } else {
-        (currentDb as any)[colName] = cloudData;
+  const unsub = onSnapshot(collection(db, colName), (snapshot) => {
+    const cloudData = snapshot.docs.map(d => ({ ...(d.data() as any), id: d.id }));
+    
+    // Reverse sync: If cloud is empty but local has data, upload local data to cloud
+    const localData = (currentDb as any)[colName];
+    if (cloudData.length === 0 && Array.isArray(localData) && localData.length > 0) {
+      if (!quotaExceeded && auth.currentUser) {
+         console.log(`Cloud ${colName} is empty, but local has ${localData.length} items. Uploading to cloud...`);
+         const batch = writeBatch(db);
+         localData.forEach(item => {
+            if (item && item.id) {
+               batch.set(doc(db, colName, item.id.toString()), item);
+            }
+         });
+         batch.commit().catch(e => console.error(`Reverse sync failed for ${colName}`, e));
+         return; // Don't overwrite local data yet, wait for next snapshot
       }
-      
-      localStorage.setItem(DB_KEY, safeStringify(currentDb));
-      window.dispatchEvent(new Event('storage'));
-    }, (err) => {
+    }
+    
+    if (colName === 'scoreRules') {
+      const map: any = {};
+      cloudData.forEach((item: any) => {
+        if (item.id) map[item.id] = item.rule;
+      });
+      currentDb.scoreRules = map;
+    } else {
+      (currentDb as any)[colName] = cloudData;
+    }
+    
+    localStorage.setItem(DB_KEY, safeStringify(currentDb));
+    window.dispatchEvent(new Event('storage'));
+  }, (err) => {
+    // If permission denied or other error, clear listener so it can be retried
+    delete activeListeners[colName];
     if (!err.message?.includes('insufficient permissions') && !err.message?.includes('Quota limit exceeded')) {
       console.error(`Error syncing ${colName}:`, err);
     }
@@ -263,7 +286,7 @@ export const startListener = (colName: string) => {
       console.warn(`Quota exceeded for ${colName}. Using local cache.`);
     }
   });
-  
+
   activeListeners[colName] = { unsub, count: 1 };
 };
 
@@ -329,6 +352,10 @@ async function seedInitialData() {
 seedInitialData();
 
 export const addItem = async <K extends keyof DatabaseSchema>(collectionName: K, item: any, customId?: string) => {
+  if (localStorage.getItem('lobo_auth') === 'true' && !auth.currentUser) {
+    await signInAnonymously(auth).catch(e => console.warn("Auto-signin failed:", e));
+  }
+  
   const id = customId || item.id || Math.random().toString(36).substring(2, 9);
   const data = { ...item, id };
 
@@ -366,6 +393,10 @@ export const addItem = async <K extends keyof DatabaseSchema>(collectionName: K,
 };
 
 export const updateItem = async <K extends keyof DatabaseSchema>(collectionName: K, id: string, updates: Partial<any>) => {
+  if (localStorage.getItem('lobo_auth') === 'true' && !auth.currentUser) {
+    await signInAnonymously(auth).catch(e => console.warn("Auto-signin failed:", e));
+  }
+  
   // Update local state first for optimistic UI
   const list = (currentDb as any)[collectionName];
   if (Array.isArray(list)) {
@@ -524,6 +555,10 @@ export const saveConfig = async (config: AppConfig) => {
 export const isOnline = () => true; // Always online with managed Firebase
 
 export const deleteItem = async (collectionName: keyof DatabaseSchema, id: string) => {
+  if (localStorage.getItem('lobo_auth') === 'true' && !auth.currentUser) {
+    await signInAnonymously(auth).catch(e => console.warn("Auto-signin failed:", e));
+  }
+  
   // Always update local state first
   const list = (currentDb as any)[collectionName];
   if (Array.isArray(list)) {

@@ -120,10 +120,13 @@ export const AdminDashboard: React.FC = () => {
     const savedRole = localStorage.getItem('lobo_role') as Role;
     if (savedRole) setRole(savedRole);
 
-    const updateConfig = () => setConfig(getConfig());
-    window.addEventListener('storage', updateConfig);
+    const handleStorage = () => {
+      setConfig(getConfig());
+      refresh();
+    };
+    window.addEventListener('storage', handleStorage);
     refresh();
-    return () => window.removeEventListener('storage', updateConfig);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
 
   const refresh = () => {
