@@ -1009,7 +1009,7 @@ export const SecretariaTab: React.FC = () => {
                             </td>
                             <td className="px-8 py-6">
                               <span className="px-3 py-1.5 bg-zinc-100 rounded-lg text-[10px] font-black text-zinc-600 uppercase tracking-wider">
-                                {decl.course}
+                                {decl.course.replace(/^(curso\s+de\s+|curso\s+)/i, '').trim()}
                               </span>
                             </td>
                             <td className="px-8 py-6">
@@ -1019,6 +1019,14 @@ export const SecretariaTab: React.FC = () => {
                               <div className="flex items-center gap-2 text-zinc-500 font-bold text-xs">
                                 <Calendar className="w-3.5 h-3.5" />
                                 {decl.issueDate}
+                                {decl.issueDate && decl.issueDate.split('/').length === 3 && (
+                                  <div className={cn(
+                                    "w-2 h-2 rounded-full",
+                                    parseInt(`${decl.issueDate.split('/')[2]}${decl.issueDate.split('/')[1].padStart(2, '0')}${decl.issueDate.split('/')[0].padStart(2, '0')}`, 10) >= 20260317
+                                      ? "bg-green-500"
+                                      : "bg-yellow-500"
+                                  )} />
+                                )}
                               </div>
                             </td>
                             <td className="px-8 py-6 text-right">
