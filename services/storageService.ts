@@ -60,6 +60,7 @@ let quotaExceeded = false;
 let isFirebaseReady = false;
 
 export const isQuotaExceeded = () => quotaExceeded;
+export const getCurrentDbId = () => currentDbId;
 
 const getFirestoreInstance = (dbId: string) => {
   return getFirestore(app, dbId);
@@ -106,8 +107,12 @@ async function testConnection() {
     if (error.code === 'resource-exhausted' || error.message?.includes('Quota limit exceeded')) {
       handleFirestoreError(error, 'test-connection');
     }
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
+    if (error.code === 'permission-denied' || error.message?.includes('insufficient permissions')) {
+      // Missing rule for test collection, which means connection succeeded!
+      console.log("Firebase connection established (permission denied on test document).");
+      isFirebaseReady = true;
+    } else if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration: " + error.message);
     }
   }
 }
@@ -251,8 +256,21 @@ export const startListener = (colName: string) => {
   
   const unsub = onSnapshot(collection(db, colName), (snapshot) => {
     const cloudData = snapshot.docs.map(d => ({ ...(d.data() as any), id: d.id }));
+    const localData = (currentDb as any)[colName];
     
-    // Always trust cloud over local to keep multiple devices in sync!
+    // Protect local data: If cloud is completely empty but local has data, upload local data!
+    if (cloudData.length === 0 && Array.isArray(localData) && localData.length > 0) {
+      if (!quotaExceeded) {
+        const batch = writeBatch(db);
+        localData.forEach(item => {
+          if (item && item.id) batch.set(doc(db, colName, item.id.toString()), item);
+        });
+        batch.commit().catch(e => console.error("Auto-sync empty cloud failed", e));
+      }
+      return; // Keep local data intact!
+    }
+    
+    // Always trust cloud over local to keep multiple devices in sync
     if (colName === 'scoreRules') {
       const map: any = {};
       cloudData.forEach((item: any) => {

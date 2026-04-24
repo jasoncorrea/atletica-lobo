@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDb, getConfig, startListener, stopListener, isQuotaExceeded, forceSyncToCloud } from '../../services/storageService';
+import { getDb, getConfig, startListener, stopListener, isQuotaExceeded, forceSyncToCloud, getCurrentDbId } from '../../services/storageService';
 import { Competition, Role, AppConfig } from '../../types';
 import { DashboardTab } from './tabs/DashboardTab';
 import { CompetitionsTab } from './tabs/CompetitionsTab';
@@ -411,6 +411,12 @@ export const AdminDashboard: React.FC = () => {
               Finalizar Sessão
             </span>
           </button>
+          
+          <div className="pt-4 border-t border-white/10 text-center">
+            <span className="text-[9px] font-bold text-lobo-secondary uppercase tracking-widest bg-lobo-secondary/10 px-2 py-1 rounded-full">
+              DB: {getCurrentDbId().split('-').slice(0,2).join('-')}
+            </span>
+          </div>
         </div>
       </aside>
 
