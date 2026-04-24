@@ -1052,6 +1052,7 @@ export const SecretariaTab: React.FC = () => {
       <AnimatePresence>
         {isUploading && (
           <motion.div 
+            key="upload-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
