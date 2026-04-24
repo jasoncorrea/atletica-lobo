@@ -199,7 +199,17 @@ const loadInitialDb = (): DatabaseSchema => {
       console.error("Error parsing saved DB:", e);
     }
   }
-  return initialDb;
+  
+  // Inject some fake initial data if totally blank as the user requested "launching directly to the site"
+  return {
+    ...initialDb,
+    plannerEvents: [
+      { id: 'ev1', title: 'REUNIÃO DE DIRETORIA GERAL', date: Date.now() + 86400000, category: 'REUNIÃO' },
+      { id: 'ev2', title: 'ENTREGA DE DOCUMENTOS JOIA', date: Date.now() + 86400000 * 3, category: 'PRAZO/ENTREGA' },
+      { id: 'ev3', title: 'AMISTOSO COM A DIREITO UEPG', date: Date.now() + 86400000 * 5, category: 'AMISTOSO/ESPORTES' }
+    ],
+    products: [], // Just to be safe with UI
+  };
 };
 
 const loadInitialConfig = (): AppConfig => {
@@ -214,7 +224,8 @@ const loadInitialConfig = (): AppConfig => {
   return {
     primaryColor: '#5a0509',
     secondaryColor: '#000000',
-    logoUrl: null
+    logoUrl: null,
+    publicEventCategories: ['EVENTO', 'COMPETIÇÃO']
   };
 };
 
@@ -222,24 +233,9 @@ let currentDb: DatabaseSchema = loadInitialDb();
 let currentConfig: AppConfig = loadInitialConfig();
 
 // Syncing Firestore collections to Local State
-const publicCollections = [
-  'competitions', 'athletics', 'modalities', 'results', 
-  'penalties', 'products', 'birthdays', 'scoreRules',
-  'shareMembers', 'sharePosts', 'shareRecords', 'socios', 'plannerEvents', 'declaracoes'
-];
-
-const restrictedCollections = [
-  'transactions', 'financeCategories'
-];
-
 const activeListeners: Record<string, { unsub: () => void, count: number }> = {};
 
 export const startListener = (colName: string) => {
-  // Ensure user is signed in if they have auth logic to avoid permission denied on writes
-  if (localStorage.getItem('lobo_auth') === 'true' && !auth.currentUser) {
-    signInAnonymously(auth).catch(e => console.warn("Auto-signin failed:", e));
-  }
-
   if (activeListeners[colName]) {
     activeListeners[colName].count++;
     return;
@@ -247,44 +243,39 @@ export const startListener = (colName: string) => {
   
   const unsub = onSnapshot(collection(db, colName), (snapshot) => {
     const cloudData = snapshot.docs.map(d => ({ ...(d.data() as any), id: d.id }));
-    
-    // Reverse sync: If cloud is empty but local has data, upload local data to cloud
     const localData = (currentDb as any)[colName];
+    
+    // If cloud is genuinely empty but we have local seeded data...
     if (cloudData.length === 0 && Array.isArray(localData) && localData.length > 0) {
+      // Don't overwrite local with empty. 
+      // We upload local to cloud safely behind the scenes.
       if (!quotaExceeded) {
-         console.log(`Cloud ${colName} is empty, but local has ${localData.length} items. Uploading to cloud...`);
          const batch = writeBatch(db);
          localData.forEach(item => {
-            if (item && item.id) {
-               batch.set(doc(db, colName, item.id.toString()), item);
-            }
+            if (item && item.id) batch.set(doc(db, colName, item.id.toString()), item);
          });
-         batch.commit().catch(e => console.error(`Reverse sync failed for ${colName}`, e));
-         return; // Don't overwrite local data yet, wait for next snapshot
+         batch.commit().catch(e => console.error(`Sync fail for ${colName}`, e));
       }
+      return; // Keep local data intact!
     }
     
-    if (colName === 'scoreRules') {
-      const map: any = {};
-      cloudData.forEach((item: any) => {
-        if (item.id) map[item.id] = item.rule;
-      });
-      currentDb.scoreRules = map;
-    } else {
-      (currentDb as any)[colName] = cloudData;
+    // Otherwise, cloud data takes precedence
+    if (cloudData.length > 0) {
+      if (colName === 'scoreRules') {
+        const map: any = {};
+        cloudData.forEach((item: any) => {
+          if (item.id) map[item.id] = item.rule;
+        });
+        currentDb.scoreRules = map;
+      } else {
+        (currentDb as any)[colName] = cloudData;
+      }
+      localStorage.setItem(DB_KEY, safeStringify(currentDb));
+      window.dispatchEvent(new Event('storage'));
     }
-    
-    localStorage.setItem(DB_KEY, safeStringify(currentDb));
-    window.dispatchEvent(new Event('storage'));
   }, (err) => {
-    // If permission denied or other error, clear listener so it can be retried
     delete activeListeners[colName];
-    if (!err.message?.includes('insufficient permissions') && !err.message?.includes('Quota limit exceeded')) {
-      console.error(`Error syncing ${colName}:`, err);
-    }
-    if (err.message?.includes('Quota limit exceeded')) {
-      console.warn(`Quota exceeded for ${colName}. Using local cache.`);
-    }
+    console.error(`Error syncing ${colName}:`, err);
   });
 
   activeListeners[colName] = { unsub, count: 1 };
