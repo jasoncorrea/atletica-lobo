@@ -339,10 +339,7 @@ export const SecretariaTab: React.FC = () => {
         extractedAt: Date.now()
       };
 
-      const savedItem = await Promise.race([
-        addItem('declaracoes', newDeclaration),
-        new Promise<Declaration>((_, reject) => setTimeout(() => reject(new Error('Tempo limite excedido ao salvar dados. Verifique a conexão.')), 10000))
-      ]);
+      const savedItem = await addItem('declaracoes', newDeclaration);
       
       // Force local state update immediately to avoid reliance on slow Firestore snapshots
       setDeclaracoes(prev => {

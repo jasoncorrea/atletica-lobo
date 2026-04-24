@@ -332,39 +332,38 @@ export const addItem = async <K extends keyof DatabaseSchema>(collectionName: K,
   const id = customId || item.id || Math.random().toString(36).substring(2, 9);
   const data = { ...item, id };
 
-  try {
-    if (!quotaExceeded) {
-      await setDoc(doc(db, collectionName as string, id), data);
-    }
-  } catch (err) {
-    handleFirestoreError(err, 'create', collectionName as string);
-  }
-  
-  // Always update local state even if quota exceeded
+  // Always update local state first for optimistic UI
   const list = (currentDb as any)[collectionName];
   if (Array.isArray(list)) {
     const itemExists = list.some((i: any) => i.id === id);
     if (!itemExists) {
-      (currentDb as any)[collectionName] = [...list, data];
+      (currentDb as any)[collectionName] = [data, ...list];
     } else {
       (currentDb as any)[collectionName] = list.map((i: any) => i.id === id ? data : i);
     }
   }
   localStorage.setItem(DB_KEY, safeStringify(currentDb));
   window.dispatchEvent(new Event('storage'));
+
+  // Fire and forget Firestore sync
+  if (!quotaExceeded) {
+    Promise.race([
+      setDoc(doc(db, collectionName as string, id), data),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+    ]).catch((err: any) => {
+      if (err.message !== 'timeout') {
+        try { handleFirestoreError(err, 'create', collectionName as string); } catch(e) {}
+      } else {
+        console.warn(`Firestore save timeout for ${collectionName}/${id}. Saved locally.`);
+      }
+    });
+  }
+  
   return data;
 };
 
 export const updateItem = async <K extends keyof DatabaseSchema>(collectionName: K, id: string, updates: Partial<any>) => {
-  try {
-    if (!quotaExceeded) {
-      await setDoc(doc(db, collectionName as string, id), updates, { merge: true });
-    }
-  } catch (err) {
-    handleFirestoreError(err, 'update', `${collectionName as string}/${id}`);
-  }
-  
-  // Update local state and trigger storage event
+  // Update local state first for optimistic UI
   const list = (currentDb as any)[collectionName];
   if (Array.isArray(list)) {
     (currentDb as any)[collectionName] = list.map((i: any) => 
@@ -373,6 +372,21 @@ export const updateItem = async <K extends keyof DatabaseSchema>(collectionName:
   }
   localStorage.setItem(DB_KEY, safeStringify(currentDb));
   window.dispatchEvent(new Event('storage'));
+
+  try {
+    if (!quotaExceeded) {
+      await Promise.race([
+        setDoc(doc(db, collectionName as string, id), updates, { merge: true }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+      ]);
+    }
+  } catch (err: any) {
+    if (err.message !== 'timeout') {
+      handleFirestoreError(err, 'update', `${collectionName as string}/${id}`);
+    } else {
+      console.warn(`Firestore update timeout for ${collectionName}/${id}. Saved locally.`);
+    }
+  }
 };
 
 export const saveItems = async <K extends keyof DatabaseSchema>(collectionName: K, items: any[]) => {
@@ -507,21 +521,28 @@ export const saveConfig = async (config: AppConfig) => {
 export const isOnline = () => true; // Always online with managed Firebase
 
 export const deleteItem = async (collectionName: keyof DatabaseSchema, id: string) => {
-  try {
-    if (!quotaExceeded) {
-      await deleteDoc(doc(db, collectionName as string, id));
-    }
-  } catch (err) {
-    handleFirestoreError(err, 'delete', `${collectionName}/${id}`);
-  }
-  
-  // Always update local state
+  // Always update local state first
   const list = (currentDb as any)[collectionName];
   if (Array.isArray(list)) {
     (currentDb as any)[collectionName] = list.filter((i: any) => i.id !== id);
   }
   localStorage.setItem(DB_KEY, safeStringify(currentDb));
   window.dispatchEvent(new Event('storage'));
+
+  try {
+    if (!quotaExceeded) {
+      await Promise.race([
+        deleteDoc(doc(db, collectionName as string, id)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
+      ]);
+    }
+  } catch (err: any) {
+    if (err.message !== 'timeout') {
+      handleFirestoreError(err, 'delete', `${collectionName}/${id}`);
+    } else {
+      console.warn(`Firestore delete timeout for ${collectionName}/${id}. Removed locally.`);
+    }
+  }
 };
 
 const JOIA_PG_ATHLETICS_NAMES = [
