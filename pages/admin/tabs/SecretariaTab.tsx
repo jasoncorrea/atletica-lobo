@@ -328,13 +328,14 @@ export const SecretariaTab: React.FC = () => {
         return [savedItem, ...prev].sort((a, b) => b.extractedAt - a.extractedAt);
       });
 
-      alert('Declaração processada e salva com sucesso!');
     } catch (error: any) {
       console.error('Error processing PDF:', error);
       alert(`Ocorreu um problema: ${error.message || 'Erro desconhecido ao processar o PDF.'}`);
     } finally {
       setIsUploading(false);
-      if (event.target) event.target.value = '';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
