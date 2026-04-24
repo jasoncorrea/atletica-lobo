@@ -122,7 +122,6 @@ export const handleFirestoreError = (error: any, op: string, path: string | null
     if (!switched) {
       quotaExceeded = true;
       console.warn("No more cloud databases available. Local Mode active.");
-      disableNetwork(db).catch(console.error);
     }
     return true; 
   }
@@ -252,36 +251,20 @@ export const startListener = (colName: string) => {
   
   const unsub = onSnapshot(collection(db, colName), (snapshot) => {
     const cloudData = snapshot.docs.map(d => ({ ...(d.data() as any), id: d.id }));
-    const localData = (currentDb as any)[colName];
     
-    // If cloud is genuinely empty but we have local seeded data...
-    if (cloudData.length === 0 && Array.isArray(localData) && localData.length > 0) {
-      // Don't overwrite local with empty. 
-      // We upload local to cloud safely behind the scenes.
-      if (!quotaExceeded) {
-         const batch = writeBatch(db);
-         localData.forEach(item => {
-            if (item && item.id) batch.set(doc(db, colName, item.id.toString()), item);
-         });
-         batch.commit().catch(e => handleFirestoreError(e, 'write', colName));
-      }
-      return; // Keep local data intact!
+    // Always trust cloud over local to keep multiple devices in sync!
+    if (colName === 'scoreRules') {
+      const map: any = {};
+      cloudData.forEach((item: any) => {
+        if (item.id) map[item.id] = item.rule;
+      });
+      currentDb.scoreRules = map;
+    } else {
+      (currentDb as any)[colName] = cloudData;
     }
     
-    // Otherwise, cloud data takes precedence
-    if (cloudData.length > 0) {
-      if (colName === 'scoreRules') {
-        const map: any = {};
-        cloudData.forEach((item: any) => {
-          if (item.id) map[item.id] = item.rule;
-        });
-        currentDb.scoreRules = map;
-      } else {
-        (currentDb as any)[colName] = cloudData;
-      }
-      localStorage.setItem(DB_KEY, safeStringify(currentDb));
-      window.dispatchEvent(new Event('storage'));
-    }
+    localStorage.setItem(DB_KEY, safeStringify(currentDb));
+    window.dispatchEvent(new Event('storage'));
   }, (err) => {
     delete activeListeners[colName];
     console.error(`Error syncing ${colName}:`, err);
@@ -552,17 +535,25 @@ export const forceSyncToCloud = async () => {
     const list = (currentDb as any)[colName];
     if (Array.isArray(list) && list.length > 0) {
       try {
-        const batch = writeBatch(db);
+        const BATCH_SIZE = 400;
         let count = 0;
-        list.forEach((item: any) => {
-          if (item && item.id) {
-            batch.set(doc(db, colName, item.id.toString()), item);
-            count++;
-            totalItems++;
-          }
-        });
-        if (count > 0) {
+        
+        for (let i = 0; i < list.length; i += BATCH_SIZE) {
+          const batch = writeBatch(db);
+          const chunk = list.slice(i, i + BATCH_SIZE);
+          
+          chunk.forEach((item: any) => {
+            if (item && item.id) {
+              batch.set(doc(db, colName, item.id.toString()), item);
+              count++;
+              totalItems++;
+            }
+          });
+          
           await batch.commit();
+        }
+        
+        if (count > 0) {
           console.log(`Synced ${count} items to ${colName}`);
         }
       } catch (e: any) {
