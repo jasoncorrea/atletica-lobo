@@ -10,7 +10,7 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.min.mjs?url';
 import { cn } from '../../../lib/utils';
 import { collection, getDocs } from 'firebase/firestore';
-import { getConfig, getDb, addItem, deleteItem, startListener, stopListener, db } from '../../../services/storageService';
+import { getConfig, getDb, addItem, deleteItem, updateItem, startListener, stopListener, db } from '../../../services/storageService';
 import { extractDeclarationInfo } from '../../../services/declaracaoService';
 import { Declaration } from '../../../types';
 
@@ -317,22 +317,61 @@ export const SecretariaTab: React.FC = () => {
       }
       
       setUploadStatus('Salvando dados...');
+      const newFullName = extracted.nome_completo || 'Não identificado';
+      const newDocument = extracted.documento || 'Não identificado';
+      const newIssueDate = extracted.data_emissao || 'Não identificado';
+
       const newDeclaration: Omit<Declaration, 'id'> = {
-        fullName: extracted.nome_completo || 'Não identificado',
+        fullName: newFullName,
         course: extracted.curso || 'Não identificado',
-        document: extracted.documento || 'Não identificado',
-        issueDate: extracted.data_emissao || 'Não identificado',
+        document: newDocument,
+        issueDate: newIssueDate,
         extractedAt: Date.now()
       };
 
-      const savedItem = await addItem('declaracoes', newDeclaration);
-      
-      // Force local state update immediately to avoid reliance on slow Firestore snapshots
-      setDeclaracoes(prev => {
-        const exists = prev.some(d => d.id === savedItem.id);
-        if (exists) return prev.map(d => d.id === savedItem.id ? savedItem : d);
-        return [savedItem, ...prev].sort((a, b) => b.extractedAt - a.extractedAt);
-      });
+      const parseDateStr = (dateStr: string) => {
+        if (!dateStr || dateStr === 'Não identificado') return 0;
+        const parts = dateStr.split('/');
+        if (parts.length === 3) {
+          return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10)).getTime();
+        }
+        const cleanStr = dateStr.replace(/de /gi, '').trim(); 
+        const time = Date.parse(cleanStr);
+        return isNaN(time) ? 0 : time;
+      };
+
+      let existingDecl = null;
+      if (newDocument !== 'Não identificado') {
+        const queryDoc = newDocument.replace(/\D/g, '');
+        existingDecl = declaracoes.find(d => 
+          (d.document || '').replace(/\D/g, '') === queryDoc
+        );
+      }
+      if (!existingDecl && newFullName !== 'Não identificado') {
+        const queryName = newFullName.toLowerCase().trim();
+        existingDecl = declaracoes.find(d => (d.fullName || '').toLowerCase().trim() === queryName);
+      }
+
+      if (existingDecl) {
+        const newDateVal = parseDateStr(newIssueDate);
+        const oldDateVal = parseDateStr(existingDecl.issueDate);
+        
+        if (newDateVal > oldDateVal) {
+           await updateItem('declaracoes', existingDecl.id, newDeclaration);
+           setDeclaracoes(prev => prev.map(d => d.id === existingDecl.id ? { ...newDeclaration, id: existingDecl.id } : d));
+        } else {
+           console.log('Documento duplicado com data igual ou inferior. Ignorando a inserção/atualização.');
+        }
+      } else {
+        const savedItem = await addItem('declaracoes', newDeclaration);
+        
+        // Force local state update immediately to avoid reliance on slow Firestore snapshots
+        setDeclaracoes(prev => {
+          const exists = prev.some(d => d.id === savedItem.id);
+          if (exists) return prev.map(d => d.id === savedItem.id ? savedItem : d);
+          return [savedItem, ...prev];
+        });
+      }
 
     } catch (error: any) {
       console.error('Error processing PDF:', error);
@@ -349,7 +388,7 @@ export const SecretariaTab: React.FC = () => {
     d.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     d.course.toLowerCase().includes(searchQuery.toLowerCase()) ||
     d.document.toLowerCase().includes(searchQuery.toLowerCase())
-  ).sort((a, b) => b.extractedAt - a.extractedAt);
+  ).sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
 
   return (
     <div className="space-y-12 animate-fade-in pb-20">
