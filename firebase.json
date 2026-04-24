@@ -1,0 +1,12 @@
+{
+  "firestore": [
+    {
+      "database": "(default)",
+      "rules": "firestore.rules"
+    },
+    {
+      "database": "meu-novo-banco",
+      "rules": "firestore.rules"
+    }
+  ]
+}
