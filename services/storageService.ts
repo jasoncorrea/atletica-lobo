@@ -542,42 +542,6 @@ export const saveConfig = async (config: AppConfig) => {
 
 export const isOnline = () => true; // Always online with managed Firebase
 
-export const forceSyncToCloud = async () => {
-  let totalItems = 0;
-  for (const colName of Object.keys(initialDb)) {
-    const list = (currentDb as any)[colName];
-    if (Array.isArray(list) && list.length > 0) {
-      try {
-        const BATCH_SIZE = 400;
-        let count = 0;
-        
-        for (let i = 0; i < list.length; i += BATCH_SIZE) {
-          const batch = writeBatch(db);
-          const chunk = list.slice(i, i + BATCH_SIZE);
-          
-          chunk.forEach((item: any) => {
-            if (item && item.id) {
-              batch.set(doc(db, colName, item.id.toString()), item);
-              count++;
-              totalItems++;
-            }
-          });
-          
-          await batch.commit();
-        }
-        
-        if (count > 0) {
-          console.log(`Synced ${count} items to ${colName}`);
-        }
-      } catch (e: any) {
-        console.error(`Failed to sync collection ${colName}`, e);
-        handleFirestoreError(e, 'write', colName);
-      }
-    }
-  }
-  alert(`Sincronização concluída! ${totalItems} itens enviados.`);
-};
-
 export const deleteItem = async (collectionName: keyof DatabaseSchema, id: string) => {
   // Always update local state first
   const list = (currentDb as any)[collectionName];

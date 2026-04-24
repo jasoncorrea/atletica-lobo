@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getDb, getConfig, startListener, stopListener, isQuotaExceeded, forceSyncToCloud, getCurrentDbId } from '../../services/storageService';
+import { getDb, getConfig, startListener, stopListener, isQuotaExceeded, getCurrentDbId } from '../../services/storageService';
 import { Competition, Role, AppConfig } from '../../types';
 import { DashboardTab } from './tabs/DashboardTab';
 import { CompetitionsTab } from './tabs/CompetitionsTab';
@@ -47,8 +47,7 @@ import {
   ExternalLink,
   ShieldAlert,
   Archive,
-  BadgeCheck,
-  CloudUpload
+  BadgeCheck
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -387,21 +386,6 @@ export const AdminDashboard: React.FC = () => {
         </nav>
 
         <div className="p-6 space-y-2">
-          <button 
-            onClick={async () => {
-              const btn = document.getElementById('sync-btn-text');
-              if (btn) btn.innerText = 'Sincronizando...';
-              await forceSyncToCloud();
-              if (btn) btn.innerText = 'Sincronizar Cloud';
-            }}
-            className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl bg-white/5 text-lobo-primary hover:text-white hover:bg-lobo-primary transition-all group"
-          >
-            <CloudUpload className="w-5 h-5 shrink-0" />
-            <span id="sync-btn-text" className="text-[10px] font-black uppercase tracking-widest text-left">
-              Sincronizar Cloud
-            </span>
-          </button>
-          
           <button 
             onClick={() => { localStorage.removeItem('lobo_auth'); navigate('/login'); }}
             className="w-full flex items-center gap-3 px-4 py-4 rounded-2xl bg-white/5 text-white/40 hover:text-white hover:bg-red-500 transition-all group"
