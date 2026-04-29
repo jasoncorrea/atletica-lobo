@@ -161,12 +161,18 @@ export const ScheduleTab: React.FC = () => {
     
     setIsSaving(true);
     try {
-      await addItem('plannerEvents', {
+      const eventToSave = {
         ...newEvent,
         title: newEvent.title.trim().toUpperCase(),
         date: parsedDate.getTime(),
         endDate: parsedEndDate ? parsedEndDate.getTime() : undefined
-      });
+      };
+      
+      const cleanEventToSave = Object.fromEntries(
+        Object.entries(eventToSave).filter(([_, v]) => v !== undefined)
+      );
+
+      await addItem('plannerEvents', cleanEventToSave);
       
       setShowModal(false);
       setNewEvent({ category: 'REUNIÃO', allDay: false });
