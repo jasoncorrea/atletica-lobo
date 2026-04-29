@@ -28,55 +28,67 @@ import {
   Search,
   Bell,
   Sparkles,
-  ShieldAlert
+  ShieldAlert,
+  X
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
-const CATEGORY_COLORS: Record<string, string> = {
-  'REUNIÃO': 'bg-blue-500',
-  'EVENTO': 'bg-purple-500',
-  'COMPETIÇÃO': 'bg-amber-500',
-  'PUBLICAÇÃO/POST': 'bg-cyan-500',
-  'PRAZO/ENTREGA': 'bg-red-500',
-  'AMISTOSO/ESPORTES': 'bg-green-500',
-  'PRODUTOS': 'bg-pink-500',
-  'OUTRO': 'bg-zinc-500',
+const DEFAULT_CATEGORY_COLORS: Record<string, string> = {
+  'REUNIÃO': '#3b82f6',
+  'EVENTO': '#a855f7',
+  'COMPETIÇÃO': '#f59e0b',
+  'PUBLICAÇÃO/POST': '#06b6d4',
+  'PRAZO/ENTREGA': '#ef4444',
+  'AMISTOSO/ESPORTES': '#22c55e',
+  'PRODUTOS': '#ec4899',
+  'OUTRO': '#71717a',
 };
 
-const CATEGORY_BG: Record<string, string> = {
-  'REUNIÃO': 'bg-blue-50',
-  'EVENTO': 'bg-purple-50',
-  'COMPETIÇÃO': 'bg-amber-50',
-  'PUBLICAÇÃO/POST': 'bg-cyan-50',
-  'PRAZO/ENTREGA': 'bg-red-50',
-  'AMISTOSO/ESPORTES': 'bg-green-50',
-  'PRODUTOS': 'bg-pink-50',
-  'OUTRO': 'bg-zinc-50',
+const getCategoryColor = (category: string, config: any): string => {
+  if (config?.customEventCategories?.[category]) {
+    return config.customEventCategories[category];
+  }
+  return DEFAULT_CATEGORY_COLORS[category] || '#71717a';
 };
 
-const CATEGORY_TEXT: Record<string, string> = {
-  'REUNIÃO': 'text-blue-600',
-  'EVENTO': 'text-purple-600',
-  'COMPETIÇÃO': 'text-amber-600',
-  'PUBLICAÇÃO/POST': 'text-cyan-600',
-  'PRAZO/ENTREGA': 'text-red-600',
-  'AMISTOSO/ESPORTES': 'text-green-600',
-  'PRODUTOS': 'text-pink-600',
-  'OUTRO': 'text-zinc-600',
+const getAllCategories = (config: any): string[] => {
+  return [
+    ...Object.keys(DEFAULT_CATEGORY_COLORS),
+    ...Object.keys(config?.customEventCategories || {})
+  ];
 };
 
 export const ScheduleTab: React.FC = () => {
   const [events, setEvents] = useState<PlannerEvent[]>([]);
   const [config, setConfig] = useState<AppConfig>(getConfig());
   const [showModal, setShowModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [newCategoryColor, setNewCategoryColor] = useState('#4285F4');
   const [confirmDelete, setConfirmDelete] = useState<{ id: string, title: string } | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateInput, setDateInput] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [startDateInput, setStartDateInput] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [endDateInput, setEndDateInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [newEvent, setNewEvent] = useState<Partial<PlannerEvent>>({
     category: 'REUNIÃO',
+    allDay: false
   });
+
+  const AVAILABLE_COLORS = [
+    '#4285F4', // Blue
+    '#0F9D58', // Green
+    '#F4B400', // Yellow
+    '#DB4437', // Red
+    '#8A2BE2', // Purple
+    '#E91E63', // Pink
+    '#00BFA5', // Teal
+    '#FF6D00', // Orange
+    '#5C6BC0', // Indigo
+    '#7CB342', // Lime
+  ];
 
   useEffect(() => {
     const refresh = () => {
@@ -106,14 +118,42 @@ export const ScheduleTab: React.FC = () => {
     await saveConfig(newConfig);
   };
 
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim() || isSavingCategory) return;
+    setIsSavingCategory(true);
+    try {
+      const categoryNameUpper = newCategoryName.trim().toUpperCase();
+      const currentConfig = getConfig();
+      const customCats = currentConfig.customEventCategories || {};
+      customCats[categoryNameUpper] = newCategoryColor;
+      const newConfig = { ...currentConfig, customEventCategories: customCats };
+      setConfig(newConfig);
+      await saveConfig(newConfig);
+      setNewCategoryName('');
+      setNewCategoryColor('#4285F4');
+    } catch (e) {
+      console.error("Error adding category:", e);
+    } finally {
+      setIsSavingCategory(false);
+    }
+  };
+
   const handleAddEvent = async () => {
     if (isSaving) return;
     
-    const parsedDate = new Date(dateInput + 'T12:00:00');
+    const parsedDate = new Date(newEvent.allDay ? startDateInput + 'T12:00:00' : startDateInput);
     
     if (!newEvent.title || isNaN(parsedDate.getTime())) {
       alert('Por favor, preencha o título e uma data válida.');
       return;
+    }
+
+    let parsedEndDate: Date | undefined;
+    if (endDateInput) {
+      parsedEndDate = new Date(newEvent.allDay ? endDateInput + 'T12:00:00' : endDateInput);
+      if (isNaN(parsedEndDate.getTime())) {
+        parsedEndDate = undefined;
+      }
     }
     
     setIsSaving(true);
@@ -121,12 +161,14 @@ export const ScheduleTab: React.FC = () => {
       await addItem('plannerEvents', {
         ...newEvent,
         title: newEvent.title.trim().toUpperCase(),
-        date: parsedDate.getTime()
+        date: parsedDate.getTime(),
+        endDate: parsedEndDate ? parsedEndDate.getTime() : undefined
       });
       
       setShowModal(false);
-      setNewEvent({ category: 'REUNIÃO' });
-      setDateInput(format(new Date(), 'yyyy-MM-dd'));
+      setNewEvent({ category: 'REUNIÃO', allDay: false });
+      setStartDateInput(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+      setEndDateInput('');
     } catch (error) {
       console.error("Error adding event:", error);
       alert('Erro ao salvar o compromisso. Verifique se você está logado ou se há conexão.');
@@ -236,9 +278,9 @@ export const ScheduleTab: React.FC = () => {
                         setConfirmDelete({ id: e.id, title: e.title });
                       }}
                       className={cn(
-                        "text-[9px] font-black uppercase truncate px-2 py-1 rounded-md text-white w-full text-left hover:brightness-110 transition-all active:scale-[0.98] shadow-sm",
-                        CATEGORY_COLORS[e.category]
+                        "text-[9px] font-black uppercase truncate px-2 py-1 rounded-md text-white w-full text-left hover:brightness-110 transition-all active:scale-[0.98] shadow-sm"
                       )}
+                      style={{ backgroundColor: getCategoryColor(e.category, config) }}
                       title={`${e.title} (Clique para opções)`}
                     >
                       {e.title}
@@ -277,7 +319,7 @@ export const ScheduleTab: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {Object.keys(CATEGORY_COLORS).map(cat => {
+            {getAllCategories(config).map(cat => {
               const isSelected = config.publicEventCategories?.includes(cat);
               return (
                 <button
@@ -342,11 +384,19 @@ export const ScheduleTab: React.FC = () => {
         <div className="lg:col-span-3 space-y-8">
           {/* Categories Card */}
           <div className="bg-white rounded-[2.5rem] border border-zinc-100 shadow-sm p-7">
-             <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em] mb-6 px-1">Categorias do Planner</h3>
+             <div className="flex items-center justify-between mb-6 px-1">
+                <h3 className="text-[10px] font-black text-zinc-400 uppercase tracking-[0.2em]">Categorias do Planner</h3>
+                <button 
+                  onClick={() => setShowCategoryModal(true)}
+                  className="text-lobo-primary font-bold text-[10px] uppercase tracking-wider hover:underline"
+                >
+                  Gerenciar
+                </button>
+             </div>
              <div className="grid grid-cols-1 gap-2">
-                {Object.entries(CATEGORY_COLORS).map(([cat, color]) => (
+                {getAllCategories(config).map((cat) => (
                   <div key={cat} className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-zinc-50 border border-zinc-50 group hover:bg-white hover:border-zinc-100 transition-all cursor-default">
-                    <div className={cn("w-3 h-3 rounded-full shrink-0", color)} />
+                    <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: getCategoryColor(cat, config) }} />
                     <span className="text-[10px] font-black uppercase text-zinc-500 group-hover:text-zinc-900 tracking-tight">{cat.split('/')[0]}</span>
                   </div>
                 ))}
@@ -372,7 +422,10 @@ export const ScheduleTab: React.FC = () => {
                 upcomingEvents.map((event, idx) => (
                   <div key={`${event.id}-${idx}`} className="group/item relative p-4 rounded-3xl bg-zinc-50 border border-zinc-50 hover:bg-white hover:border-zinc-100 hover:shadow-xl hover:shadow-black/5 transition-all">
                     <div className="flex items-center justify-between mb-2">
-                       <span className={cn("text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg", CATEGORY_BG[event.category], CATEGORY_TEXT[event.category])}>
+                       <span 
+                         className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-lg"
+                         style={{ backgroundColor: getCategoryColor(event.category, config) + '1A', color: getCategoryColor(event.category, config) }}
+                       >
                           {event.category}
                        </span>
                        <button 
@@ -412,6 +465,104 @@ export const ScheduleTab: React.FC = () => {
         </div>
       </div>
 
+      {/* Categories Modal */}
+      <AnimatePresence>
+        {showCategoryModal && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCategoryModal(false)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-md bg-white rounded-[2.5rem] shadow-2xl z-[101] overflow-hidden border border-zinc-100"
+            >
+              <div className="p-8 pb-6 border-b border-zinc-100 flex items-center justify-between">
+                <h3 className="text-2xl font-black tracking-tight">Categorias</h3>
+                <button onClick={() => setShowCategoryModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-100 transition-colors">
+                  <X className="w-5 h-5 text-zinc-400" />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <div className="space-y-4 max-h-[30vh] overflow-y-auto pr-2 custom-scrollbar">
+                  {Object.keys(config?.customEventCategories || {}).length === 0 ? (
+                    <p className="text-zinc-500 text-sm text-center">Nenhuma categoria criada ainda.</p>
+                  ) : (
+                    Object.entries(config?.customEventCategories || {}).map(([cat, color]) => (
+                      <div key={cat} className="flex justify-between items-center group">
+                        <div className="flex items-center gap-3">
+                          <div className="w-4 h-4 rounded-full" style={{ backgroundColor: color }} />
+                          <span className="font-bold text-sm text-zinc-700 uppercase tracking-wide">{cat}</span>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            const newConfig = { ...config };
+                            if (newConfig.customEventCategories) {
+                              delete newConfig.customEventCategories[cat];
+                              setConfig(newConfig);
+                              saveConfig(newConfig);
+                            }
+                          }}
+                          className="text-red-500 text-xs font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-red-50 rounded-lg"
+                        >
+                          Excluir
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="border-t border-zinc-100 pt-6 space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Nova categoria</label>
+                    <input 
+                      type="text" 
+                      value={newCategoryName}
+                      onChange={e => setNewCategoryName(e.target.value)}
+                      placeholder="Nome (ex: Reunião)"
+                      className="w-full bg-white border border-zinc-200 rounded-2xl py-4 px-6 text-sm font-medium text-zinc-900 focus:ring-2 focus:ring-lobo-primary/20 outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Cor</label>
+                    <div className="flex flex-wrap gap-3">
+                      {AVAILABLE_COLORS.map(color => (
+                          <button
+                             key={`cat-color-${color}`}
+                             onClick={() => setNewCategoryColor(color)}
+                             className={cn(
+                               "w-10 h-10 rounded-full transition-all border-2",
+                               newCategoryColor === color ? "border-zinc-900 scale-110 shadow-md" : "border-transparent hover:scale-110"
+                             )}
+                             style={{ backgroundColor: color }}
+                          />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end pt-2">
+                    <button 
+                      onClick={handleAddCategory}
+                      disabled={isSavingCategory}
+                      className="py-3 px-6 bg-lobo-primary text-white font-black text-xs uppercase tracking-widest rounded-2xl hover:scale-105 transition-all disabled:opacity-50"
+                    >
+                      {isSavingCategory ? 'Adicionando...' : 'Adicionar'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* New Event Modal */}
       <AnimatePresence>
         {showModal && (
@@ -433,58 +584,105 @@ export const ScheduleTab: React.FC = () => {
                 <div className="absolute top-0 right-0 p-8 opacity-10">
                    <Plus className="w-20 h-20 text-lobo-primary" />
                 </div>
-                <h3 className="text-2xl font-black uppercase tracking-tight">Novo Compromisso</h3>
+                <h3 className="text-2xl font-black tracking-tight">Novo evento</h3>
                 <p className="text-[9px] text-lobo-primary font-bold uppercase tracking-[0.3em] mt-2 italic">Adicionar ao Cronograma Oficial</p>
               </div>
 
-              <div className="p-8 space-y-6">
+              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Título do Evento</label>
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Título *</label>
                   <input 
                     type="text" 
                     value={newEvent.title || ''}
-                    onChange={e => setNewEvent({...newEvent, title: e.target.value.toUpperCase()})}
-                    placeholder="EX: REUNIÃO DE DIRETORIA"
-                    className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl py-4 px-6 text-xs font-bold text-zinc-900 focus:ring-2 focus:ring-lobo-primary/20 outline-none"
+                    onChange={e => setNewEvent({...newEvent, title: e.target.value})}
+                    placeholder="Ex: Reunião de diretoria"
+                    className="w-full bg-white border border-zinc-200 rounded-2xl py-4 px-6 text-sm font-medium text-zinc-900 focus:ring-2 focus:ring-lobo-primary/20 outline-none"
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Categoria</label>
+                  <select 
+                    value={newEvent.category}
+                    onChange={e => setNewEvent({...newEvent, category: e.target.value as any})}
+                    className="w-full bg-white border border-zinc-200 rounded-2xl py-4 px-6 text-sm font-medium text-zinc-900 outline-none"
+                  >
+                    <option value="Sem categoria">Sem categoria</option>
+                    {getAllCategories(config).map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ) as any)}
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-3 mt-4 mb-2">
+                   <button
+                      onClick={() => {
+                         const nextAllDay = !newEvent.allDay;
+                         setNewEvent({...newEvent, allDay: nextAllDay});
+                         if (nextAllDay) {
+                           setStartDateInput(startDateInput.split('T')[0]);
+                           if (endDateInput) setEndDateInput(endDateInput.split('T')[0]);
+                         } else {
+                           setStartDateInput(startDateInput.includes('T') ? startDateInput : startDateInput + 'T12:00');
+                           if (endDateInput) setEndDateInput(endDateInput.includes('T') ? endDateInput : endDateInput + 'T13:00');
+                         }
+                      }}
+                      className={cn(
+                         "w-12 h-6 rounded-full transition-colors relative",
+                         newEvent.allDay ? "bg-lobo-primary" : "bg-zinc-200"
+                      )}
+                   >
+                      <div className={cn(
+                         "absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-all",
+                         newEvent.allDay ? "translate-x-6" : "translate-x-0"
+                      )} />
+                   </button>
+                   <span className="text-sm font-medium text-zinc-900">Dia inteiro</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Data</label>
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Início *</label>
                     <input 
-                      type="date" 
-                      value={dateInput}
-                      onChange={e => setDateInput(e.target.value)}
-                      className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl py-4 px-6 text-xs font-bold text-zinc-900 outline-none"
+                      type={newEvent.allDay ? "date" : "datetime-local"} 
+                      value={startDateInput}
+                      onChange={e => setStartDateInput(e.target.value)}
+                      className="w-full bg-white border border-zinc-200 rounded-2xl py-4 px-6 text-sm font-medium text-zinc-900 outline-none"
                     />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Categoria</label>
-                    <select 
-                      value={newEvent.category}
-                      onChange={e => setNewEvent({...newEvent, category: e.target.value as any})}
-                      className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl py-4 px-6 text-xs font-bold text-zinc-900 outline-none"
-                    >
-                      {Object.keys(CATEGORY_COLORS).map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ) as any)}
-                    </select>
+                    <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Fim (opcional)</label>
+                    <input 
+                      type={newEvent.allDay ? "date" : "datetime-local"} 
+                      value={endDateInput}
+                      onChange={e => setEndDateInput(e.target.value)}
+                      className="w-full bg-white border border-zinc-200 rounded-2xl py-4 px-6 text-sm font-medium text-zinc-900 outline-none"
+                    />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Local (Opcional)</label>
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Local</label>
                   <input 
                     type="text" 
                     value={newEvent.location || ''}
-                    onChange={e => setNewEvent({...newEvent, location: e.target.value.toUpperCase()})}
-                    placeholder="EX: SALA DE REUNIÕES OU GOOGLE MEET"
-                    className="w-full bg-zinc-50 border border-zinc-100 rounded-2xl py-4 px-6 text-xs font-bold text-zinc-900 outline-none"
+                    onChange={e => setNewEvent({...newEvent, location: e.target.value})}
+                    placeholder="Ex: Sede da atlética"
+                    className="w-full bg-white border border-zinc-200 rounded-2xl py-4 px-6 text-sm font-medium text-zinc-900 outline-none"
                   />
                 </div>
 
-                <div className="flex gap-4 pt-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-zinc-400 uppercase tracking-widest ml-1">Descrição</label>
+                  <textarea 
+                    value={newEvent.description || ''}
+                    onChange={e => setNewEvent({...newEvent, description: e.target.value})}
+                    placeholder="Adicione detalhes sobre o evento..."
+                    className="w-full bg-white border border-zinc-200 rounded-2xl py-4 px-6 text-sm font-medium text-zinc-900 outline-none min-h-[100px] resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-4 pt-4 sticky bottom-0 bg-white pb-2">
                   <button 
                     onClick={() => setShowModal(false)}
                     className="flex-1 py-4 border border-zinc-100 text-zinc-400 font-black text-xs uppercase tracking-widest rounded-2xl hover:bg-zinc-50"
@@ -496,7 +694,7 @@ export const ScheduleTab: React.FC = () => {
                     disabled={isSaving || isQuotaExceeded()}
                     className="flex-1 py-4 bg-lobo-secondary text-lobo-dark font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isSaving ? 'Salvando...' : 'Salvar Compromisso'}
+                    {isSaving ? 'Salvando...' : 'Salvar Evento'}
                   </button>
                 </div>
               </div>

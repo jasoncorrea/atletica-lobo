@@ -55,6 +55,7 @@ export interface AppConfig {
   secondaryColor: string;
   logoUrl: string | null;
   publicEventCategories?: string[];
+  customEventCategories?: Record<string, string>;
   homeAnnouncementTitle?: string;
   homeAnnouncementBody?: string;
   homeAnnouncementMediaUrl?: string | null;
@@ -124,7 +125,9 @@ export interface PlannerEvent {
   id: string;
   title: string;
   date: number; // timestamp
-  category: 'REUNIÃO' | 'EVENTO' | 'COMPETIÇÃO' | 'PUBLICAÇÃO/POST' | 'PRAZO/ENTREGA' | 'AMISTOSO/ESPORTES' | 'PRODUTOS' | 'OUTRO';
+  endDate?: number;
+  allDay?: boolean;
+  category: string;
   description?: string;
   location?: string;
 }

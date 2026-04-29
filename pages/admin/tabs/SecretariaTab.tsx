@@ -172,7 +172,8 @@ export const SecretariaTab: React.FC = () => {
       
       console.log('PDF gerado com sucesso.');
     } catch (error) {
-      console.error('Erro crítico na geração do PDF:', error);
+      const msgg = error instanceof Error ? error.message : String(error);
+      console.error('Erro crítico na geração do PDF:', msgg);
       const msg = error instanceof Error ? error.message : 'Erro técnico desconhecido';
       
       let hint = '\n\nDica: Isso geralmente ocorre quando a logo configurada não permite ser baixada diretamente por segurança (CORS). Tente remover a logo nas configurações de marca para confirmar.';
@@ -374,7 +375,8 @@ export const SecretariaTab: React.FC = () => {
       }
 
     } catch (error: any) {
-      console.error('Error processing PDF:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error processing PDF:', errorMessage);
       alert(`Ocorreu um problema: ${error.message || 'Erro desconhecido ao processar o PDF.'}`);
     } finally {
       setIsUploading(false);

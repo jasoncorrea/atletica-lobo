@@ -81,14 +81,18 @@ const safeStringify = (obj: any): string => {
   try {
     return JSON.stringify(obj);
   } catch (err) {
-    const cache = new Set();
-    return JSON.stringify(obj, (_key, value) => {
-      if (typeof value === 'object' && value !== null) {
-        if (cache.has(value)) return '[Circular]';
-        cache.add(value);
-      }
-      return value;
-    });
+    try {
+      const cache = new Set();
+      return JSON.stringify(obj, (_key, value) => {
+        if (typeof value === 'object' && value !== null) {
+          if (cache.has(value)) return '[Circular]';
+          cache.add(value);
+        }
+        return value;
+      });
+    } catch (innerErr) {
+      return '[Unstringifiable Object]';
+    }
   }
 };
 
