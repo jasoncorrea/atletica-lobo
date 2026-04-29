@@ -491,30 +491,35 @@ export const ScheduleTab: React.FC = () => {
 
               <div className="p-8 space-y-6">
                 <div className="space-y-4 max-h-[30vh] overflow-y-auto pr-2 custom-scrollbar">
-                  {Object.keys(config?.customEventCategories || {}).length === 0 ? (
+                  {getAllCategories(config).length === 0 ? (
                     <p className="text-zinc-500 text-sm text-center">Nenhuma categoria criada ainda.</p>
                   ) : (
-                    Object.entries(config?.customEventCategories || {}).map(([cat, color]) => (
+                    getAllCategories(config).map((cat) => {
+                      const color = getCategoryColor(cat, config);
+                      const isDefault = Object.keys(DEFAULT_CATEGORY_COLORS).includes(cat);
+                      return (
                       <div key={cat} className="flex justify-between items-center group">
                         <div className="flex items-center gap-3">
                           <div className="w-4 h-4 rounded-full" style={{ backgroundColor: color }} />
                           <span className="font-bold text-sm text-zinc-700 uppercase tracking-wide">{cat}</span>
                         </div>
-                        <button 
-                          onClick={() => {
-                            const newConfig = { ...config };
-                            if (newConfig.customEventCategories) {
-                              delete newConfig.customEventCategories[cat];
-                              setConfig(newConfig);
-                              saveConfig(newConfig);
-                            }
-                          }}
-                          className="text-red-500 text-xs font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-red-50 rounded-lg"
-                        >
-                          Excluir
-                        </button>
+                        {!isDefault && (
+                          <button 
+                            onClick={() => {
+                              const newConfig = { ...config };
+                              if (newConfig.customEventCategories) {
+                                delete newConfig.customEventCategories[cat];
+                                setConfig(newConfig);
+                                saveConfig(newConfig);
+                              }
+                            }}
+                            className="text-red-500 text-xs font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-red-50 rounded-lg"
+                          >
+                            Excluir
+                          </button>
+                        )}
                       </div>
-                    ))
+                    )})
                   )}
                 </div>
 
