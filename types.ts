@@ -56,6 +56,7 @@ export interface AppConfig {
   logoUrl: string | null;
   publicEventCategories?: string[];
   customEventCategories?: Record<string, string>;
+  deletedDefaultCategories?: string[];
   homeAnnouncementTitle?: string;
   homeAnnouncementBody?: string;
   homeAnnouncementMediaUrl?: string | null;

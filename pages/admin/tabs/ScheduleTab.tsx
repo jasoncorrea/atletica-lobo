@@ -53,8 +53,11 @@ const getCategoryColor = (category: string, config: any): string => {
 };
 
 const getAllCategories = (config: any): string[] => {
+  const defaults = Object.keys(DEFAULT_CATEGORY_COLORS).filter(
+    cat => !config?.deletedDefaultCategories?.includes(cat)
+  );
   return [
-    ...Object.keys(DEFAULT_CATEGORY_COLORS),
+    ...defaults,
     ...Object.keys(config?.customEventCategories || {})
   ];
 };
@@ -503,21 +506,21 @@ export const ScheduleTab: React.FC = () => {
                           <div className="w-4 h-4 rounded-full" style={{ backgroundColor: color }} />
                           <span className="font-bold text-sm text-zinc-700 uppercase tracking-wide">{cat}</span>
                         </div>
-                        {!isDefault && (
-                          <button 
-                            onClick={() => {
-                              const newConfig = { ...config };
-                              if (newConfig.customEventCategories) {
-                                delete newConfig.customEventCategories[cat];
-                                setConfig(newConfig);
-                                saveConfig(newConfig);
-                              }
-                            }}
-                            className="text-red-500 text-xs font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-red-50 rounded-lg"
-                          >
-                            Excluir
-                          </button>
-                        )}
+                        <button 
+                          onClick={() => {
+                            const newConfig = { ...config };
+                            if (isDefault) {
+                              newConfig.deletedDefaultCategories = [...(newConfig.deletedDefaultCategories || []), cat];
+                            } else if (newConfig.customEventCategories) {
+                              delete newConfig.customEventCategories[cat];
+                            }
+                            setConfig(newConfig);
+                            saveConfig(newConfig);
+                          }}
+                          className="text-red-500 text-xs font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-red-50 rounded-lg"
+                        >
+                          Excluir
+                        </button>
                       </div>
                     )})
                   )}
