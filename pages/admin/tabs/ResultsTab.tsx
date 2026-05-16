@@ -40,16 +40,9 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   const [rankings, setRankings] = useState<Record<number, string>>({});
   const [inputMode, setInputMode] = useState<'manual' | 'bracket'>('manual');
 
-  const [quarters, setQuarters] = useState<BracketMatch[]>([
-    { p1: null, p2: null, winner: null },
-    { p1: null, p2: null, winner: null },
-    { p1: null, p2: null, winner: null },
-    { p1: null, p2: null, winner: null }
-  ]);
-  const [semis, setSemis] = useState<BracketMatch[]>([
-    { p1: null, p2: null, winner: null },
-    { p1: null, p2: null, winner: null }
-  ]);
+  const [oitavas, setOitavas] = useState<BracketMatch[]>(Array(8).fill({ p1: null, p2: null, winner: null }));
+  const [quarters, setQuarters] = useState<BracketMatch[]>(Array(4).fill({ p1: null, p2: null, winner: null }));
+  const [semis, setSemis] = useState<BracketMatch[]>(Array(2).fill({ p1: null, p2: null, winner: null }));
   const [final, setFinal] = useState<BracketMatch>({ p1: null, p2: null, winner: null });
 
   useEffect(() => {
@@ -72,14 +65,31 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   };
 
   const resetBracket = () => {
+    setOitavas(Array(8).fill({ p1: null, p2: null, winner: null }));
     setQuarters(Array(4).fill({ p1: null, p2: null, winner: null }));
     setSemis(Array(2).fill({ p1: null, p2: null, winner: null }));
     setFinal({ p1: null, p2: null, winner: null });
   };
 
-  const handleQuarterSelect = (matchIdx: number, slot: 'p1' | 'p2', athId: string) => {
+  const handleOitavasSelect = (matchIdx: number, slot: 'p1' | 'p2', athId: string) => {
+    const newO = [...oitavas];
+    newO[matchIdx] = { ...newO[matchIdx], [slot]: athId, winner: null };
+    setOitavas(newO);
+    updateQuartersFromOitavas(newO);
+  };
+
+  const handleOitavasWinner = (matchIdx: number, winnerId: string | null) => {
+    const newO = [...oitavas];
+    newO[matchIdx] = { ...newO[matchIdx], winner: winnerId };
+    setOitavas(newO);
+    updateQuartersFromOitavas(newO);
+  };
+
+  const updateQuartersFromOitavas = (currentOitavas: BracketMatch[]) => {
     const newQ = [...quarters];
-    newQ[matchIdx] = { ...newQ[matchIdx], [slot]: athId, winner: null };
+    for (let i = 0; i < 4; i++) {
+      newQ[i] = { p1: currentOitavas[i * 2].winner, p2: currentOitavas[i * 2 + 1].winner, winner: null };
+    }
     setQuarters(newQ);
     updateSemisFromQuarters(newQ);
   };
@@ -134,9 +144,18 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
       if (fourthPlaceId) r[4] = fourthPlaceId;
     }
     let pos = 5;
+    // Quartas losers -> 5-8
     quarters.forEach(q => {
       if (q.winner && q.p1 && q.p2) {
         const loser = q.winner === q.p1 ? q.p2 : q.p1;
+        r[pos] = loser;
+        pos++;
+      }
+    });
+    // Oitavas losers -> 9-16
+    oitavas.forEach(o => {
+      if (o.winner && o.p1 && o.p2) {
+        const loser = o.winner === o.p1 ? o.p2 : o.p1;
         r[pos] = loser;
         pos++;
       }
@@ -362,27 +381,27 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
                     >
                       <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:24px_24px]" />
                       
-                      <div className="min-w-[800px] flex justify-between gap-12 relative z-10">
-                        {/* QUARTAS */}
-                        <div className="flex flex-col justify-around gap-8 w-64">
-                          <h4 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] text-center border-b border-zinc-800 pb-2 mb-4">Quartas de Final</h4>
-                          {quarters.map((q, idx) => (
+                      <div className="min-w-[1200px] flex justify-between gap-12 relative z-10">
+                        {/* OITAVAS */}
+                        <div className="flex flex-col justify-around gap-4 w-64">
+                          <h4 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] text-center border-b border-zinc-800 pb-2 mb-4">Oitavas de Final</h4>
+                          {oitavas.map((o, idx) => (
                             <div key={idx} className="relative">
                               <div className="flex flex-col gap-1.5 p-3 bg-zinc-800/50 rounded-2xl border border-zinc-700 shadow-xl backdrop-blur-sm">
                                 <div className="flex items-center gap-2">
                                   <select 
                                     className="bg-zinc-900 text-white text-[10px] font-bold border border-zinc-700 rounded-lg px-2 py-1 flex-grow outline-none focus:border-lobo-primary transition-colors"
-                                    value={q.p1 || ''} 
-                                    onChange={(e) => handleQuarterSelect(idx, 'p1', e.target.value)}
+                                    value={o.p1 || ''} 
+                                    onChange={(e) => handleOitavasSelect(idx, 'p1', e.target.value)}
                                   >
                                     <option value="">Time A</option>
                                     {aths.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                   </select>
                                   <button 
-                                    onClick={() => q.p1 && handleQuarterWinner(idx, q.p1)}
+                                    onClick={() => o.p1 && handleOitavasWinner(idx, o.p1)}
                                     className={cn(
                                       "w-5 h-5 rounded-lg border border-zinc-600 flex items-center justify-center transition-all",
-                                      q.winner === q.p1 ? "bg-green-500 border-green-400 text-white shadow-[0_0_10px_rgba(34,197,94,0.3)]" : "bg-zinc-950 hover:border-zinc-500"
+                                      o.winner === o.p1 ? "bg-green-500 border-green-400 text-white shadow-[0_0_10px_rgba(34,197,94,0.3)]" : "bg-zinc-950 hover:border-zinc-500"
                                     )}
                                   >
                                     <Trophy className="w-3 h-3" />
@@ -391,22 +410,54 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
                                 <div className="flex items-center gap-2">
                                   <select 
                                     className="bg-zinc-900 text-white text-[10px] font-bold border border-zinc-700 rounded-lg px-2 py-1 flex-grow outline-none focus:border-lobo-primary transition-colors"
-                                    value={q.p2 || ''} 
-                                    onChange={(e) => handleQuarterSelect(idx, 'p2', e.target.value)}
+                                    value={o.p2 || ''} 
+                                    onChange={(e) => handleOitavasSelect(idx, 'p2', e.target.value)}
                                   >
                                     <option value="">Time B</option>
                                     {aths.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                                   </select>
                                   <button 
-                                    onClick={() => q.p2 && handleQuarterWinner(idx, q.p2)}
+                                    onClick={() => o.p2 && handleOitavasWinner(idx, o.p2)}
                                     className={cn(
                                       "w-5 h-5 rounded-lg border border-zinc-600 flex items-center justify-center transition-all",
-                                      q.winner === q.p2 ? "bg-green-500 border-green-400 text-white shadow-[0_0_10px_rgba(34,197,94,0.3)]" : "bg-zinc-950 hover:border-zinc-500"
+                                      o.winner === o.p2 ? "bg-green-500 border-green-400 text-white shadow-[0_0_10px_rgba(34,197,94,0.3)]" : "bg-zinc-950 hover:border-zinc-500"
                                     )}
                                   >
                                     <Trophy className="w-3 h-3" />
                                   </button>
                                 </div>
+                              </div>
+                              <div className="absolute left-full top-1/2 w-6 h-px bg-zinc-700 -translate-y-px" />
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* QUARTAS */}
+                        <div className="flex flex-col justify-around gap-8 w-64 pt-8">
+                          <h4 className="text-[10px] font-black text-zinc-600 uppercase tracking-[0.3em] text-center border-b border-zinc-800 pb-2 mb-4">Quartas de Final</h4>
+                          {quarters.map((q, idx) => (
+                            <div key={idx} className="relative">
+                              <div className="absolute right-full top-1/2 w-6 h-px bg-zinc-700 -translate-y-px" />
+                              <div className="flex flex-col gap-3 p-4 bg-zinc-800/80 rounded-2xl border border-zinc-700 shadow-2xl">
+                                <RenderTeamBox 
+                                    athId={q.p1} 
+                                    isWinner={q.winner === q.p1 && !!q.p1} 
+                                    onClick={() => q.p1 && handleQuarterWinner(idx, q.p1)} 
+                                    placeholder="Vencedor O" 
+                                    className="bg-zinc-900 border-zinc-700 text-zinc-300"
+                                  />
+                                  <div className="flex items-center gap-3 px-2">
+                                    <div className="h-px flex-grow bg-zinc-700 opacity-30" />
+                                    <span className="text-[8px] font-black text-zinc-500 uppercase">VS</span>
+                                    <div className="h-px flex-grow bg-zinc-700 opacity-30" />
+                                  </div>
+                                  <RenderTeamBox 
+                                    athId={q.p2} 
+                                    isWinner={q.winner === q.p2 && !!q.p2} 
+                                    onClick={() => q.p2 && handleQuarterWinner(idx, q.p2)} 
+                                    placeholder="Vencedor O" 
+                                    className="bg-zinc-900 border-zinc-700 text-zinc-300"
+                                  />
                               </div>
                               <div className="absolute left-full top-1/2 w-6 h-px bg-zinc-700 -translate-y-px" />
                             </div>
