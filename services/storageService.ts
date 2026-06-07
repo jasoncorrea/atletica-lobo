@@ -592,12 +592,13 @@ const JOIA_PG_ATHLETICS_NAMES = [
   'GORILAS', 'TROIA', 'XIX DE SETEMBRO', 'Z.'
 ];
 
-export const createCompetition = async (name: string, year: number) => {
+export const createCompetition = async (name: string, year: number, division: '1' | '2' = '1') => {
   const id = Math.random().toString(36).substring(2, 9);
   const newComp: Competition = {
     id,
     name,
     year,
+    division,
     isActive: true,
     createdAt: Date.now()
   };
@@ -705,8 +706,16 @@ export const calculateLeaderboard = (competitionId: string): LeaderboardEntry[] 
   });
 
   const compResults = db_local.results.filter(r => r.competitionId === competitionId);
+  const comp = db_local.competitions.find(c => c.id === competitionId);
+  const isSecondDivision = comp?.division === '2' || 
+    (comp && (
+      comp.name.toUpperCase().trim() === 'SEGUNDA DIVISÃO' || 
+      comp.name.toUpperCase().trim() === 'SEGUNDA DIVISAO'
+    ));
+  const SECOND_DIVISION_SCORE_RULE = [8, 5, 4, 3, 2, 1];
+
   compResults.forEach(result => {
-    const rule = DEFAULT_SCORE_RULE;
+    const rule = isSecondDivision ? SECOND_DIVISION_SCORE_RULE : DEFAULT_SCORE_RULE;
     Object.entries(result.ranking).forEach(([rankStr, athleticId]) => {
       const rank = parseInt(rankStr, 10);
       if (athleticsMap[athleticId]) {

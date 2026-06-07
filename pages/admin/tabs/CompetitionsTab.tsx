@@ -9,6 +9,7 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
   const [list, setList] = useState<Competition[]>([]);
   const [name, setName] = useState('');
   const [year, setYear] = useState(new Date().getFullYear());
+  const [division, setDivision] = useState<'1' | '2'>('1');
 
   const load = () => {
     const competitions = getDb().competitions;
@@ -24,11 +25,12 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
   const add = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    createCompetition(name, year);
+    createCompetition(name, year, division);
     window.dispatchEvent(new Event('storage'));
     load(); 
     onUpdate(); 
     setName('');
+    setDivision('1');
   };
 
   const remove = async (id: string) => {
@@ -117,6 +119,36 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
                   </div>
                 </div>
 
+                <div>
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2 block">Divisão do Torneio</label>
+                  <div className="grid grid-cols-2 gap-3 p-1 bg-white/5 border border-white/10 rounded-2xl">
+                    <button
+                      type="button"
+                      onClick={() => setDivision('1')}
+                      className={cn(
+                        "py-3.5 px-4 rounded-xl font-black text-xs uppercase tracking-wider transition-all duration-300",
+                        division === '1'
+                          ? "bg-lobo-secondary text-lobo-dark shadow-lg"
+                          : "text-white/60 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      1ª Divisão
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDivision('2')}
+                      className={cn(
+                        "py-3.5 px-4 rounded-xl font-black text-xs uppercase tracking-wider transition-all duration-300",
+                        division === '2'
+                          ? "bg-lobo-secondary text-lobo-dark shadow-lg"
+                          : "text-white/60 hover:text-white hover:bg-white/5"
+                      )}
+                    >
+                      2ª Divisão
+                    </button>
+                  </div>
+                </div>
+
                 <button 
                   type="submit" 
                   className="w-full bg-lobo-secondary text-lobo-dark py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-lobo-primary/20 hover:brightness-110 active:scale-95 transition-all"
@@ -181,12 +213,22 @@ export const CompetitionsTab: React.FC<{ onUpdate: () => void }> = ({ onUpdate }
                 >
                   <div className="relative z-10 flex flex-col h-full space-y-6">
                     <div className="flex items-center justify-between">
-                       <div className={cn(
-                         "flex items-center gap-2 px-3 py-1.5 rounded-full",
-                         c.isActive ? "bg-lobo-primary text-white" : "bg-zinc-100 text-zinc-400"
-                       )}>
-                          <Calendar className="w-3.5 h-3.5" />
-                          <span className="text-[10px] font-black uppercase tracking-tighter">{c.year}</span>
+                       <div className="flex gap-2">
+                          <div className={cn(
+                            "flex items-center gap-2 px-3 py-1.5 rounded-full",
+                            c.isActive ? "bg-lobo-primary text-white" : "bg-zinc-100 text-zinc-400"
+                          )}>
+                             <Calendar className="w-3.5 h-3.5" />
+                             <span className="text-[10px] font-black uppercase tracking-tighter">{c.year}</span>
+                          </div>
+                          <div className={cn(
+                            "flex items-center px-3 py-1.5 rounded-full font-black text-[10px] uppercase tracking-wider",
+                            c.isActive 
+                              ? "bg-lobo-primary/10 text-lobo-primary border border-lobo-primary/10"
+                              : "bg-zinc-100 text-zinc-500 border border-zinc-200"
+                          )}>
+                            {c.division === '2' || c.name.toUpperCase().trim() === 'SEGUNDA DIVISÃO' || c.name.toUpperCase().trim() === 'SEGUNDA DIVISAO' ? '2ª Divisão' : '1ª Divisão'}
+                          </div>
                        </div>
                        {c.isActive && (
                          <div className="flex items-center gap-2 text-lobo-primary">

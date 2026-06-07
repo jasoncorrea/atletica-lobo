@@ -5,6 +5,7 @@ export interface Competition {
   year: number;
   isActive: boolean;
   createdAt: number;
+  division?: '1' | '2';
 }
 
 export interface Athletic {

@@ -34,9 +34,15 @@ export const PublicDashboard: React.FC = () => {
       setEvents(db.plannerEvents || []);
       setConfig(getConfig());
       
+      let currentCompId = selectedCompId;
       if (comps.length > 0 && !selectedCompId) {
         const active = comps.find(c => c.isActive) || comps[0];
-        setSelectedCompId(active.id);
+        currentCompId = active.id;
+        setSelectedCompId(currentCompId);
+      }
+
+      if (currentCompId) {
+        setLeaderboard(calculateLeaderboard(currentCompId));
       }
     };
     load();

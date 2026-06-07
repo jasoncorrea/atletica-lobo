@@ -9,7 +9,8 @@
         "name": { "type": "string" },
         "year": { "type": "integer" },
         "isActive": { "type": "boolean" },
-        "createdAt": { "type": "integer" }
+        "createdAt": { "type": "integer" },
+        "division": { "type": "string", "enum": ["1", "2"] }
       },
       "required": ["id", "name", "year", "isActive", "createdAt"]
     },
