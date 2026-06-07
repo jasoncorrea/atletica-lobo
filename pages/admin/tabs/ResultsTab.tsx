@@ -167,16 +167,90 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
     return r;
   };
 
+  const generateBracketFromRankings = (r: Record<number, string>): {
+    oitavas: BracketMatch[];
+    quarters: BracketMatch[];
+    semis: BracketMatch[];
+    final: BracketMatch;
+  } => {
+    const champion = r[1] || null;
+    const vice = r[2] || null;
+    const third = r[3] || null;
+    const fourth = r[4] || null;
+    const fifth = r[5] || null;
+    const sixth = r[6] || null;
+    const seventh = r[7] || null;
+    const eighth = r[8] || null;
+
+    // 1. Final
+    const finalMatch: BracketMatch = {
+      p1: champion,
+      p2: vice,
+      winner: champion
+    };
+
+    // 2. Semis
+    const semiMatches: BracketMatch[] = [
+      { p1: champion, p2: third, winner: champion },
+      { p1: vice, p2: fourth, winner: vice }
+    ];
+
+    // 3. Quarters
+    const quarterMatches: BracketMatch[] = [
+      { p1: champion, p2: fifth, winner: champion },
+      { p1: third, p2: sixth, winner: third },
+      { p1: vice, p2: seventh, winner: vice },
+      { p1: fourth, p2: eighth, winner: fourth }
+    ];
+
+    // 4. Oitavas
+    const oitavasMatches: BracketMatch[] = [
+      { p1: champion, p2: null, winner: champion },
+      { p1: fifth, p2: null, winner: fifth },
+      { p1: third, p2: null, winner: third },
+      { p1: sixth, p2: null, winner: sixth },
+      { p1: vice, p2: null, winner: vice },
+      { p1: seventh, p2: null, winner: seventh },
+      { p1: fourth, p2: null, winner: fourth },
+      { p1: eighth, p2: null, winner: eighth }
+    ];
+
+    return {
+      oitavas: oitavasMatches,
+      quarters: quarterMatches,
+      semis: semiMatches,
+      final: finalMatch
+    };
+  };
+
   const save = async () => {
     if (!selMod) return;
     let finalRanking = rankings;
     let isPartial = false;
+    let currentBracketState = undefined;
 
     if (inputMode === 'bracket') {
       if (!final.winner) {
         isPartial = true;
       }
       finalRanking = calculateRankingFromBracket();
+      currentBracketState = {
+        oitavas,
+        quarters,
+        semis,
+        final
+      };
+    } else {
+      // Manual list input mode
+      // Auto-generate bracket state from direct list input so they're in sync
+      const generated = generateBracketFromRankings(rankings);
+      currentBracketState = generated;
+      
+      // Update component state as well so UI is immediately updated
+      setOitavas(generated.oitavas);
+      setQuarters(generated.quarters);
+      setSemis(generated.semis);
+      setFinal(generated.final);
     }
     
     const db = getDb();
@@ -187,12 +261,7 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
       modalityId: selMod, 
       ranking: finalRanking,
       inputMode: inputMode,
-      bracketState: inputMode === 'bracket' ? {
-        oitavas,
-        quarters,
-        semis,
-        final
-      } : undefined
+      bracketState: currentBracketState
     };
 
     if (existing) {
@@ -369,7 +438,13 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
                   {/* Permitir trocar de modo (Lista Direta vs Chaveamento) para todas as modalidades */}
                   <div className="inline-flex p-1 bg-zinc-100 rounded-xl border border-zinc-200">
                     <button 
-                      onClick={() => setInputMode('manual')}
+                      onClick={() => {
+                        if (inputMode === 'bracket') {
+                          const bracketRanking = calculateRankingFromBracket();
+                          setRankings(bracketRanking);
+                        }
+                        setInputMode('manual');
+                      }}
                       className={cn(
                         "flex items-center space-x-2 px-6 py-2 rounded-lg text-xs font-bold transition-all",
                         inputMode === 'manual' ? "bg-white text-lobo-primary shadow-sm" : "text-zinc-500 hover:text-zinc-700"
@@ -379,7 +454,16 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
                       <span>Lista Direta</span>
                     </button>
                     <button 
-                      onClick={() => setInputMode('bracket')}
+                      onClick={() => {
+                        if (inputMode === 'manual') {
+                          const generated = generateBracketFromRankings(rankings);
+                          setOitavas(generated.oitavas);
+                          setQuarters(generated.quarters);
+                          setSemis(generated.semis);
+                          setFinal(generated.final);
+                        }
+                        setInputMode('bracket');
+                      }}
                       className={cn(
                         "flex items-center space-x-2 px-6 py-2 rounded-lg text-xs font-bold transition-all",
                         inputMode === 'bracket' ? "bg-white text-lobo-primary shadow-sm" : "text-zinc-500 hover:text-zinc-700"
