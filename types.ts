@@ -29,6 +29,19 @@ export interface Result {
   modalityId: string;
   competitionId: string;
   ranking: { [rank: number]: string };
+  bracketState?: {
+    oitavas: BracketMatch[];
+    quarters: BracketMatch[];
+    semis: BracketMatch[];
+    final: BracketMatch;
+  };
+  inputMode?: 'manual' | 'bracket';
+}
+
+export interface BracketMatch {
+  p1: string | null;
+  p2: string | null;
+  winner: string | null;
 }
 
 export interface Penalty {

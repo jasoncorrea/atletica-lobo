@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { getDb, addItem, updateItem } from '../../../services/storageService';
-import { Competition, Modality, Athletic, Result } from '../../../types';
+import { getDb, addItem, updateItem, deleteItem } from '../../../services/storageService';
+import { Competition, Modality, Athletic, Result, BracketMatch } from '../../../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Trophy, 
@@ -16,7 +16,9 @@ import {
   Award,
   ChevronDown,
   Edit2,
-  AlertTriangle
+  AlertTriangle,
+  Trash2,
+  X
 } from 'lucide-react';
 import { cn } from '../../../lib/utils';
 
@@ -24,12 +26,6 @@ const COLLECTIVE_MODALITIES = [
   'Vôlei de Praia', 'Voleibol', 'Tênis', 'Basquetebol', 
   'Futebol', 'Futsal', 'Handebol'
 ];
-
-interface BracketMatch {
-  p1: string | null;
-  p2: string | null;
-  winner: string | null;
-}
 
 export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   const [mods, setMods] = useState<Modality[]>([]);
@@ -44,6 +40,7 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   const [quarters, setQuarters] = useState<BracketMatch[]>(Array(4).fill({ p1: null, p2: null, winner: null }));
   const [semis, setSemis] = useState<BracketMatch[]>(Array(2).fill({ p1: null, p2: null, winner: null }));
   const [final, setFinal] = useState<BracketMatch>({ p1: null, p2: null, winner: null });
+  const [confirmDelete, setConfirmDelete] = useState<Result | null>(null);
 
   useEffect(() => {
     loadData();
@@ -166,10 +163,11 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
   const save = async () => {
     if (!selMod) return;
     let finalRanking = rankings;
+    let isPartial = false;
+
     if (inputMode === 'bracket') {
       if (!final.winner) {
-        alert("Defina o campeão na final antes de salvar.");
-        return;
+        isPartial = true;
       }
       finalRanking = calculateRankingFromBracket();
     }
@@ -177,10 +175,17 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
     const db = getDb();
     const existing = db.results.find(r => r.competitionId === comp.id && r.modalityId === selMod);
     
-    const resultData = { 
+    const resultData: Partial<Result> = { 
       competitionId: comp.id, 
       modalityId: selMod, 
-      ranking: finalRanking 
+      ranking: finalRanking,
+      inputMode: inputMode,
+      bracketState: inputMode === 'bracket' ? {
+        oitavas,
+        quarters,
+        semis,
+        final
+      } : undefined
     };
 
     if (existing) {
@@ -190,21 +195,46 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
     }
 
     loadData();
-    if (inputMode === 'bracket') resetBracket();
-    else setRankings({});
+    
+    if (isPartial) {
+      alert("Chaveamento parcial salvo com sucesso! O progresso foi mantido, e o ranking será gerado e as pontuações recalculadas quando o campeão for definido.");
+    } else {
+      alert("Resultados publicados e salvos com sucesso!");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteItem('results', id);
+    setConfirmDelete(null);
+    loadData();
+    const deletedResult = resultsList.find(r => r.id === id);
+    if (deletedResult && selMod === deletedResult.modalityId) {
+      setSelMod('');
+      setRankings({});
+      resetBracket();
+    }
   };
 
   const handleEdit = (result: Result) => {
     setSelMod(result.modalityId);
-    setInputMode('manual');
+    const mode = result.inputMode || 'manual';
+    setInputMode(mode);
     setRankings(result.ranking);
+    if (result.bracketState) {
+      setOitavas(result.bracketState.oitavas || Array(8).fill({ p1: null, p2: null, winner: null }));
+      setQuarters(result.bracketState.quarters || Array(4).fill({ p1: null, p2: null, winner: null }));
+      setSemis(result.bracketState.semis || Array(2).fill({ p1: null, p2: null, winner: null }));
+      setFinal(result.bracketState.final || { p1: null, p2: null, winner: null });
+    } else {
+      resetBracket();
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const getModalityName = (id: string) => {
     const m = mods.find(m => m.id === id);
     if (!m) return 'Desconhecida';
-    return m.name;
+    return `${m.name} (${m.gender})`;
   };
 
   const getWinnerName = (result: Result) => {
@@ -293,10 +323,20 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
                     const existing = resultsList.find(r => r.modalityId === e.target.value);
                     if (existing) {
                       setRankings(existing.ranking);
-                      setInputMode('manual');
+                      const mode = existing.inputMode || 'manual';
+                      setInputMode(mode);
+                      if (existing.bracketState) {
+                        setOitavas(existing.bracketState.oitavas || Array(8).fill({ p1: null, p2: null, winner: null }));
+                        setQuarters(existing.bracketState.quarters || Array(4).fill({ p1: null, p2: null, winner: null }));
+                        setSemis(existing.bracketState.semis || Array(2).fill({ p1: null, p2: null, winner: null }));
+                        setFinal(existing.bracketState.final || { p1: null, p2: null, winner: null });
+                      } else {
+                        resetBracket();
+                      }
                     } else {
                       setRankings({});
                       resetBracket();
+                      setInputMode('manual');
                     }
                   }}
                 >
@@ -594,8 +634,27 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
                       <span className="text-[10px] font-black text-zinc-400 uppercase tracking-widest mb-1">Resultado Final</span>
                       <span className="font-black text-sm text-zinc-900 tracking-tight">{getModalityName(r.modalityId)}</span>
                     </div>
-                    <div className="bg-zinc-100 p-1.5 rounded-lg text-zinc-400 group-hover:bg-lobo-primary group-hover:text-white transition-colors">
-                      <Edit2 className="w-3.5 h-3.5" />
+                    <div className="flex items-center gap-1.5">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEdit(r);
+                        }}
+                        className="bg-zinc-100 hover:bg-lobo-primary hover:text-white p-1.5 rounded-lg text-zinc-400 active:scale-90 transition-all"
+                        title="Editar"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDelete(r);
+                        }}
+                        className="bg-zinc-100 hover:bg-red-500 hover:text-white p-1.5 rounded-lg text-zinc-400 active:scale-90 transition-all"
+                        title="Apagar"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                   
@@ -619,6 +678,66 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
           </p>
         </div>
       </div>
+
+      {/* Modal de Confirmação de Exclusão */}
+      <AnimatePresence>
+        {confirmDelete && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmDelete(null)}
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[90%] max-w-sm bg-white rounded-[2.5rem] shadow-2xl z-[101] overflow-hidden border border-zinc-100"
+            >
+              <div className="p-8 pb-4 flex items-center justify-between border-b border-zinc-50">
+                <div className="flex items-center space-x-3 text-red-500">
+                  <div className="p-2.5 bg-red-50 rounded-2xl">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black tracking-tight text-zinc-900 leading-none">Excluir Resultado</h3>
+                    <span className="text-[10px] font-black uppercase text-zinc-400 tracking-wider">Ação Irreversível</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setConfirmDelete(null)} 
+                  className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-100 transition-colors"
+                >
+                  <X className="w-5 h-5 text-zinc-400" />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <p className="text-zinc-500 text-xs font-semibold leading-relaxed">
+                  Tem certeza que deseja apagar o resultado da modalidade <span className="font-bold text-zinc-900 uppercase">{getModalityName(confirmDelete.modalityId)}</span>? Esta ação irá remover o resultado e recalcular a pontuação do campeonato.
+                </p>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConfirmDelete(null)}
+                    className="flex-1 py-3.5 bg-zinc-100 text-zinc-600 font-bold text-xs uppercase tracking-widest rounded-2xl hover:bg-zinc-200 active:scale-95 transition-all text-center"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => handleDelete(confirmDelete.id)}
+                    className="flex-1 py-3.5 bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest rounded-2xl active:scale-95 transition-all text-center shadow-lg shadow-red-600/20"
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
