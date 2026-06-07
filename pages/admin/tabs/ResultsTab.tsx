@@ -44,6 +44,13 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
 
   useEffect(() => {
     loadData();
+    const handleStorageUpdate = () => {
+      loadData();
+    };
+    window.addEventListener('storage', handleStorageUpdate);
+    return () => {
+      window.removeEventListener('storage', handleStorageUpdate);
+    };
   }, [comp]);
 
   const loadData = () => {
@@ -359,30 +366,29 @@ export const ResultsTab: React.FC<{ comp: Competition }> = ({ comp }) => {
                   exit={{ opacity: 0, height: 0 }}
                   className="space-y-6 overflow-hidden"
                 >
-                  {isCollective(selMod) && (
-                    <div className="inline-flex p-1 bg-zinc-100 rounded-xl border border-zinc-200">
-                      <button 
-                        onClick={() => setInputMode('manual')}
-                        className={cn(
-                          "flex items-center space-x-2 px-6 py-2 rounded-lg text-xs font-bold transition-all",
-                          inputMode === 'manual' ? "bg-white text-lobo-primary shadow-sm" : "text-zinc-500 hover:text-zinc-700"
-                        )}
-                      >
-                        <ListIcon className="w-4 h-4" />
-                        <span>Lista Direta</span>
-                      </button>
-                      <button 
-                        onClick={() => setInputMode('bracket')}
-                        className={cn(
-                          "flex items-center space-x-2 px-6 py-2 rounded-lg text-xs font-bold transition-all",
-                          inputMode === 'bracket' ? "bg-white text-lobo-primary shadow-sm" : "text-zinc-500 hover:text-zinc-700"
-                        )}
-                      >
-                        <Layout className="w-4 h-4" />
-                        <span>Chaveamento</span>
-                      </button>
-                    </div>
-                  )}
+                  {/* Permitir trocar de modo (Lista Direta vs Chaveamento) para todas as modalidades */}
+                  <div className="inline-flex p-1 bg-zinc-100 rounded-xl border border-zinc-200">
+                    <button 
+                      onClick={() => setInputMode('manual')}
+                      className={cn(
+                        "flex items-center space-x-2 px-6 py-2 rounded-lg text-xs font-bold transition-all",
+                        inputMode === 'manual' ? "bg-white text-lobo-primary shadow-sm" : "text-zinc-500 hover:text-zinc-700"
+                      )}
+                    >
+                      <ListIcon className="w-4 h-4" />
+                      <span>Lista Direta</span>
+                    </button>
+                    <button 
+                      onClick={() => setInputMode('bracket')}
+                      className={cn(
+                        "flex items-center space-x-2 px-6 py-2 rounded-lg text-xs font-bold transition-all",
+                        inputMode === 'bracket' ? "bg-white text-lobo-primary shadow-sm" : "text-zinc-500 hover:text-zinc-700"
+                      )}
+                    >
+                      <Layout className="w-4 h-4" />
+                      <span>Chaveamento</span>
+                    </button>
+                  </div>
 
                   {inputMode === 'manual' ? (
                     <motion.div 

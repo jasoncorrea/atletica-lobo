@@ -351,6 +351,18 @@ async function seedInitialData() {
 }
 seedInitialData();
 
+const cleanFirestoreData = (obj: any): any => {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(cleanFirestoreData);
+  const newObj: any = {};
+  Object.keys(obj).forEach(key => {
+    if (obj[key] !== undefined) {
+      newObj[key] = cleanFirestoreData(obj[key]);
+    }
+  });
+  return newObj;
+};
+
 export const addItem = async <K extends keyof DatabaseSchema>(collectionName: K, item: any, customId?: string) => {
   const id = customId || item.id || Math.random().toString(36).substring(2, 9);
   const data = { ...item, id };
@@ -370,8 +382,9 @@ export const addItem = async <K extends keyof DatabaseSchema>(collectionName: K,
 
   // Fire and forget Firestore sync
   if (!quotaExceeded) {
+    const firestoreData = cleanFirestoreData(data);
     Promise.race([
-      setDoc(doc(db, collectionName as string, id), data),
+      setDoc(doc(db, collectionName as string, id), firestoreData),
       new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
     ]).catch((err: any) => {
       if (err.message !== 'timeout') {
@@ -401,8 +414,9 @@ export const updateItem = async <K extends keyof DatabaseSchema>(collectionName:
 
   try {
     if (!quotaExceeded) {
+      const firestoreUpdates = cleanFirestoreData(updates);
       await Promise.race([
-        setDoc(doc(db, collectionName as string, id), updates, { merge: true }),
+        setDoc(doc(db, collectionName as string, id), firestoreUpdates, { merge: true }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000))
       ]);
     }
